@@ -1,0 +1,3 @@
+[submodule "ring_planet_research"]
+	path = ring_planet_research
+	url = https://github.com/utsubasa/ring_planet_research.git
