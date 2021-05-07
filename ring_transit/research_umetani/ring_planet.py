@@ -17,7 +17,8 @@ from fit_model import model
 import warnings
 import c_compile_ring
 import batman
-
+import datetime
+from decimal import *
 warnings.filterwarnings('ignore')
 
 
@@ -46,7 +47,7 @@ def q_to_u_limb(q_arr):
     return np.array([u1, u2])
 
 def set_params_batman(params_lm, names, limb_type ="quadratic"):
-    
+
     params = batman.TransitParams()       #object to store transit parameters
     params.limb_dark =  limb_type        #limb darkening model
     q_arr = np.zeros(2)
@@ -56,22 +57,22 @@ def set_params_batman(params_lm, names, limb_type ="quadratic"):
         if name=="t0":
             params.t0 = value
         if name=="per":
-            params.per = value         
+            params.per = value
         if name=="rp":
             params.rp = value
         if name=="a":
             params.a = value
         if name=="inc":
-            params.inc = value               
+            params.inc = value
         if name=="ecc":
-            params.ecc = value          
+            params.ecc = value
         if name=="w":
-            params.w = value  
+            params.w = value
         if name=="q1":
             q_arr[0] = value
         if name=="q2":
             q_arr[1] = value
-    
+
     u_arr = q_to_u_limb(q_arr)
     params.u = u_arr
     return params
@@ -85,7 +86,7 @@ def set_params_lm(names, values, mins, maxes, vary_flags):
             params.add(names[i], value=values[i], vary = vary_flags[i])
     return params
 
-# Ring model 
+# Ring model
 # Input "x" (1d array), "pdic" (dic)
 # Ouput flux (1d array)
 def ring_model(x, pdic):
@@ -148,7 +149,7 @@ def output_params_to_dat():
 
 """使う行のみ抽出"""
 
-df=pd.read_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/realsearch/toi-catalog.csv', encoding='shift_jis')
+df=pd.read_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/toi-catalog.csv', encoding='shift_jis')
 df.columns=df.iloc[3].values
 df=df[4:]
 
@@ -277,23 +278,23 @@ yerr  = lc.fold(planet_b_period, planet_b_t0).flux_err.value
 #リングなしモデル
 
 #lm.minimizeのためのparamsのセッティング。これはリングありモデル
-names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs", 
-         "b", "norm", "theta", "phi", "tau", "r_in", 
+names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
+         "b", "norm", "theta", "phi", "tau", "r_in",
          "r_out", "norm2", "norm3", "ecosw", "esinw"]
-values = [0.2, 0.2, 0.0, 4.0, (float(df2[df2['TIC']=='142087638']['Planet Radius Value'].values[0])*0.0091577) / float(df2[df2['TIC']=='142087638']['Star Radius Value'].values[0]), 40.0, 
-          0.5, 1.0, 45.0, 45.0, 0.5, 1.5, 
+values = [0.2, 0.2, 0.0, 4.0, (float(df2[df2['TIC']=='142087638']['Planet Radius Value'].values[0])*0.0091577) / float(df2[df2['TIC']=='142087638']['Star Radius Value'].values[0]), 40.0,
+          0.5, 1.0, 45.0, 45.0, 0.5, 1.5,
           2.0/1.5, 0.0, 0.0, 0.0, 0.0]
-saturnlike_values = [0.2, 0.2, 0.0, 4.0, 0.08, 10.7, 
-         1, 1, 26.7, 0, 1, 1.53, 
+saturnlike_values = [0.2, 0.2, 0.0, 4.0, 0.08, 10.7,
+         1, 1, 26.7, 0, 1, 1.53,
          1.95, 0.0, 0.0, 0.0, 0.0]
-mins = [0.0, 0.0, -0.0001, 0.0, 0.0, 1.0, 
-        0.0, 0.9, 0.0, 0.0, 0.0, 1.0, 
+mins = [0.0, 0.0, -0.0001, 0.0, 0.0, 1.0,
+        0.0, 0.9, 0.0, 0.0, 0.0, 1.0,
         1.1, -0.1, -0.1, 0.0, 0.0]
-maxes = [1.0, 1.0, 0.0001, 10000.0, 1.0, 100000.0, 
-         1.0, 1.1, 90.0, 90.0, 1.0, 7.0, 
+maxes = [1.0, 1.0, 0.0001, 10000.0, 1.0, 100000.0,
+         1.0, 1.1, 90.0, 90.0, 1.0, 7.0,
          10.0, 0.1, 0.1, 0.0, 0.0]
-vary_flags = [True, True, True, False, True, True, 
-              True, False, True, True, True, True, 
+vary_flags = [True, True, True, False, True, True,
+              True, False, True, True, True, True,
               True, False, False, False, False]
 #params = set_params_lm(names, values, mins, maxes, vary_flags)
 saturnlike_params = set_params_lm(names, saturnlike_values, mins, maxes, vary_flags)
@@ -310,7 +311,7 @@ eps_data = np.random.normal(size=t.size, scale=error_scale)
 flux = ymodel + eps_data
 
 noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
-values = [0, 4.0, 0.08, 8, 83, 0, 90, 0.2, 0.2]
+values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
 mins = [-0.1, 4.0, 0.03, 4, 80, 0, 90, 0.0, 0.0]
 maxes = [0.1, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
 #vary_flags = [False, False, True, True, True, False, False, True, True]
@@ -318,19 +319,28 @@ vary_flags = [True, False, True, True, True, False, False, True, True]
 params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
 
 #out = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux, error_scale, names), max_nfev=1000)
-import pdb; pdb.set_trace()
+
 #out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, error_scale, noringnames), max_nfev=1000)
 out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, error_scale, noringnames))
 flux_model = no_ring_model_transitfit_from_lmparams(out.params, t, noringnames)
-
+import pdb; pdb.set_trace()
 plt.plot(t, flux, label='data')
 plt.plot(t, flux_model, label='fit_model')
 #plt.plot(t, ymodel, label='model')
 plt.legend()
 plt.show()
 
-
+"""csvに書き出し"""
+input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
+output_df = pd.DataFrame.from_dict(out.params.valuesdict(), orient="index",columns=["output_value"])
+#input_df = input_df.applymap(lambda x: float(Decimal(str(x)).quantize(Decimal('0.000001'), rounding=ROUND_HALF_UP)))
+input_df=input_df.applymap(lambda x: '{:.6f}'.format(x))
+output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
+#output_df = output_df.applymap(lambda x: float(Decimal(str(x)).quantize(Decimal('0.000001'), rounding=ROUND_HALF_UP)))
+df = input_df.join((output_df, pd.Series(vary_flags, index=noringnames, name='vary_flags')))
+df.to_csv('fitting_result_{}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M')), header=False, index=False)
 import pdb; pdb.set_trace()
+
 
 """
 parfile  = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/python_ext/exoring_test/test/para_result_ring.dat"
