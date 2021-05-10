@@ -115,18 +115,22 @@ def ring_model(x, pdic):
 
 #リングありモデルをfitting
 def ring_residual_transitfit(params, x, data, eps_data, names):
+    global chi_square
     model = ring_model(x, params.valuesdict())
+    chi_square = np.sum(((data-model)/eps_data)**2)
     print(params)
-    print(np.sum(((data-model)/eps_data)**2))
+    print(chi_square)
     return (data-model) / eps_data
 
 #リングありモデルをfitting
 def no_ring_residual_transitfit(params, x, data, eps_data, names):
+    global chi_square
     params_batman = set_params_batman(params, names)
     m = batman.TransitModel(params_batman, x)    #initializes model
     model = m.light_curve(params_batman)         #calculates light curve
+    chi_square = np.sum(((data-model)/eps_data)**2)
     print(params)
-    print(np.sum(((data-model)/eps_data)**2))
+    print(chi_square)
     return (data-model) / eps_data
 
 def ring_model_transitfit_from_lmparams(params, x):
@@ -263,7 +267,9 @@ ax = lc.fold(planet_b_period, planet_b_t0).scatter()
 planet_b_model.fold(planet_b_period, planet_b_t0).plot(ax=ax, c='r', lw=2)
 #ax.set_xlim(-0.5, 0.5);
 #ax.set_xlim(-5, 5);
-plt.show()
+#plt.show()
+plt.cla()
+plt.clf()
 
 
 
@@ -323,7 +329,7 @@ params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
 #out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, error_scale, noringnames), max_nfev=1000)
 out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, error_scale, noringnames))
 flux_model = no_ring_model_transitfit_from_lmparams(out.params, t, noringnames)
-import pdb; pdb.set_trace()
+#import pdb; pdb.set_trace()
 plt.plot(t, flux, label='data')
 plt.plot(t, flux_model, label='fit_model')
 #plt.plot(t, ymodel, label='model')
@@ -338,8 +344,8 @@ input_df=input_df.applymap(lambda x: '{:.6f}'.format(x))
 output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
 #output_df = output_df.applymap(lambda x: float(Decimal(str(x)).quantize(Decimal('0.000001'), rounding=ROUND_HALF_UP)))
 df = input_df.join((output_df, pd.Series(vary_flags, index=noringnames, name='vary_flags')))
-df.to_csv('fitting_result_{}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M')), header=False, index=False)
-import pdb; pdb.set_trace()
+df.to_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/fitting_result_{}_{:.0f}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
+#import pdb; pdb.set_trace()
 
 
 """
