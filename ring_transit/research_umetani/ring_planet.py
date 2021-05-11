@@ -279,35 +279,38 @@ xdata = lc.fold(planet_b_period, planet_b_t0).phase.value
 ydata = lc.fold(planet_b_period, planet_b_t0).flux.value
 yerr  = lc.fold(planet_b_period, planet_b_t0).flux_err.value
 
-#names = name_load("/Users/u_tsubasa/work/ring_planet_research/ring_transit/python_ext/exoring_test/test/parname.dat")
-
-#リングなしモデル
-
 #lm.minimizeのためのparamsのセッティング。これはリングありモデル
 names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
          "b", "norm", "theta", "phi", "tau", "r_in",
          "r_out", "norm2", "norm3", "ecosw", "esinw"]
-values = [0.2, 0.2, 0.0, 4.0, (float(df2[df2['TIC']=='142087638']['Planet Radius Value'].values[0])*0.0091577) / float(df2[df2['TIC']=='142087638']['Star Radius Value'].values[0]), 40.0,
-          0.5, 1.0, 45.0, 45.0, 0.5, 1.5,
-          2.0/1.5, 0.0, 0.0, 0.0, 0.0]
-saturnlike_values = [0.2, 0.2, 0.0, 4.0, 0.08, 10.7,
-         1, 1, 26.7, 0, 1, 1.53,
-         1.95, 0.0, 0.0, 0.0, 0.0]
+#values = [0.2, 0.2, 0.0, 4.0, (float(df2[df2['TIC']=='142087638']['Planet Radius Value'].values[0])*0.0091577) / float(df2[df2['TIC']=='142087638']['Star Radius Value'].values[0]), 40.0,
+#          0.5, 1.0, 45.0, 45.0, 0.5, 1.5,
+#          2.0/1.5, 0.0, 0.0, 0.0, 0.0]
+values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.0,
+        1, 1.0, 45.0, 45.0, 0.5, 1.5,
+        2.0/1.5, 0.0, 0.0, 0.0, 0.0]
+#saturnlike_values = [0.2, 0.2, 0.0, 4.0, 0.08, 10.7,
+#         1, 1, 26.7, 0, 1, 1.53,
+#         1.95, 0.0, 0.0, 0.0, 0.0]
+saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
+          1, 1, 26.7, 0, 1, 1.53,
+          1.95, 0.0, 0.0, 0.0, 0.0]
 mins = [0.0, 0.0, -0.0001, 0.0, 0.0, 1.0,
         0.0, 0.9, 0.0, 0.0, 0.0, 1.0,
         1.1, -0.1, -0.1, 0.0, 0.0]
-maxes = [1.0, 1.0, 0.0001, 10000.0, 1.0, 100000.0,
+maxes = [1.0, 1.0, 0.0001, 100.0, 1.0, 1000.0,
          1.0, 1.1, 90.0, 90.0, 1.0, 7.0,
          10.0, 0.1, 0.1, 0.0, 0.0]
 vary_flags = [True, True, True, False, True, True,
               True, False, True, True, True, True,
               True, False, False, False, False]
-#params = set_params_lm(names, values, mins, maxes, vary_flags)
-saturnlike_params = set_params_lm(names, saturnlike_values, mins, maxes, vary_flags)
+params = set_params_lm(names, values, mins, maxes, vary_flags)
+
 
 t = np.linspace(-0.2, 0.2, 300)
 
 #土星likeな惑星のパラメータで作成したモデル
+saturnlike_params = set_params_lm(names, saturnlike_values, mins, maxes, vary_flags)
 pdic_saturnlike = make_dic(names, saturnlike_values)
 ymodel = ring_model(t, pdic_saturnlike)
 
@@ -316,19 +319,20 @@ error_scale = 0.0001
 eps_data = np.random.normal(size=t.size, scale=error_scale)
 flux = ymodel + eps_data
 
+"""
 noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
 values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
 mins = [-0.1, 4.0, 0.03, 4, 80, 0, 90, 0.0, 0.0]
 maxes = [0.1, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
-#vary_flags = [False, False, True, True, True, False, False, True, True]
 vary_flags = [True, False, True, True, True, False, False, True, True]
 params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
+"""
 
-#out = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux, error_scale, names), max_nfev=1000)
+out = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux, error_scale, names), max_nfev=1000)
 
-#out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, error_scale, noringnames), max_nfev=1000)
-out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, error_scale, noringnames))
-flux_model = no_ring_model_transitfit_from_lmparams(out.params, t, noringnames)
+#out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, error_scale, noringnames))
+#flux_model = no_ring_model_transitfit_from_lmparams(out.params, t, noringnames)
+flux_model = ring_model_transitfit_from_lmparams(out.params, t)
 #import pdb; pdb.set_trace()
 plt.plot(t, flux, label='data')
 plt.plot(t, flux_model, label='fit_model')
@@ -337,13 +341,13 @@ plt.legend()
 plt.show()
 
 """csvに書き出し"""
-input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
+#input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
+input_df = pd.DataFrame.from_dict(saturnlike_params.valuesdict(), orient="index",columns=["input_value"])
 output_df = pd.DataFrame.from_dict(out.params.valuesdict(), orient="index",columns=["output_value"])
-#input_df = input_df.applymap(lambda x: float(Decimal(str(x)).quantize(Decimal('0.000001'), rounding=ROUND_HALF_UP)))
 input_df=input_df.applymap(lambda x: '{:.6f}'.format(x))
 output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
-#output_df = output_df.applymap(lambda x: float(Decimal(str(x)).quantize(Decimal('0.000001'), rounding=ROUND_HALF_UP)))
-df = input_df.join((output_df, pd.Series(vary_flags, index=noringnames, name='vary_flags')))
+#df = input_df.join((output_df, pd.Series(vary_flags, index=noringnames, name='vary_flags')))
+df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
 df.to_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/fitting_result_{}_{:.0f}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
 #import pdb; pdb.set_trace()
 
