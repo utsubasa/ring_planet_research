@@ -288,7 +288,7 @@ names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
 #          0.5, 1.0, 45.0, 45.0, 0.5, 1.5,
 #          2.0/1.5, 0.0, 0.0, 0.0, 0.0]
 values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
-          1, 1, 26.7, 45, 1, 1.53,
+          1, 1, 30, 1, 1, 1.53,
           1.95, 0.0, 0.0, 0.0, 0.0]
 #saturnlike_values = [0.2, 0.2, 0.0, 4.0, 0.08, 10.7,
 #         1, 1, 26.7, 0, 1, 1.53,
@@ -303,7 +303,7 @@ maxes = [1.0, 1.0, 0.0001, 100.0, 1.0, 1000.0,
          1.0, 1.1, 90.0, 90.0, 1.0, 7.0,
          10.0, 0.1, 0.1, 0.0, 0.0]
 vary_flags = [False, False, False, False, False, False,
-              False, False, False, True, False, False,
+              False, False, True, True, False, False,
               False, False, False, False, False]
 params = set_params_lm(names, values, mins, maxes, vary_flags)
 
