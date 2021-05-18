@@ -328,8 +328,8 @@ maxes = [0.1, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
 vary_flags = [True, False, True, True, True, False, False, True, True]
 params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
 """
-for i in range(10):
-    out = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux, error_scale, names), max_nfev=1000)
+for i in range(1):
+    out = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux, error_scale, names), max_nfev=1000, method='emcee')
 
     #out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, error_scale, noringnames))
     #flux_model = no_ring_model_transitfit_from_lmparams(out.params, t, noringnames)
@@ -339,8 +339,8 @@ for i in range(10):
     plt.plot(t, flux_model, label='fit_model')
     #plt.plot(t, ymodel, label='model')
     plt.legend()
-    plt.show()
-    time.sleep(30)
+    #plt.show()
+    #time.sleep(30)
 
     """csvに書き出し"""
     #input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
