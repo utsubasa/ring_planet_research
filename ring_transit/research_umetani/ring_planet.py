@@ -144,14 +144,7 @@ def no_ring_model_transitfit_from_lmparams(params, x, names):
     model = m.light_curve(params_batman)
     return model
 
-
-
-"""
-def output_params_to_dat():
-  with open('fit_params.dat', 'w'):
-  f_write.write(start_t + '~')
-"""
-
+'''
 """使う行のみ抽出"""
 
 df=pd.read_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/toi-catalog.csv', encoding='shift_jis')
@@ -279,6 +272,7 @@ plt.clf()
 xdata = lc.fold(planet_b_period, planet_b_t0).phase.value
 ydata = lc.fold(planet_b_period, planet_b_t0).flux.value
 yerr  = lc.fold(planet_b_period, planet_b_t0).flux_err.value
+'''
 
 #lm.minimizeのためのparamsのセッティング。これはリングありモデル
 names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
@@ -287,7 +281,7 @@ names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
 #values = [0.2, 0.2, 0.0, 4.0, (float(df2[df2['TIC']=='142087638']['Planet Radius Value'].values[0])*0.0091577) / float(df2[df2['TIC']=='142087638']['Star Radius Value'].values[0]), 40.0,
 #          0.5, 1.0, 45.0, 45.0, 0.5, 1.5,
 #          2.0/1.5, 0.0, 0.0, 0.0, 0.0]
-values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
+values = [0.0, 0.7, 0.0, 4.0, 0.5, 10.7,
           1, 1, 30, 1, 1, 1.53,
           1.95, 0.0, 0.0, 0.0, 0.0]
 #saturnlike_values = [0.2, 0.2, 0.0, 4.0, 0.08, 10.7,
@@ -302,7 +296,7 @@ mins = [0.0, 0.0, -0.0001, 0.0, 0.0, 1.0,
 maxes = [1.0, 1.0, 0.0001, 100.0, 1.0, 1000.0,
          1.0, 1.1, 90.0, 90.0, 1.0, 7.0,
          10.0, 0.1, 0.1, 0.0, 0.0]
-vary_flags = [False, False, False, False, False, False,
+vary_flags = [False, False, False, False, True, False,
               False, False, True, True, False, False,
               False, False, False, False, False]
 params = set_params_lm(names, values, mins, maxes, vary_flags)
@@ -328,8 +322,11 @@ maxes = [0.1, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
 vary_flags = [True, False, True, True, True, False, False, True, True]
 params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
 """
+
+import pdb; pdb.set_trace()
+
 for i in range(1):
-    out = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux, error_scale, names), max_nfev=1000, method='emcee')
+    out = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux, error_scale, names), max_nfev=1000, method='nelder')
 
     #out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, error_scale, noringnames))
     #flux_model = no_ring_model_transitfit_from_lmparams(out.params, t, noringnames)
@@ -339,6 +336,7 @@ for i in range(1):
     plt.plot(t, flux_model, label='fit_model')
     #plt.plot(t, ymodel, label='model')
     plt.legend()
+    plt.savefig()
     #plt.show()
     #time.sleep(30)
 
