@@ -336,7 +336,7 @@ for i in range(1):
     plt.plot(t, flux_model, label='fit_model')
     #plt.plot(t, ymodel, label='model')
     plt.legend()
-    plt.savefig()
+    plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
     #plt.show()
     #time.sleep(30)
 
