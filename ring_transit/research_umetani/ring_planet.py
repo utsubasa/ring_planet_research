@@ -282,19 +282,19 @@ names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
 #          0.5, 1.0, 45.0, 45.0, 0.5, 1.5,
 #          2.0/1.5, 0.0, 0.0, 0.0, 0.0]
 values = [0.0, 0.7, 0.0, 4.0, 0.5, 10.7,
-          1, 1, 30, 1, 1, 1.53,
+          1, 1, np.pi/6.0, np.pi/18.0, 1, 1.53,
           1.95, 0.0, 0.0, 0.0, 0.0]
 #saturnlike_values = [0.2, 0.2, 0.0, 4.0, 0.08, 10.7,
 #         1, 1, 26.7, 0, 1, 1.53,
 #         1.95, 0.0, 0.0, 0.0, 0.0]
 saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
-          1, 1, 26.7, 0, 1, 1.53,
+          1, 1, np.pi/6.74, 0, 1, 1.53,
           1.95, 0.0, 0.0, 0.0, 0.0]
 mins = [0.0, 0.0, -0.0001, 0.0, 0.0, 1.0,
         0.0, 0.9, 0.0, 0.0, 0.0, 1.0,
         1.1, -0.1, -0.1, 0.0, 0.0]
 maxes = [1.0, 1.0, 0.0001, 100.0, 1.0, 1000.0,
-         1.0, 1.1, 90.0, 90.0, 1.0, 7.0,
+         1.0, 1.1, np.pi/2, np.pi/2, 1.0, 7.0,
          10.0, 0.1, 0.1, 0.0, 0.0]
 vary_flags = [False, False, False, False, True, False,
               False, False, True, True, False, False,
@@ -326,7 +326,7 @@ params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
 import pdb; pdb.set_trace()
 
 for i in range(1):
-    out = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux, error_scale, names), max_nfev=1000, method='nelder')
+    out = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux, error_scale, names), max_nfev=1000)
 
     #out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, error_scale, noringnames))
     #flux_model = no_ring_model_transitfit_from_lmparams(out.params, t, noringnames)
