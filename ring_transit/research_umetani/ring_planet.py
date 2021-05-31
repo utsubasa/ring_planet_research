@@ -143,7 +143,37 @@ def no_ring_model_transitfit_from_lmparams(params, x, names):
     m = batman.TransitModel(params_batman, x)    #initializes model
     model = m.light_curve(params_batman)
     return model
+    
+def log_likelihood(theta2, x, data, error_scale):
+    pdic['theta'], pdic['phi'] = theta2
+    q1, q2, t0, porb, rp_rs, a_rs, b, norm \
+            = pdic['q1'], pdic['q2'], pdic['t0'], pdic['porb'], pdic['rp_rs'], pdic['a_rs'], pdic['b'], pdic['norm']
+    theta, phi, tau, r_in, r_out \
+            = pdic['theta'], pdic['phi'], pdic['tau'], pdic['r_in'], pdic['r_out']
+    norm2, norm3 = pdic['norm2'], pdic['norm3']
+    cosi = b/a_rs
+    u = [2*np.sqrt(q1)*q2, np.sqrt(q1)*(1-2*q2)]
+    u1, u2 = u[0], u[1]
+    ecosw = pdic['ecosw']
+    esinw = pdic['esinw']
+    pars = np.array([porb, t0, ecosw, esinw, b, a_rs, theta,
+                     phi, tau, r_in, r_out, rp_rs, q1, q2])
+    times = np.array(x)
+    model = np.array(c_compile_ring.getflux(times, pars, len(times)))*(
+            norm + norm2*(times-t0) + norm3*(times-t0)**2)
+    return np.sum(np.log(1/np.sqrt(2*np.pi*error_scale**2)))-np.sum(data-model/2*error_scale**2)
 
+def log_prior(theta2):
+    pdic['theta'], pdic['phi'] = theta2
+    if 0.0 < pdic['theta'] < np.pi and 0.0 < pdic['phi'] < np.pi:
+        return 1/np.pi
+    return -np.inf
+
+def log_probability(theta2, x, y, yerr):
+    lp = log_prior(theta2)
+    if not np.isfinite(lp):
+        return -np.inf
+    return lp + log_likelihood(theta2, x, y, yerr)
 '''
 """使う行のみ抽出"""
 
