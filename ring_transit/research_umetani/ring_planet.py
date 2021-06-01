@@ -143,7 +143,7 @@ def no_ring_model_transitfit_from_lmparams(params, x, names):
     m = batman.TransitModel(params_batman, x)    #initializes model
     model = m.light_curve(params_batman)
     return model
-    
+
 def log_likelihood(theta2, x, data, error_scale):
     pdic['theta'], pdic['phi'] = theta2
     q1, q2, t0, porb, rp_rs, a_rs, b, norm \
@@ -353,11 +353,16 @@ vary_flags = [True, False, True, True, True, False, False, True, True]
 params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
 """
 
-import pdb; pdb.set_trace()
+
 
 for i in range(1):
     out = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux, error_scale, names), max_nfev=1000)
+    import pdb; pdb.set_trace()
+    pos = soln.x + 1e-4 * np.random.randn(32, 3)
+    nwalkers, ndim = pos.shape
 
+    sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability, args=(x, y, yerr))
+    sampler.run_mcmc(pos, 5000, progress=True);
     #out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, error_scale, noringnames))
     #flux_model = no_ring_model_transitfit_from_lmparams(out.params, t, noringnames)
     flux_model = ring_model_transitfit_from_lmparams(out.params, t)
