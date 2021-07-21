@@ -16,7 +16,8 @@ import emcee
 import corner
 from multiprocessing import Pool
 #import lightkurve as lk
-from lightkurve import search_targetpixelfile
+#from lightkurve import search_targetpixelfile
+import kplr
 
 warnings.filterwarnings('ignore')
 
@@ -162,12 +163,14 @@ def lnprob(v, x, y, yerr):
     print(chi_square)
     return lp + lnlike(v, x, y, yerr)
 
+"""use lightkurve(diffrent method from Aizawa+2018)"""
 kic = "KIC11446443"
-tpf = lk.search_targetpixelfile(kic, author="Kepler", cadence="long").download()
+tpf = lk.search_targetpixelfile(kic, author="Kepler", cadence="short").download()
 #tpf.plot(frame=100, scale='log', show_colorbar=True)
 lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
 lc = lc.normalize()
 lc.plot()
+import pdb; pdb.set_trace()
 flat, trend = lc.flatten(window_length=301, return_trend=True)
 ax = lc.errorbar(label="Kepler-1")
 trend.plot(ax=ax, color='red', lw=2, label='Trend')
@@ -179,6 +182,7 @@ plt.show()
 time = folded_lc.time.value
 flux_data = folded_lc.flux.value
 flux_err_data = folded_lc.flux_err.value
+
 
 
 #lm.minimizeのためのparamsのセッティング。これはリングありモデル
