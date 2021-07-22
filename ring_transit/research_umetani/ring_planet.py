@@ -15,13 +15,12 @@ import time
 import emcee
 import corner
 from multiprocessing import Pool
-#import lightkurve as lk
 #from lightkurve import search_targetpixelfile
-import kplr
+from scipy import signal
 
 warnings.filterwarnings('ignore')
 
-"""
+
 def q_to_u_limb(q_arr):
     q1 = q_arr[0]
     q2 = q_arr[1]
@@ -59,7 +58,7 @@ def set_params_batman(params_lm, names, limb_type ="quadratic"):
     u_arr = q_to_u_limb(q_arr)
     params.u = u_arr
     return params
-"""
+
 
 def set_params_lm(names, values, mins, maxes, vary_flags):
     params = lmfit.Parameters()
@@ -164,17 +163,35 @@ def lnprob(v, x, y, yerr):
     return lp + lnlike(v, x, y, yerr)
 
 """use lightkurve(diffrent method from Aizawa+2018)"""
-kic = "KIC11446443"
+kic = "KIC10666592"
 tpf = lk.search_targetpixelfile(kic, author="Kepler", cadence="short").download()
 #tpf.plot(frame=100, scale='log', show_colorbar=True)
 lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
-lc = lc.normalize()
 lc.plot()
+period = np.linspace(1, 20, 10000)
+bls = lc.to_periodogram(method='bls', period=period, frequency_factor=500);
+planet_b_model = bls.get_transit_model(period=2.20473541,transit_time=121.3585417,duration=0.16)
+ax = lc.scatter()
+#planet_b_model.plot(ax=ax, c='dodgerblue', label='Planet b Transit Model');
+minId = signal.argrelmin(lc.flux.value, order=3000)
+plt.plot(lc.time.value[minId], lc.flux.value[minId], "bo")
+plt.show()
+lc_cut_point = 0.16*2*24*60 #durationを2倍、単位をday→min
+import pdb; pdb.set_trace()
+for transitId in minId[0]:
+    start = transitId - lc_cut_point
+    end = transitId + lc_cut_point
+    import pdb; pdb.set_trace()
+    target_lc = lc[start:end]
+
+    #model fitting
+
+lc = lc.normalize()
 import pdb; pdb.set_trace()
 flat, trend = lc.flatten(window_length=301, return_trend=True)
-ax = lc.errorbar(label="Kepler-1")
+ax = lc.errorbar(label="Kepler-2")
 trend.plot(ax=ax, color='red', lw=2, label='Trend')
-flat.errorbar(label="Kepler-1")
+flat.errorbar(label="Kepler-2")
 folded_lc = flat.fold(period=2.470613377, epoch_time=122.763305)
 folded_lc.errorbar()
 plt.show()
