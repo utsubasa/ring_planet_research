@@ -475,3 +475,98 @@ if __name__ ==  '__main__':
     #plt.plot(xdata, flux_model, label='model')
     #plt.plot(xdata, ydata, label='data')
     """
+
+'''for TESS data
+"""使う行のみ抽出"""
+df=pd.read_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/toi-catalog.csv', encoding='shift_jis')
+df.columns=df.iloc[3].values
+df=df[4:]
+"""カラムを入れ替える。"""
+df=df[['Signal-to-noise', 'Source Pipeline', 'TIC', 'Full TOI ID', 'TOI Disposition',
+       'TIC Right Ascension', 'TIC Declination', 'TMag Value',
+       'TMag Uncertainty', 'Epoch Value', 'Epoch Error',
+       'Orbital Period Value', 'Orbital Period Error',
+       'Transit Duration Value', 'Transit Duration Error',
+       'Transit Depth Value', 'Transit Depth Error', 'Sectors',
+       'Public Comment', 'Surface Gravity Value',
+       'Surface Gravity Uncertainty', 'Signal ID', 'Star Radius Value',
+       'Star Radius Error', 'Planet Radius Value', 'Planet Radius Error',
+       'Planet Equilibrium Temperature (K) Value',
+       'Effective Temperature Value', 'Effective Temperature Uncertainty',
+       'Effective Stellar Flux Value', 'Centroid Offset',
+       'TFOP Master', 'TFOP SG1a', 'TFOP SG1b', 'TFOP SG2', 'TFOP SG3',
+       'TFOP SG4', 'TFOP SG5', 'Alerted', 'Updated']]
+df['Signal-to-noise'] = df['Signal-to-noise'].fillna(0)
+df['Signal-to-noise'] = df['Signal-to-noise'].astype(float)
+df = df.sort_values('Signal-to-noise', ascending=False)
+df
+"""SN比 ≧ 100のデータを抽出。"""
+df2 = df[df['Signal-to-noise'] >= 100]
+df2 = df2.reset_index()
+#df2 = df2.drop(columns='index')
+df2.head()
+search_result = lk.search_lightcurve('TIC 142087638', mission='TESS', exptime=120)
+"""すべてのlightcurveの可視化"""
+lc_collection = search_result.download_all()
+#lc_collection.plot();
+"""### foldingを任せた場合
+すべての観測を平坦化しノーマライズする。これは"a stitched light curve"で表される。詳しくは Kepler data with Lightkurve.
+"""
+#lc = lc_collection.stitch().flatten(window_length=901).remove_outliers()
+#lc.plot();
+#lc = lc_collection.stitch().flatten(window_length=901).remove_outliers()
+"""### foldingを自分でやる場合"""
+lc_single = search_result[3].download()
+#lc_single.plot();
+lc = lc_single.flatten(window_length=901).remove_outliers()
+#lc.plot();
+"""### orbital periodをBLSで探す"""
+# Create array of periods to search
+period = np.linspace(1, 30, 10000)
+# Create a BLSPeriodogram
+bls = lc.to_periodogram(method='bls', period=period, frequency_factor=500);
+#bls.plot();
+planet_b_period = bls.period_at_max_power
+planet_b_t0 = bls.transit_time_at_max_power
+planet_b_dur = bls.duration_at_max_power
+# Check the value for period
+print('planet_b_period: ', planet_b_period)
+print('planet_b_t0: ', planet_b_t0)
+print('planet_b_dur: ', planet_b_dur)
+"""### カタログのorbital periodを使う"""
+df2[df2['TIC']=='142087638']
+#planet_b_period = float(df2[df2['TIC']=='142087638']['Orbital Period Value'].values[0])
+#planet_b_t0 = float(df2[df2['TIC']=='142087638']['Epoch Value'].values[0])
+#planet_b_dur = float(df2[df2['TIC']=='142087638']['Transit Duration Value'].values[0])
+# Check the value for period
+print('planet_b_period: ', planet_b_period)
+print('planet_b_t0: ', planet_b_t0)
+print('planet_b_dur: ', planet_b_dur)
+"""### folding"""
+ax = lc.fold(period=planet_b_period, epoch_time=planet_b_t0).scatter()
+#ax.set_xlim(-5, 5);
+ax = lc.fold(period=planet_b_period, epoch_time=planet_b_t0).scatter()
+#ax.set_xlim(-0.5, 0.5);
+# Create a cadence mask using the BLS parameters
+planet_b_mask = bls.get_transit_mask(period=planet_b_period,
+                                     transit_time=planet_b_t0,
+                                     duration=planet_b_dur)
+masked_lc = lc[~planet_b_mask]
+#ax = masked_lc.scatter();
+#lc[planet_b_mask].scatter(ax=ax, c='r', label='Masked');
+# Create a BLS model using the BLS parameters
+planet_b_model = bls.get_transit_model(period=planet_b_period,
+                                       transit_time=planet_b_t0,
+                                       duration=planet_b_dur)
+ax = lc.fold(planet_b_period, planet_b_t0).scatter()
+planet_b_model.fold(planet_b_period, planet_b_t0).plot(ax=ax, c='r', lw=2)
+#ax.set_xlim(-0.5, 0.5);
+#ax.set_xlim(-5, 5);
+#plt.show()
+plt.cla()
+plt.clf()
+# read the data file (xdata, ydata, yerr)
+xdata = lc.fold(planet_b_period, planet_b_t0).phase.value
+ydata = lc.fold(planet_b_period, planet_b_t0).flux.value
+yerr  = lc.fold(planet_b_period, planet_b_t0).flux_err.value
+'''
