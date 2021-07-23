@@ -17,6 +17,7 @@ import corner
 from multiprocessing import Pool
 #from lightkurve import search_targetpixelfile
 from scipy import signal
+from astropy.table import Table
 
 warnings.filterwarnings('ignore')
 
@@ -168,21 +169,47 @@ tpf = lk.search_targetpixelfile(kic, author="Kepler", cadence="short").download(
 #tpf.plot(frame=100, scale='log', show_colorbar=True)
 lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
 lc.plot()
-period = np.linspace(1, 20, 10000)
+period = np.linspace(1, 3, 10000)
 bls = lc.to_periodogram(method='bls', period=period, frequency_factor=500);
-planet_b_model = bls.get_transit_model(period=2.20473541,transit_time=121.3585417,duration=0.16)
+
+period=2.20473541
+transit_time=121.3585417
+duration=0.162026
+
+planet_b_model = bls.get_transit_model(period=period,transit_time=transit_time,duration=duraiton)
 ax = lc.scatter()
 #planet_b_model.plot(ax=ax, c='dodgerblue', label='Planet b Transit Model');
 minId = signal.argrelmin(lc.flux.value, order=3000)
 plt.plot(lc.time.value[minId], lc.flux.value[minId], "bo")
 plt.show()
-lc_cut_point = 0.16*2*24*60 #durationを2倍、単位をday→min
-import pdb; pdb.set_trace()
+half_duration = (duration/2)*24*60
+twice_duration = (duration*2)*24*60 #durationを2倍、単位をday→mi
+lc_cut_point = half_duration + twice_duration
+
 for transitId in minId[0]:
-    start = transitId - lc_cut_point
-    end = transitId + lc_cut_point
+    start = int(transitId - lc_cut_point)
+    end = int(transitId + lc_cut_point)
+    target_lc = lc[start:end].to_pandas()
+
+    """curve ftting"""
+    before_transit = target_lc[target_lc.index < transit_time-duration/2]
+    after_transit = target_lc[target_lc.index > transit_time+duration/2]
+    out_transit = pd.concat([before_transit, after_transit])
+    out_transit = out_transit.reset_index()
+    out_transit = Table.from_pandas(out_transit)
+    out_transit = lk.LightCurve(data=out_transit)
+    model = lmfit.models.PolynomialModel()
+    params = model.make_params(c0=1, c1=1, c2=1, c3=1, c4=1, c5=1, c6=1, c7=1)
+    result = model.fit(out_transit.flux.value, params, x=out_transit.time.value)
+    result.plot()
+
+
+
     import pdb; pdb.set_trace()
-    target_lc = lc[start:end]
+
+
+
+
 
     #model fitting
 
@@ -192,7 +219,7 @@ flat, trend = lc.flatten(window_length=301, return_trend=True)
 ax = lc.errorbar(label="Kepler-2")
 trend.plot(ax=ax, color='red', lw=2, label='Trend')
 flat.errorbar(label="Kepler-2")
-folded_lc = flat.fold(period=2.470613377, epoch_time=122.763305)
+folded_lc = flat.fold(period=2.20473541, epoch_time=122.763305)
 folded_lc.errorbar()
 plt.show()
 ##import pdb; pdb.set_trace()
