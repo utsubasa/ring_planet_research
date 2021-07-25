@@ -176,7 +176,7 @@ period=2.20473541
 transit_time=121.3585417
 duration=0.162026
 
-planet_b_model = bls.get_transit_model(period=period,transit_time=transit_time,duration=duraiton)
+planet_b_model = bls.get_transit_model(period=period,transit_time=transit_time,duration=duration)
 ax = lc.scatter()
 #planet_b_model.plot(ax=ax, c='dodgerblue', label='Planet b Transit Model');
 minId = signal.argrelmin(lc.flux.value, order=3000)
@@ -186,12 +186,34 @@ half_duration = (duration/2)*24*60
 twice_duration = (duration*2)*24*60 #durationを2倍、単位をday→mi
 lc_cut_point = half_duration + twice_duration
 
+"""params setting"""
+noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
+#values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
+values = [transit_time, period, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
+mins = [-0.1, 4.0, 0.03, 4, 80, 0, 90, 0.0, 0.0]
+maxes = [0.1, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
+#vary_flags = [True, False, True, True, True, False, False, True, True]
+vary_flags = [False, False, True, True, True, False, False, True, True]
+params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
+
 for transitId in minId[0]:
+    """transit fitting and clip outliers"""
     start = int(transitId - lc_cut_point)
     end = int(transitId + lc_cut_point)
-    target_lc = lc[start:end].to_pandas()
+    target_lc = lc[start:end].normalize()
+    out = lmfit.minimize(no_ring_residual_transitfit,params,args=(target_lc.time.value, target_lc.flux.value, target_lc.flux_err.value, noringnames),max_nfev=1000)
+    target_lc.errorbar()
+    flux_model = no_ring_model_transitfit_from_lmparams(out.params, target_lc.time.value, noringnames)
+    lk.LightCurve()
+    plt.plot(target_lc.time.value, flux_model, label='fit_model')
+    #plt.plot(t, ymodel, label='model')
+    plt.legend()
+    #plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
+    plt.show()
+    import pdb; pdb.set_trace()
 
-    """curve ftting"""
+    """curve fiting"""
+    target_lc = target_lc.to_pandas()
     before_transit = target_lc[target_lc.index < transit_time-duration/2]
     after_transit = target_lc[target_lc.index > transit_time+duration/2]
     out_transit = pd.concat([before_transit, after_transit])
@@ -231,15 +253,8 @@ flux_err_data = folded_lc.flux_err.value
 
 #lm.minimizeのためのparamsのセッティング。これはリングありモデル
 """parameters setting"""
-"""
-noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
-values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
-mins = [-0.1, 4.0, 0.03, 4, 80, 0, 90, 0.0, 0.0]
-maxes = [0.1, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
-vary_flags = [True, False, True, True, True, False, False, True, True]
-params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
-"""
 
+'''
 names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
          "b", "norm", "theta", "phi", "tau", "r_in",
          "r_out", "norm2", "norm3", "ecosw", "esinw"]
@@ -319,7 +334,7 @@ max_n = 11000
 index = 0
 autocorr = np.empty(max_n)
 old_tau = np.inf
-
+'''
 if __name__ ==  '__main__':
     '''
     with Pool() as pool:
