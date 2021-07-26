@@ -224,9 +224,9 @@ for transitId in minId[0]:
             each_lc = each_lc[~mask]
     import pdb; pdb.set_trace()
     """curve fiting"""
-    each_lc = each_lc.to_pandas()
-    before_transit = each_lc[each_lc.index < transit_time-duration/2]
-    after_transit = each_lc[each_lc.index > transit_time+duration/2]
+    each_lc_df = each_lc.to_pandas()
+    before_transit = each_lc_df[each_lc_df.index < transit_time-duration/2]
+    after_transit = each_lc_df[each_lc_df.index > transit_time+duration/2]
     out_transit = pd.concat([before_transit, after_transit])
     out_transit = out_transit.reset_index()
     out_transit = Table.from_pandas(out_transit)
@@ -236,7 +236,19 @@ for transitId in minId[0]:
     result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
     result.plot()
     plt.show()
-    each_lc.flux.values = each_lc.flux.values/result.eval()
+    result.params.valuesdict()
+    poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
+                    result.params.valuesdict()['c1'],\
+                    result.params.valuesdict()['c2'],\
+                    result.params.valuesdict()['c3'],\
+                    result.params.valuesdict()['c4'],\
+                    result.params.valuesdict()['c5'],\
+                    result.params.valuesdict()['c6'],\
+                    result.params.valuesdict()['c7']])
+    import pdb; pdb.set_trace()
+    each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
+    each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
+
     import pdb; pdb.set_trace()
 
 lc = lc.normalize()
