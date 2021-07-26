@@ -125,8 +125,8 @@ def no_ring_residual_transitfit(params, x, data, eps_data, names):
     m = batman.TransitModel(params_batman, x)    #initializes model
     model = m.light_curve(params_batman)         #calculates light curve
     chi_square = np.sum(((data-model)/eps_data)**2)
-    print(params)
-    print(chi_square)
+    #print(params)
+    #print(chi_square)
     return (data-model) / eps_data
 
 def ring_model_transitfit_from_lmparams(params, x):
@@ -168,7 +168,7 @@ kic = "KIC10666592"
 tpf = lk.search_targetpixelfile(kic, author="Kepler", cadence="short").download()
 #tpf.plot(frame=100, scale='log', show_colorbar=True)
 lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
-lc.plot()
+#lc.plot()
 period = np.linspace(1, 3, 10000)
 bls = lc.to_periodogram(method='bls', period=period, frequency_factor=500);
 
@@ -177,11 +177,11 @@ transit_time=121.3585417
 duration=0.162026
 
 planet_b_model = bls.get_transit_model(period=period,transit_time=transit_time,duration=duration)
-ax = lc.scatter()
+#ax = lc.scatter()
 #planet_b_model.plot(ax=ax, c='dodgerblue', label='Planet b Transit Model');
 minId = signal.argrelmin(lc.flux.value, order=3000)
-plt.plot(lc.time.value[minId], lc.flux.value[minId], "bo")
-plt.show()
+#plt.plot(lc.time.value[minId], lc.flux.value[minId], "bo")
+#plt.show()
 half_duration = (duration/2)*24*60
 twice_duration = (duration*2)*24*60 #durationを2倍、単位をday→mi
 lc_cut_point = half_duration + twice_duration
@@ -194,33 +194,35 @@ mins = [-0.1, 4.0, 0.03, 4, 80, 0, 90, 0.0, 0.0]
 maxes = [0.1, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
 #vary_flags = [True, False, True, True, True, False, False, True, True]
 vary_flags = [False, False, True, True, True, False, False, True, True]
-params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
+no_ring_params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
 
 for transitId in minId[0]:
-    """transit fitting and clip outliers"""
+    print('transitId: ', transitId)
     start = int(transitId - lc_cut_point)
     end = int(transitId + lc_cut_point)
-    target_lc = lc[start:end].normalize()
+    #target_lc = lc[start:end].normalize()
+    target_lc = lc[start:end]
+    print('before clip: ', len(target_lc.flux))
 
+    """transit fitting and clip outliers"""
     while True:
-        out = lmfit.minimize(no_ring_residual_transitfit,params,args=(target_lc.time.value, target_lc.flux.value, target_lc.flux_err.value, noringnames),max_nfev=1000)
-        flux_model = no_ring_model_transitfit_from_lmparams(out.params, target_lc.time.value, noringnames)
-        clip_lc = target_lc.copy()
+        out = lmfit.minimize(no_ring_residual_transitfit,no_ring_params,args=(target_lc.normalize().time.value, target_lc.normalize().flux.value, target_lc.normalize().flux_err.value, noringnames),max_nfev=1000)
+        flux_model = no_ring_model_transitfit_from_lmparams(out.params, target_lc.normalize().time.value, noringnames)
+        clip_lc = target_lc.normalize().copy()
         clip_lc.flux = clip_lc.flux-flux_model
         _, mask = clip_lc.remove_outliers(return_mask=True)
         inverse_mask = np.logical_not(mask)
         if np.all(inverse_mask) == True:
+            print('after clip: ', len(target_lc.flux))
+            target_lc.normalize().errorbar()
+            plt.plot(target_lc.time.value, flux_model, label='fit_model')
+            plt.legend()
+            #plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
+            plt.show()
             break
-        target_lc = target_lc[~mask]
+        else:
+            target_lc = target_lc[~mask]
     import pdb; pdb.set_trace()
-    lk.LightCurve()
-    plt.plot(target_lc.time.value, flux_model, label='fit_model')
-    #plt.plot(t, ymodel, label='model')
-    plt.legend()
-    #plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
-    plt.show()
-
-
     """curve fiting"""
     target_lc = target_lc.to_pandas()
     before_transit = target_lc[target_lc.index < transit_time-duration/2]
@@ -230,19 +232,11 @@ for transitId in minId[0]:
     out_transit = Table.from_pandas(out_transit)
     out_transit = lk.LightCurve(data=out_transit)
     model = lmfit.models.PolynomialModel()
-    params = model.make_params(c0=1, c1=1, c2=1, c3=1, c4=1, c5=1, c6=1, c7=1)
-    result = model.fit(out_transit.flux.value, params, x=out_transit.time.value)
+    poly_params = model.make_params(c0=1, c1=1, c2=1, c3=1, c4=1, c5=1, c6=1, c7=1)
+    result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
     result.plot()
-
-
-
+    plt.show()
     import pdb; pdb.set_trace()
-
-
-
-
-
-    #model fitting
 
 lc = lc.normalize()
 import pdb; pdb.set_trace()
