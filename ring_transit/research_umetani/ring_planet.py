@@ -206,7 +206,11 @@ for transitId in minId[0]:
 
     """transit fitting and clip outliers"""
     while True:
+<<<<<<< HEAD
         out = lmfit.minimize(no_ring_residual_transitfit,no_ring_params,args=(target_lc.normalize().time.value, target_lc.normalize().flux.value, target_lc.normalize().flux_err.value, noringnames),max_nfev=1000)
+=======
+        out = lmfit.minimize(no_ring_residual_transitfit,params,args=(target_lc.normalize().time.value, target_lc.normalize().flux.value, target_lc.normalize().flux_err.value, noringnames),max_nfev=1000)
+>>>>>>> 250faf2292379a32b5d55c54b7d9a54cb35b2f74
         flux_model = no_ring_model_transitfit_from_lmparams(out.params, target_lc.normalize().time.value, noringnames)
         clip_lc = target_lc.normalize().copy()
         clip_lc.flux = clip_lc.flux-flux_model
