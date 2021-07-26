@@ -200,37 +200,33 @@ for transitId in minId[0]:
     print('transitId: ', transitId)
     start = int(transitId - lc_cut_point)
     end = int(transitId + lc_cut_point)
-    #target_lc = lc[start:end].normalize()
-    target_lc = lc[start:end]
-    print('before clip: ', len(target_lc.flux))
+    #each_lc = lc[start:end].normalize()
+    each_lc = lc[start:end]
+    print('before clip: ', len(each_lc.flux))
 
     """transit fitting and clip outliers"""
     while True:
-<<<<<<< HEAD
-        out = lmfit.minimize(no_ring_residual_transitfit,no_ring_params,args=(target_lc.normalize().time.value, target_lc.normalize().flux.value, target_lc.normalize().flux_err.value, noringnames),max_nfev=1000)
-=======
-        out = lmfit.minimize(no_ring_residual_transitfit,params,args=(target_lc.normalize().time.value, target_lc.normalize().flux.value, target_lc.normalize().flux_err.value, noringnames),max_nfev=1000)
->>>>>>> 250faf2292379a32b5d55c54b7d9a54cb35b2f74
-        flux_model = no_ring_model_transitfit_from_lmparams(out.params, target_lc.normalize().time.value, noringnames)
-        clip_lc = target_lc.normalize().copy()
+        out = lmfit.minimize(no_ring_residual_transitfit,no_ring_params,args=(each_lc.normalize().time.value, each_lc.normalize().flux.value, each_lc.normalize().flux_err.value, noringnames),max_nfev=1000)
+        flux_model = no_ring_model_transitfit_from_lmparams(out.params, each_lc.normalize().time.value, noringnames)
+        clip_lc = each_lc.normalize().copy()
         clip_lc.flux = clip_lc.flux-flux_model
         _, mask = clip_lc.remove_outliers(return_mask=True)
         inverse_mask = np.logical_not(mask)
         if np.all(inverse_mask) == True:
-            print('after clip: ', len(target_lc.flux))
-            target_lc.normalize().errorbar()
-            plt.plot(target_lc.time.value, flux_model, label='fit_model')
+            print('after clip: ', len(each_lc.flux))
+            each_lc.normalize().errorbar()
+            plt.plot(each_lc.time.value, flux_model, label='fit_model')
             plt.legend()
             #plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
             plt.show()
             break
         else:
-            target_lc = target_lc[~mask]
+            each_lc = each_lc[~mask]
     import pdb; pdb.set_trace()
     """curve fiting"""
-    target_lc = target_lc.to_pandas()
-    before_transit = target_lc[target_lc.index < transit_time-duration/2]
-    after_transit = target_lc[target_lc.index > transit_time+duration/2]
+    each_lc = each_lc.to_pandas()
+    before_transit = each_lc[each_lc.index < transit_time-duration/2]
+    after_transit = each_lc[each_lc.index > transit_time+duration/2]
     out_transit = pd.concat([before_transit, after_transit])
     out_transit = out_transit.reset_index()
     out_transit = Table.from_pandas(out_transit)
@@ -240,6 +236,7 @@ for transitId in minId[0]:
     result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
     result.plot()
     plt.show()
+    each_lc.flux.values = each_lc.flux.values/result.eval()
     import pdb; pdb.set_trace()
 
 lc = lc.normalize()
