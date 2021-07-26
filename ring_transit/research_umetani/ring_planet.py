@@ -201,16 +201,25 @@ for transitId in minId[0]:
     start = int(transitId - lc_cut_point)
     end = int(transitId + lc_cut_point)
     target_lc = lc[start:end].normalize()
-    out = lmfit.minimize(no_ring_residual_transitfit,params,args=(target_lc.time.value, target_lc.flux.value, target_lc.flux_err.value, noringnames),max_nfev=1000)
-    target_lc.errorbar()
-    flux_model = no_ring_model_transitfit_from_lmparams(out.params, target_lc.time.value, noringnames)
+
+    while True:
+        out = lmfit.minimize(no_ring_residual_transitfit,params,args=(target_lc.time.value, target_lc.flux.value, target_lc.flux_err.value, noringnames),max_nfev=1000)
+        flux_model = no_ring_model_transitfit_from_lmparams(out.params, target_lc.time.value, noringnames)
+        clip_lc = target_lc.copy()
+        clip_lc.flux = clip_lc.flux-flux_model
+        _, mask = clip_lc.remove_outliers(return_mask=True)
+        inverse_mask = np.logical_not(mask)
+        if np.all(inverse_mask) == True:
+            break
+        target_lc = target_lc[~mask]
+    import pdb; pdb.set_trace()
     lk.LightCurve()
     plt.plot(target_lc.time.value, flux_model, label='fit_model')
     #plt.plot(t, ymodel, label='model')
     plt.legend()
     #plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
     plt.show()
-    import pdb; pdb.set_trace()
+
 
     """curve fiting"""
     target_lc = target_lc.to_pandas()
