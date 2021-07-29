@@ -249,132 +249,132 @@ def folding_each_lc(lc_list):
 
 
 if __name__ ==  '__main__':
-    with Pool() as pool:
-        """use lightkurve(diffrent method from Aizawa+2018)"""
-        kic = "KIC10666592"
-        tpf = lk.search_targetpixelfile(kic, author="Kepler", cadence="short").download()
-        #tpf.plot(frame=100, scale='log', show_colorbar=True)
-        lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
-        #lc.plot()
-        period = np.linspace(1, 3, 10000)
-        bls = lc.to_periodogram(method='bls', period=period, frequency_factor=500);
+    """use lightkurve(diffrent method from Aizawa+2018)"""
+    kic = "KIC10666592"
+    tpf = lk.search_targetpixelfile(kic, author="Kepler", cadence="short").download()
+    #tpf.plot(frame=100, scale='log', show_colorbar=True)
+    lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
+    #lc.plot()
+    period = np.linspace(1, 3, 10000)
+    bls = lc.to_periodogram(method='bls', period=period, frequency_factor=500);
 
-        period=2.20473541
-        transit_time=121.3585417
-        duration=0.162026
+    period=2.20473541
+    transit_time=121.3585417
+    duration=0.162026
 
-        lc_list = preprocess_each_lc(lc, duration, period, transit_time)
-        folded_lc = folding_each_lc(lc_list)
-        folded_lc.errorbar()
-        #plt.show()
-        plt.close()
+    lc_list = preprocess_each_lc(lc, duration, period, transit_time)
+    folded_lc = folding_each_lc(lc_list)
+    folded_lc.errorbar()
+    #plt.show()
+    plt.close()
 
-        #lm.minimizeのためのparamsのセッティング。これはリングありモデル
-        t = folded_lc.time.value
-        flux_data = folded_lc.flux.value
-        flux_err_data = folded_lc.flux_err.value
-        """parameters setting"""
-        names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
-                 "b", "norm", "theta", "phi", "tau", "r_in",
-                 "r_out", "norm2", "norm3", "ecosw", "esinw"]
-        #values = [0.2, 0.2, 0.0, 4.0, (float(df2[df2['TIC']=='142087638']['Planet Radius Value'].values[0])*0.0091577) / float(df2[df2['TIC']=='142087638']['Star Radius Value'].values[0]), 40.0,
-        #          0.5, 1.0, 45.0, 45.0, 0.5, 1.5,
-        #          2.0/1.5, 0.0, 0.0, 0.0, 0.0]
-        values = [0.0, 0.7, 0.0, 4.0, 0.5, 10.7,
-                  1, 1, np.pi/6.0, np.pi/9.0, 1, 1.13,
-                  2.95, 0.0, 0.0, 0.0, 0.0]
+    #lm.minimizeのためのparamsのセッティング。これはリングありモデル
+    t = folded_lc.time.value
+    flux_data = folded_lc.flux.value
+    flux_err_data = folded_lc.flux_err.value
+    """parameters setting"""
+    names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
+             "b", "norm", "theta", "phi", "tau", "r_in",
+             "r_out", "norm2", "norm3", "ecosw", "esinw"]
+    #values = [0.2, 0.2, 0.0, 4.0, (float(df2[df2['TIC']=='142087638']['Planet Radius Value'].values[0])*0.0091577) / float(df2[df2['TIC']=='142087638']['Star Radius Value'].values[0]), 40.0,
+    #          0.5, 1.0, 45.0, 45.0, 0.5, 1.5,
+    #          2.0/1.5, 0.0, 0.0, 0.0, 0.0]
+    values = [0.0, 0.7, 0.0, 4.0, 0.5, 10.7,
+              1, 1, np.pi/6.0, np.pi/9.0, 1, 1.13,
+              2.95, 0.0, 0.0, 0.0, 0.0]
 
-        saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
-                  1, 1, np.pi/6.74, 0, 1, 1.53,
-                  1.95, 0.0, 0.0, 0.0, 0.0]
+    saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
+              1, 1, np.pi/6.74, 0, 1, 1.53,
+              1.95, 0.0, 0.0, 0.0, 0.0]
 
-        mins = [0.0, 0.0, -0.0001, 0.0, 0.0, 1.0,
-                0.0, 0.9, 0.0, 0.0, 0.0, 1.0,
-                1.1, -0.1, -0.1, 0.0, 0.0]
+    mins = [0.0, 0.0, -0.0001, 0.0, 0.0, 1.0,
+            0.0, 0.9, 0.0, 0.0, 0.0, 1.0,
+            1.1, -0.1, -0.1, 0.0, 0.0]
 
-        maxes = [1.0, 1.0, 0.0001, 100.0, 1.0, 1000.0,
-                 1.0, 1.1, np.pi/2, np.pi/2, 1.0, 7.0,
-                 10.0, 0.1, 0.1, 0.0, 0.0]
+    maxes = [1.0, 1.0, 0.0001, 100.0, 1.0, 1000.0,
+             1.0, 1.1, np.pi/2, np.pi/2, 1.0, 7.0,
+             10.0, 0.1, 0.1, 0.0, 0.0]
 
-        vary_flags = [False, False, False, False, True, False,
-                      False, False, True, True, False, True,
-                      True, False, False, False, False]
-        params = set_params_lm(names, values, mins, maxes, vary_flags)
-        params_df = pd.DataFrame(list(zip(values, saturnlike_values, mins, maxes)), columns=['values', 'saturnlike_values', 'mins', 'maxes'], index=names)
-        vary_dic = dict(zip(names, vary_flags))
-        params_df = params_df.join(pd.DataFrame.from_dict(vary_dic, orient='index', columns=['vary_flags']))
-        df_for_mcmc = params_df[params_df['vary_flags']==True]
-        #t = np.linspace(-0.2, 0.2, 300)
+    vary_flags = [False, False, False, False, True, False,
+                  False, False, True, True, False, True,
+                  True, False, False, False, False]
+    params = set_params_lm(names, values, mins, maxes, vary_flags)
+    params_df = pd.DataFrame(list(zip(values, saturnlike_values, mins, maxes)), columns=['values', 'saturnlike_values', 'mins', 'maxes'], index=names)
+    vary_dic = dict(zip(names, vary_flags))
+    params_df = params_df.join(pd.DataFrame.from_dict(vary_dic, orient='index', columns=['vary_flags']))
+    df_for_mcmc = params_df[params_df['vary_flags']==True]
+    #t = np.linspace(-0.2, 0.2, 300)
 
-        """土星likeな惑星のパラメータで作成したモデル"""
-        saturnlike_params = set_params_lm(names, saturnlike_values, mins, maxes, vary_flags)
-        #pdic_saturnlike = make_dic(names, saturnlike_values)
-        pdic_saturnlike = params_df['saturnlike_values'].to_dict()
-        #pdic = make_dic(names, values)
-        pdic = params_df['values'].to_dict()
-        ymodel = ring_model(t, pdic_saturnlike)
+    """土星likeな惑星のパラメータで作成したモデル"""
+    saturnlike_params = set_params_lm(names, saturnlike_values, mins, maxes, vary_flags)
+    #pdic_saturnlike = make_dic(names, saturnlike_values)
+    pdic_saturnlike = params_df['saturnlike_values'].to_dict()
+    #pdic = make_dic(names, values)
+    pdic = params_df['values'].to_dict()
+    ymodel = ring_model(t, pdic_saturnlike)
 
-        '''
-        """土星likeな惑星のパラメータで作成したlight curve"""
-        error_scale = 0.0001
-        eps_data = np.random.normal(size=t.size, scale=error_scale)
-        flux = ymodel + eps_data
-        '''
+    '''
+    """土星likeな惑星のパラメータで作成したlight curve"""
+    error_scale = 0.0001
+    eps_data = np.random.normal(size=t.size, scale=error_scale)
+    flux = ymodel + eps_data
+    '''
 
-        """ring model fitting by minimizing chi_square"""
-        #out = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux, error_scale, names), max_nfev=1000)
-        #out = lmfit.minimize(ring_residual_transitfit, params, args=(time, flux_data, flux_err_data, names), max_nfev=10000)
-        out = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux_data, flux_err_data, names), max_nfev=10000)
-        out_pdict = out.params.valuesdict()
-        #import pdb; pdb.set_trace()
+    """ring model fitting by minimizing chi_square"""
+    #out = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux, error_scale, names), max_nfev=1000)
+    #out = lmfit.minimize(ring_residual_transitfit, params, args=(time, flux_data, flux_err_data, names), max_nfev=10000)
+    out = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux_data, flux_err_data, names), max_nfev=10000)
+    out_pdict = out.params.valuesdict()
+    #import pdb; pdb.set_trace()
 
-        """mcmc setting"""
-        mcmc_df = params_df[params_df['vary_flags']==True]
-        mcmc_params = mcmc_df.index.to_list()
-        for i, param in enumerate(mcmc_params):
-            mcmc_df.iloc[i, 0] = out_pdict[param]
-        mcmc_pvalues = mcmc_df['values'].values
-        #vary_dic = make_dic(names, vary_flags)
-        print('mcmc_params: ', mcmc_params)
-        print('mcmc_pvalues: ', mcmc_pvalues)
-        pos = mcmc_pvalues + 1e-5 * np.random.randn(32, len(mcmc_pvalues))
-        #pos = np.array([rp_rs, theta, phi, r_in, r_out]) + 1e-8 * np.random.randn(32, 5)
-        nwalkers, ndim = pos.shape
-
-
-        #filename = "emcee_{0}.h5".format(datetime.datetime.now().strftime('%y%m%d%H%M'))
-        #backend = emcee.backends.HDFBackend(filename)
-        #backend.reset(nwalkers, ndim)
+    #with Pool() as pool:
+    """mcmc setting"""
+    mcmc_df = params_df[params_df['vary_flags']==True]
+    mcmc_params = mcmc_df.index.to_list()
+    for i, param in enumerate(mcmc_params):
+        mcmc_df.iloc[i, 0] = out_pdict[param]
+    mcmc_pvalues = mcmc_df['values'].values
+    #vary_dic = make_dic(names, vary_flags)
+    print('mcmc_params: ', mcmc_params)
+    print('mcmc_pvalues: ', mcmc_pvalues)
+    pos = mcmc_pvalues + 1e-5 * np.random.randn(32, len(mcmc_pvalues))
+    #pos = np.array([rp_rs, theta, phi, r_in, r_out]) + 1e-8 * np.random.randn(32, 5)
+    nwalkers, ndim = pos.shape
 
 
-        max_n = 11000
-        index = 0
-        autocorr = np.empty(max_n)
-        old_tau = np.inf
-        #sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), pool=pool)
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data))
-        #sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), backend=backend)
+    #filename = "emcee_{0}.h5".format(datetime.datetime.now().strftime('%y%m%d%H%M'))
+    #backend = emcee.backends.HDFBackend(filename)
+    #backend.reset(nwalkers, ndim)
 
-        """mcmc run"""
-        #sampler.run_mcmc(pos, max_n, progress=True)
-        for sample in sampler.sample(pos, iterations=max_n, progress=True):
-            # Only check convergence every 100 steps
-            if sampler.iteration % 100:
-                continue
 
-            # Compute the autocorrelation time so far
-            # Using tol=0 means that we'll always get an estimate even
-            # if it isn't trustworthy
-            tau = sampler.get_autocorr_time(tol=0)
-            autocorr[index] = np.mean(tau)
-            index += 1
+    max_n = 11000
+    index = 0
+    autocorr = np.empty(max_n)
+    old_tau = np.inf
+    #sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), pool=pool)
+    sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data))
+    #sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), backend=backend)
 
-            # Check convergence
-            converged = np.all(tau * 100 < sampler.iteration)
-            converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
-            if converged:
-                break
-            old_tau = tau
+    """mcmc run"""
+    #sampler.run_mcmc(pos, max_n, progress=True)
+    for sample in sampler.sample(pos, iterations=max_n, progress=True):
+        # Only check convergence every 100 steps
+        if sampler.iteration % 100:
+            continue
+
+        # Compute the autocorrelation time so far
+        # Using tol=0 means that we'll always get an estimate even
+        # if it isn't trustworthy
+        tau = sampler.get_autocorr_time(tol=0)
+        autocorr[index] = np.mean(tau)
+        index += 1
+
+        # Check convergence
+        converged = np.all(tau * 100 < sampler.iteration)
+        converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
+        if converged:
+            break
+        old_tau = tau
 
     """the autocorrelation time"""
     n = 100 * np.arange(1, index + 1)
@@ -466,7 +466,7 @@ if __name__ ==  '__main__':
     fit_report = lmfit.fit_report(out)
 
 
-    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
 
 '''for TESS data
 """使う行のみ抽出"""
