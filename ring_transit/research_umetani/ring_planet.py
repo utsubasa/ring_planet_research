@@ -112,9 +112,9 @@ def ring_residual_transitfit(params, x, data, eps_data, names):
     model = ring_model(x, params.valuesdict())
     chi_square = np.sum(((data-model)/eps_data)**2)
     #print(params)
-    print(((data-model)/eps_data)**2)
+    #print(((data-model)/eps_data)**2)
     print(chi_square)
-    print(np.max(((data-model)/eps_data)**2))
+    #print(np.max(((data-model)/eps_data)**2))
 
     return (data-model) / eps_data
 
@@ -163,6 +163,79 @@ def lnprob(v, x, y, yerr):
     print(chi_square)
     return lp + lnlike(v, x, y, yerr)
 
+def preprocess_each_lc(lc, duration, period, transit_time):
+    planet_b_model = bls.get_transit_model(period=period, transit_time=transit_time, duration=duration)
+    minId = signal.argrelmin(lc.flux.value, order=3000)
+    half_duration = (duration/2)*24*60
+    twice_duration = (duration*2)*24*60 #durationを2倍、単位をday→mi
+    lc_cut_point = half_duration + twice_duration
+    lc_list=[]
+    for i, transitId in enumerate(minId[0]):
+        print('transitId: ', transitId)
+        start = int(transitId - lc_cut_point)
+        end = int(transitId + lc_cut_point)
+        #each_lc = lc[start:end].normalize()
+        each_lc = lc[start:end]
+        print('before clip length: ', len(each_lc.flux))
+
+        """params setting"""
+        noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
+        #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
+        values = [transit_time+period*i, period, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
+        mins = [-0.1, 4.0, 0.03, 4, 80, 0, 90, 0.0, 0.0]
+        maxes = [0.1, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
+        #vary_flags = [True, False, True, True, True, False, False, True, True]
+        vary_flags = [False, False, True, True, True, False, False, True, True]
+        no_ring_params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
+
+        """transit fitting and clip outliers"""
+        while True:
+            out = lmfit.minimize(no_ring_residual_transitfit,no_ring_params,args=(each_lc.normalize().time.value, each_lc.normalize().flux.value, each_lc.normalize().flux_err.value, noringnames),max_nfev=1000)
+            flux_model = no_ring_model_transitfit_from_lmparams(out.params, each_lc.normalize().time.value, noringnames)
+            clip_lc = each_lc.normalize().copy()
+            clip_lc.flux = clip_lc.flux-flux_model
+            _, mask = clip_lc.remove_outliers(return_mask=True)
+            inverse_mask = np.logical_not(mask)
+            if np.all(inverse_mask) == True:
+                print('after clip length: ', len(each_lc.flux))
+                each_lc.normalize().errorbar()
+                plt.plot(each_lc.time.value, flux_model, label='fit_model')
+                plt.legend()
+                #plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
+                #plt.show()
+                break
+            else:
+                print('cliped:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
+                each_lc = each_lc[~mask]
+
+        """curve fiting"""
+        each_lc_df = each_lc.to_pandas()
+        before_transit = each_lc_df[each_lc_df.index < (transit_time+period*i)-(duration/2)]
+        after_transit = each_lc_df[each_lc_df.index > (transit_time+period*i)+(duration/2)]
+        out_transit = pd.concat([before_transit, after_transit])
+        out_transit = out_transit.reset_index()
+        out_transit = Table.from_pandas(out_transit)
+        out_transit = lk.LightCurve(data=out_transit)
+        model = lmfit.models.PolynomialModel()
+        poly_params = model.make_params(c0=1, c1=1, c2=1, c3=1, c4=1, c5=1, c6=1, c7=1)
+        result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
+        result.plot()
+        plt.show()
+        result.params.valuesdict()
+        poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
+                        result.params.valuesdict()['c1'],\
+                        result.params.valuesdict()['c2'],\
+                        result.params.valuesdict()['c3'],\
+                        result.params.valuesdict()['c4'],\
+                        result.params.valuesdict()['c5'],\
+                        result.params.valuesdict()['c6'],\
+                        result.params.valuesdict()['c7']])
+        each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
+        each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
+        each_lc_df = each_lc.to_pandas()
+        lc_list.append(each_lc_df)
+    return lc_list
+
 """use lightkurve(diffrent method from Aizawa+2018)"""
 kic = "KIC10666592"
 tpf = lk.search_targetpixelfile(kic, author="Kepler", cadence="short").download()
@@ -176,81 +249,7 @@ period=2.20473541
 transit_time=121.3585417
 duration=0.162026
 
-planet_b_model = bls.get_transit_model(period=period,transit_time=transit_time,duration=duration)
-#ax = lc.scatter()
-#planet_b_model.plot(ax=ax, c='dodgerblue', label='Planet b Transit Model');
-minId = signal.argrelmin(lc.flux.value, order=3000)
-#plt.plot(lc.time.value[minId], lc.flux.value[minId], "bo")
-#plt.show()
-half_duration = (duration/2)*24*60
-twice_duration = (duration*2)*24*60 #durationを2倍、単位をday→mi
-lc_cut_point = half_duration + twice_duration
-
-"""params setting"""
-noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
-#values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
-values = [transit_time, period, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
-mins = [-0.1, 4.0, 0.03, 4, 80, 0, 90, 0.0, 0.0]
-maxes = [0.1, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
-#vary_flags = [True, False, True, True, True, False, False, True, True]
-vary_flags = [False, False, True, True, True, False, False, True, True]
-no_ring_params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
-
-lc_list=[]
-for i, transitId in enumerate(minId[0]):
-    print('transitId: ', transitId)
-    start = int(transitId - lc_cut_point)
-    end = int(transitId + lc_cut_point)
-    #each_lc = lc[start:end].normalize()
-    each_lc = lc[start:end]
-    print('before clip length: ', len(each_lc.flux))
-
-    """transit fitting and clip outliers"""
-    while True:
-        out = lmfit.minimize(no_ring_residual_transitfit,no_ring_params,args=(each_lc.normalize().time.value, each_lc.normalize().flux.value, each_lc.normalize().flux_err.value, noringnames),max_nfev=1000)
-        flux_model = no_ring_model_transitfit_from_lmparams(out.params, each_lc.normalize().time.value, noringnames)
-        clip_lc = each_lc.normalize().copy()
-        clip_lc.flux = clip_lc.flux-flux_model
-        _, mask = clip_lc.remove_outliers(return_mask=True)
-        inverse_mask = np.logical_not(mask)
-        if np.all(inverse_mask) == True:
-            print('after clip length: ', len(each_lc.flux))
-            each_lc.normalize().errorbar()
-            plt.plot(each_lc.time.value, flux_model, label='fit_model')
-            plt.legend()
-            #plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
-            #plt.show()
-            break
-        else:
-            print('cliped:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
-            each_lc = each_lc[~mask]
-
-    """curve fiting"""
-    each_lc_df = each_lc.to_pandas()
-    before_transit = each_lc_df[each_lc_df.index < (transit_time+period*i)-(duration/2)]
-    after_transit = each_lc_df[each_lc_df.index > (transit_time+period*i)+(duration/2)]
-    out_transit = pd.concat([before_transit, after_transit])
-    out_transit = out_transit.reset_index()
-    out_transit = Table.from_pandas(out_transit)
-    out_transit = lk.LightCurve(data=out_transit)
-    model = lmfit.models.PolynomialModel()
-    poly_params = model.make_params(c0=1, c1=1, c2=1, c3=1, c4=1, c5=1, c6=1, c7=1)
-    result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
-    result.plot()
-    plt.show()
-    result.params.valuesdict()
-    poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
-                    result.params.valuesdict()['c1'],\
-                    result.params.valuesdict()['c2'],\
-                    result.params.valuesdict()['c3'],\
-                    result.params.valuesdict()['c4'],\
-                    result.params.valuesdict()['c5'],\
-                    result.params.valuesdict()['c6'],\
-                    result.params.valuesdict()['c7']])
-    each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
-    each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
-    each_lc_df = each_lc.to_pandas()
-    lc_list.append(each_lc_df)
+lc_list = preprocess_each_lc(lc, duration, period, transit_time)
 #lc = pd.concat(lc_list)
 lc = pd.concat(lc_list[:4])
 lc = lc.reset_index()
@@ -264,17 +263,17 @@ lc = lc.normalize()
 folded_lc = lc.fold(period=period, epoch_time=transit_time)
 folded_lc.errorbar()
 plt.show()
-##import pdb; pdb.set_trace()
-time = folded_lc.time.value
+
+t = folded_lc.time.value
 flux_data = folded_lc.flux.value
 flux_err_data = folded_lc.flux_err.value
+
 import pdb; pdb.set_trace()
 
 
 #lm.minimizeのためのparamsのセッティング。これはリングありモデル
 """parameters setting"""
 
-'''
 names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
          "b", "norm", "theta", "phi", "tau", "r_in",
          "r_out", "norm2", "norm3", "ecosw", "esinw"]
@@ -305,7 +304,7 @@ params_df = pd.DataFrame(list(zip(values, saturnlike_values, mins, maxes)), colu
 vary_dic = dict(zip(names, vary_flags))
 params_df = params_df.join(pd.DataFrame.from_dict(vary_dic, orient='index', columns=['vary_flags']))
 df_for_mcmc = params_df[params_df['vary_flags']==True]
-t = np.linspace(-0.2, 0.2, 300)
+#t = np.linspace(-0.2, 0.2, 300)
 
 """土星likeな惑星のパラメータで作成したモデル"""
 saturnlike_params = set_params_lm(names, saturnlike_values, mins, maxes, vary_flags)
@@ -315,11 +314,12 @@ pdic_saturnlike = params_df['saturnlike_values'].to_dict()
 pdic = params_df['values'].to_dict()
 ymodel = ring_model(t, pdic_saturnlike)
 
+'''
 """土星likeな惑星のパラメータで作成したlight curve"""
 error_scale = 0.0001
 eps_data = np.random.normal(size=t.size, scale=error_scale)
 flux = ymodel + eps_data
-
+'''
 
 
 
@@ -327,7 +327,7 @@ flux = ymodel + eps_data
 """ring model fitting by minimizing chi_square"""
 #out = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux, error_scale, names), max_nfev=1000)
 #out = lmfit.minimize(ring_residual_transitfit, params, args=(time, flux_data, flux_err_data, names), max_nfev=10000)
-out = lmfit.minimize(ring_residual_transitfit, params, args=(time, flux_data, flux_err_data, names), max_nfev=10000)
+out = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux_data, flux_err_data, names), max_nfev=10000)
 out_pdict = out.params.valuesdict()
 #import pdb; pdb.set_trace()
 
@@ -354,13 +354,14 @@ max_n = 11000
 index = 0
 autocorr = np.empty(max_n)
 old_tau = np.inf
-'''
+
 if __name__ ==  '__main__':
-    '''
+
     with Pool() as pool:
         #sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), pool=pool)
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), backend=backend)
-        start = time.time()
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data))
+        #sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), backend=backend)
+
         """mcmc run"""
         #sampler.run_mcmc(pos, max_n, progress=True)
         for sample in sampler.sample(pos, iterations=max_n, progress=True):
@@ -381,9 +382,6 @@ if __name__ ==  '__main__':
             if converged:
                 break
             old_tau = tau
-        end = time.time()
-        multi_time = end - start
-        print("Multiprocessing took {0:.1f} seconds".format(multi_time))
 
     """the autocorrelation time"""
     n = 100 * np.arange(1, index + 1)
@@ -450,7 +448,7 @@ if __name__ ==  '__main__':
     plt.xlabel("t")
     plt.ylabel("flux");
     plt.show()
-    '''
+
 
     #import pdb; pdb.set_trace()
     #flux_model = no_ring_model_transitfit_from_lmparams(out.params, t, noringnames)
