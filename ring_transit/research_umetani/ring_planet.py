@@ -197,7 +197,7 @@ vary_flags = [False, False, True, True, True, False, False, True, True]
 no_ring_params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
 
 lc_list=[]
-for transitId in minId[0]:
+for i, transitId in enumerate(minId[0]):
     print('transitId: ', transitId)
     start = int(transitId - lc_cut_point)
     end = int(transitId + lc_cut_point)
@@ -219,15 +219,16 @@ for transitId in minId[0]:
             plt.plot(each_lc.time.value, flux_model, label='fit_model')
             plt.legend()
             #plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
-            plt.show()
+            #plt.show()
             break
         else:
             print('cliped:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
             each_lc = each_lc[~mask]
+
     """curve fiting"""
     each_lc_df = each_lc.to_pandas()
-    before_transit = each_lc_df[each_lc_df.index < transit_time-duration/2]
-    after_transit = each_lc_df[each_lc_df.index > transit_time+duration/2]
+    before_transit = each_lc_df[each_lc_df.index < (transit_time+period*i)-(duration/2)]
+    after_transit = each_lc_df[each_lc_df.index > (transit_time+period*i)+(duration/2)]
     out_transit = pd.concat([before_transit, after_transit])
     out_transit = out_transit.reset_index()
     out_transit = Table.from_pandas(out_transit)
@@ -248,7 +249,12 @@ for transitId in minId[0]:
                     result.params.valuesdict()['c7']])
     each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
     each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
-    lc_list.append(each_lc)
+    each_lc_df = each_lc.to_pandas()
+    lc_list.append(each_lc_df)
+lc = pd.concat(lc_list)
+lc = lc.reset_index()
+lc = Table.from_pandas(lc)
+lc = lk.LightCurve(data=lc)
 import pdb; pdb.set_trace()
 lc = lc.normalize()
 flat, trend = lc.flatten(window_length=301, return_trend=True)
