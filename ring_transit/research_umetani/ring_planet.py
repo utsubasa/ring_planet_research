@@ -251,24 +251,24 @@ for i, transitId in enumerate(minId[0]):
     each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
     each_lc_df = each_lc.to_pandas()
     lc_list.append(each_lc_df)
-lc = pd.concat(lc_list)
+#lc = pd.concat(lc_list)
+lc = pd.concat(lc_list[:4])
 lc = lc.reset_index()
 lc = Table.from_pandas(lc)
 lc = lk.LightCurve(data=lc)
-import pdb; pdb.set_trace()
 lc = lc.normalize()
-flat, trend = lc.flatten(window_length=301, return_trend=True)
-ax = lc.errorbar(label="Kepler-2")
-trend.plot(ax=ax, color='red', lw=2, label='Trend')
-flat.errorbar(label="Kepler-2")
-folded_lc = flat.fold(period=2.20473541, epoch_time=122.763305)
+#flat, trend = lc.flatten(window_length=301, return_trend=True)
+#ax = lc.errorbar(label="Kepler-2")
+#trend.plot(ax=ax, color='red', lw=2, label='Trend')
+#flat.errorbar(label="Kepler-2")
+folded_lc = lc.fold(period=period, epoch_time=transit_time)
 folded_lc.errorbar()
 plt.show()
 ##import pdb; pdb.set_trace()
 time = folded_lc.time.value
 flux_data = folded_lc.flux.value
 flux_err_data = folded_lc.flux_err.value
-
+import pdb; pdb.set_trace()
 
 
 #lm.minimizeのためのparamsのセッティング。これはリングありモデル
