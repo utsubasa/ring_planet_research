@@ -196,13 +196,14 @@ maxes = [0.1, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
 vary_flags = [False, False, True, True, True, False, False, True, True]
 no_ring_params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
 
+lc_list=[]
 for transitId in minId[0]:
     print('transitId: ', transitId)
     start = int(transitId - lc_cut_point)
     end = int(transitId + lc_cut_point)
     #each_lc = lc[start:end].normalize()
     each_lc = lc[start:end]
-    print('before clip: ', len(each_lc.flux))
+    print('before clip length: ', len(each_lc.flux))
 
     """transit fitting and clip outliers"""
     while True:
@@ -213,7 +214,7 @@ for transitId in minId[0]:
         _, mask = clip_lc.remove_outliers(return_mask=True)
         inverse_mask = np.logical_not(mask)
         if np.all(inverse_mask) == True:
-            print('after clip: ', len(each_lc.flux))
+            print('after clip length: ', len(each_lc.flux))
             each_lc.normalize().errorbar()
             plt.plot(each_lc.time.value, flux_model, label='fit_model')
             plt.legend()
@@ -221,8 +222,8 @@ for transitId in minId[0]:
             plt.show()
             break
         else:
+            print('cliped:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
             each_lc = each_lc[~mask]
-    import pdb; pdb.set_trace()
     """curve fiting"""
     each_lc_df = each_lc.to_pandas()
     before_transit = each_lc_df[each_lc_df.index < transit_time-duration/2]
@@ -245,14 +246,11 @@ for transitId in minId[0]:
                     result.params.valuesdict()['c5'],\
                     result.params.valuesdict()['c6'],\
                     result.params.valuesdict()['c7']])
-    import pdb; pdb.set_trace()
     each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
     each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
-
-    import pdb; pdb.set_trace()
-
-lc = lc.normalize()
+    lc_list.append(each_lc)
 import pdb; pdb.set_trace()
+lc = lc.normalize()
 flat, trend = lc.flatten(window_length=301, return_trend=True)
 ax = lc.errorbar(label="Kepler-2")
 trend.plot(ax=ax, color='red', lw=2, label='Trend')
