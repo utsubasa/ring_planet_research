@@ -250,6 +250,7 @@ def folding_each_lc(lc_list):
 
 if __name__ ==  '__main__':
     """use lightkurve(diffrent method from Aizawa+2018)"""
+    """
     kic = "KIC10666592"
     tpf = lk.search_targetpixelfile(kic, author="Kepler", cadence="short").download()
     #tpf.plot(frame=100, scale='log', show_colorbar=True)
@@ -267,6 +268,8 @@ if __name__ ==  '__main__':
     folded_lc.errorbar()
     #plt.show()
     plt.close()
+    """
+    import pdb; pdb.set_trace()
 
     #lm.minimizeのためのparamsのセッティング。これはリングありモデル
     t = folded_lc.time.value
