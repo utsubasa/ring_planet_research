@@ -269,6 +269,12 @@ if __name__ ==  '__main__':
     #plt.show()
     plt.close()
     """
+
+    csvfile = '/Users/u_tsubasa/work/ring_planet_research/folded_lc.csv'
+    folded_df = pd.read_csv(csvfile, sep=',')
+    folded_table = Table.from_pandas(folded_df)
+    folded_lc = lk.LightCurve(data=folded_table)
+
     import pdb; pdb.set_trace()
 
     #lm.minimizeのためのparamsのセッティング。これはリングありモデル
