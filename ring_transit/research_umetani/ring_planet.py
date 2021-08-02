@@ -269,9 +269,13 @@ if __name__ ==  '__main__':
     #plt.show()
     plt.close()
     """
+    period=2.20473541
+    transit_time=121.3585417
+    duration=0.162026
 
     csvfile = '/Users/u_tsubasa/work/ring_planet_research/folded_lc.csv'
     folded_df = pd.read_csv(csvfile, sep=',')
+    folded_df = folded_df[(folded_df['time'] >= -0.1) & (folded_df['time'] <= 0.1)]
     folded_table = Table.from_pandas(folded_df)
     folded_lc = lk.LightCurve(data=folded_table)
 
