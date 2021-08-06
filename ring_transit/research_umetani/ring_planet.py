@@ -164,16 +164,19 @@ def lnprob(v, x, y, yerr):
     return lp + lnlike(v, x, y, yerr)
 
 def preprocess_each_lc(lc, duration, period, transit_time):
-    planet_b_model = bls.get_transit_model(period=period, transit_time=transit_time, duration=duration)
-    minId = signal.argrelmin(lc.flux.value, order=3000)
+    #planet_b_model = bls.get_transit_model(period=period, transit_time=transit_time, duration=duration)
+    n_transit = int((lc.time[-1].value - transit_time) // period)
+    transit_row_list = make_rowlist(n_transit, lc, transit_time, period)
+    import pdb; pdb.set_trace()
+    #minId = signal.argrelmin(lc.flux.value, order=3000)
     half_duration = (duration/2)*24*60
     twice_duration = (duration*2)*24*60 #durationを2倍、単位をday→mi
     lc_cut_point = half_duration + twice_duration
     lc_list=[]
-    for i, transitId in enumerate(minId[0]):
-        print('transitId: ', transitId)
-        start = int(transitId - lc_cut_point)
-        end = int(transitId + lc_cut_point)
+    for i, transit in enumerate(transit_row_list):
+        print('No.{} transit: '.format(i))
+        start = int(transit - lc_cut_point)
+        end = int(transit + lc_cut_point)
         #each_lc = lc[start:end].normalize()
         each_lc = lc[start:end]
         print('before clip length: ', len(each_lc.flux))
@@ -247,11 +250,20 @@ def folding_each_lc(lc_list):
     print('total length: ', len(lc))
     return lc.fold(period=period, epoch_time=transit_time)
 
+def getNearestRow(list, num):
+    # リスト要素と対象値の差分を計算し最小値のインデックスを取得
+    idx = np.abs(np.asarray(list) - num).argmin()
+    return idx
 
-
+def make_rowlist(n_transit, lc, transit_time, period):
+    list = []
+    for n in range(n_transit):
+        target_val = transit_time + (period * n)
+        mid_transit_row = getNearestRow(lc.time.value, target_val)
+        list.append(mid_transit_row)
+    return list
 #if __name__ ==  '__main__':
 ###use lightkurve(diffrent method from Aizawa+2018)###
-"""
 kic = "KIC10666592"
 tpf = lk.search_targetpixelfile(kic, author="Kepler", cadence="short").download()
 #tpf.plot(frame=100, scale='log', show_colorbar=True)
@@ -265,11 +277,15 @@ transit_time=121.3585417
 duration=0.162026
 
 lc_list = preprocess_each_lc(lc, duration, period, transit_time)
+import pdb; pdb.set_trace()
+lc = lc.bin(bins=len(lc)//len(lc_list))
+lc_list = preprocess_each_lc(lc, duration, period, transit_time)
+import pdb; pdb.set_trace()
 folded_lc = folding_each_lc(lc_list)
 folded_lc.errorbar()
-#plt.show()
-plt.close()
-"""
+plt.show()
+#plt.close()
+import pdb; pdb.set_trace()
 
 period=2.20473541
 transit_time=121.3585417
@@ -283,7 +299,7 @@ folded_df = pd.read_csv(csvfile, sep=',')
 folded_df = folded_df[(folded_df['time'] >= -0.1) & (folded_df['time'] <= 0.1)]
 folded_table = Table.from_pandas(folded_df)
 folded_lc = lk.LightCurve(data=folded_table)
-
+import pdb; pdb.set_trace()
 #lm.minimizeのためのparamsのセッティング。これはリングありモデル
 ###parameters setting###
 names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
