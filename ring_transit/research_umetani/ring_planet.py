@@ -178,7 +178,7 @@ def preprocess_each_lc(lc, duration, period, transit_time):
         each_lc = lc[start:end]
         print('before clip length: ', len(each_lc.flux))
 
-        """params setting"""
+        ###params setting
         noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
         #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
         values = [transit_time+period*i, period, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
@@ -188,7 +188,7 @@ def preprocess_each_lc(lc, duration, period, transit_time):
         vary_flags = [False, False, True, True, True, False, False, True, True]
         no_ring_params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
 
-        """transit fitting and clip outliers"""
+        ###transit fitting and clip outliers
         while True:
             out = lmfit.minimize(no_ring_residual_transitfit,no_ring_params,args=(each_lc.normalize().time.value, each_lc.normalize().flux.value, each_lc.normalize().flux_err.value, noringnames),max_nfev=1000)
             flux_model = no_ring_model_transitfit_from_lmparams(out.params, each_lc.normalize().time.value, noringnames)
@@ -209,7 +209,7 @@ def preprocess_each_lc(lc, duration, period, transit_time):
                 print('cliped:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
                 each_lc = each_lc[~mask]
 
-        """curve fiting"""
+        ###curve fiting
         each_lc_df = each_lc.to_pandas()
         before_transit = each_lc_df[each_lc_df.index < (transit_time+period*i)-(duration/2)]
         after_transit = each_lc_df[each_lc_df.index > (transit_time+period*i)+(duration/2)]
@@ -250,7 +250,7 @@ def folding_each_lc(lc_list):
 
 
 #if __name__ ==  '__main__':
-"""use lightkurve(diffrent method from Aizawa+2018)"""
+###use lightkurve(diffrent method from Aizawa+2018)###
 """
 kic = "KIC10666592"
 tpf = lk.search_targetpixelfile(kic, author="Kepler", cadence="short").download()
@@ -285,7 +285,7 @@ folded_table = Table.from_pandas(folded_df)
 folded_lc = lk.LightCurve(data=folded_table)
 
 #lm.minimizeのためのparamsのセッティング。これはリングありモデル
-"""parameters setting"""
+###parameters setting###
 names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
          "b", "norm", "theta", "phi", "tau", "r_in",
          "r_out", "norm2", "norm3", "ecosw", "esinw"]
@@ -322,7 +322,7 @@ flux_data = folded_lc.flux.value
 flux_err_data = folded_lc.flux_err.value
 #t = np.linspace(-0.2, 0.2, 300)
 
-"""土星likeな惑星のパラメータで作成したモデル"""
+###土星likeな惑星のパラメータで作成したモデル###
 saturnlike_params = set_params_lm(names, saturnlike_values, mins, maxes, vary_flags)
 #pdic_saturnlike = make_dic(names, saturnlike_values)
 pdic_saturnlike = params_df['saturnlike_values'].to_dict()
@@ -331,13 +331,13 @@ pdic = params_df['values'].to_dict()
 ymodel = ring_model(t, pdic_saturnlike)
 
 '''
-"""土星likeな惑星のパラメータで作成したlight curve"""
+###土星likeな惑星のパラメータで作成したlight curve###
 error_scale = 0.0001
 eps_data = np.random.normal(size=t.size, scale=error_scale)
 flux = ymodel + eps_data
 '''
 
-"""ring model fitting by minimizing chi_square"""
+###ring model fitting by minimizing chi_square###
 
 noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
 #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
@@ -367,7 +367,7 @@ out_pdict = out.params.valuesdict()
 #import pdb; pdb.set_trace()
 
 #with Pool() as pool:
-"""mcmc setting"""
+###mcmc setting###
 mcmc_df = params_df[params_df['vary_flags']==True]
 mcmc_params = mcmc_df.index.to_list()
 for i, param in enumerate(mcmc_params):
@@ -394,7 +394,7 @@ old_tau = np.inf
 sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data))
 #sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), backend=backend)
 
-"""mcmc run"""
+###mcmc run###
 #sampler.run_mcmc(pos, max_n, progress=True)
 for sample in sampler.sample(pos, iterations=max_n, progress=True):
     # Only check convergence every 100 steps
@@ -415,7 +415,7 @@ for sample in sampler.sample(pos, iterations=max_n, progress=True):
         break
     old_tau = tau
 
-"""the autocorrelation time"""
+###the autocorrelation time###
 n = 100 * np.arange(1, index + 1)
 y = autocorr[:index]
 plt.plot(n, n / 100.0, "--k")
@@ -426,7 +426,7 @@ plt.xlabel("number of steps")
 plt.ylabel(r"mean $\hat{\tau}$")
 plt.show()
 
-"""step visualization"""
+###step visualization###
 fig, axes = plt.subplots(ndim, figsize=(10, 7), sharex=True)
 samples = sampler.get_chain()
 #labels = ['rp_rs', 'theta', 'phi', 'r_in', 'r_out']
@@ -441,7 +441,7 @@ for i in range(ndim):
 axes[-1].set_xlabel("step number");
 plt.show()
 
-"""corner visualization"""
+###corner visualization###
 samples = sampler.flatchain
 flat_samples = sampler.get_chain(discard=100, thin=15, flat=True)
 print(flat_samples.shape)
@@ -493,7 +493,7 @@ plt.legend()
 #plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
 plt.show()
 
-"""csvに書き出し"""
+###csvに書き出し###
 #input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
 input_df = pd.DataFrame.from_dict(saturnlike_params.valuesdict(), orient="index",columns=["input_value"])
 output_df = pd.DataFrame.from_dict(out.params.valuesdict(), orient="index",columns=["output_value"])
@@ -508,11 +508,11 @@ fit_report = lmfit.fit_report(out)
 #import pdb; pdb.set_trace()
 
 '''for TESS data
-"""使う行のみ抽出"""
+#使う行のみ抽出
 df=pd.read_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/toi-catalog.csv', encoding='shift_jis')
 df.columns=df.iloc[3].values
 df=df[4:]
-"""カラムを入れ替える。"""
+#カラムを入れ替える。
 df=df[['Signal-to-noise', 'Source Pipeline', 'TIC', 'Full TOI ID', 'TOI Disposition',
        'TIC Right Ascension', 'TIC Declination', 'TMag Value',
        'TMag Uncertainty', 'Epoch Value', 'Epoch Error',
@@ -531,7 +531,7 @@ df['Signal-to-noise'] = df['Signal-to-noise'].fillna(0)
 df['Signal-to-noise'] = df['Signal-to-noise'].astype(float)
 df = df.sort_values('Signal-to-noise', ascending=False)
 df
-"""SN比 ≧ 100のデータを抽出。"""
+#SN比 ≧ 100のデータを抽出。
 df2 = df[df['Signal-to-noise'] >= 100]
 df2 = df2.reset_index()
 #df2 = df2.drop(columns='index')
@@ -576,18 +576,16 @@ folded_lc = folding_each_lc(lc_list)
 folded_lc.errorbar()
 #plt.show()
 plt.close()
-"""### foldingを任せた場合
-すべての観測を平坦化しノーマライズする。これは"a stitched light curve"で表される。詳しくは Kepler data with Lightkurve.
-"""
+# foldingを任せた場合 すべての観測を平坦化しノーマライズする。これは"a stitched light curve"で表される。詳しくは Kepler data with Lightkurve.
 #lc = lc_collection.stitch().flatten(window_length=901).remove_outliers()
 #lc.plot();
 #lc = lc_collection.stitch().flatten(window_length=901).remove_outliers()
-"""### foldingを自分でやる場合"""
+### foldingを自分でやる場合
 lc_single = search_result[3].download()
 #lc_single.plot();
 lc = lc_single.flatten(window_length=901).remove_outliers()
 #lc.plot();
-"""### orbital periodをBLSで探す"""
+### orbital periodをBLSで探す
 # Create array of periods to search
 period = np.linspace(1, 30, 10000)
 # Create a BLSPeriodogram
@@ -600,7 +598,7 @@ planet_b_dur = bls.duration_at_max_power
 print('planet_b_period: ', planet_b_period)
 print('planet_b_t0: ', planet_b_t0)
 print('planet_b_dur: ', planet_b_dur)
-"""### カタログのorbital periodを使う"""
+### カタログのorbital periodを使う
 df2[df2['TIC']=='142087638']
 #planet_b_period = float(df2[df2['TIC']=='142087638']['Orbital Period Value'].values[0])
 #planet_b_t0 = float(df2[df2['TIC']=='142087638']['Epoch Value'].values[0])
@@ -609,7 +607,7 @@ df2[df2['TIC']=='142087638']
 print('planet_b_period: ', planet_b_period)
 print('planet_b_t0: ', planet_b_t0)
 print('planet_b_dur: ', planet_b_dur)
-"""### folding"""
+### folding
 ax = lc.fold(period=planet_b_period, epoch_time=planet_b_t0).scatter()
 #ax.set_xlim(-5, 5);
 ax = lc.fold(period=planet_b_period, epoch_time=planet_b_t0).scatter()
