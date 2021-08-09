@@ -278,7 +278,8 @@ duration=0.162026
 
 lc_list = preprocess_each_lc(lc, duration, period, transit_time)
 import pdb; pdb.set_trace()
-lc = lc.bin(bins=len(lc)//len(lc_list))
+transit_time_per_exposure = (duration * len(lc_list) / (lc.time[-1].value - lc.time[0].value))
+lc = lc.bin(bins=300/transit_time_per_exposure)
 lc_list = preprocess_each_lc(lc, duration, period, transit_time)
 import pdb; pdb.set_trace()
 folded_lc = folding_each_lc(lc_list)
