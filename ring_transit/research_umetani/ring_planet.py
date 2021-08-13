@@ -292,6 +292,8 @@ ingress = (Ttot-Tfull) / 2 #day
 _ = ingress/period
 lc_list = preprocess_each_lc(lc, duration, period, transit_time)
 folded_lc = folding_each_lc(lc_list)
+folded_lc = folded_lc[folded_lc.time > -0.1]
+folded_lc = folded_lc[folded_lc.time < 0.1]
 folded_lc.errorbar()
 plt.savefig('folded_lc.png')
 #plt.show()
