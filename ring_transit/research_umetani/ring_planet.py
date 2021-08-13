@@ -167,7 +167,6 @@ def preprocess_each_lc(lc, duration, period, transit_time):
     #planet_b_model = bls.get_transit_model(period=period, transit_time=transit_time, duration=duration)
     n_transit = int((lc.time[-1].value - transit_time) // period)
     transit_row_list = make_rowlist(n_transit, lc, transit_time, period)
-    import pdb; pdb.set_trace()
     #minId = signal.argrelmin(lc.flux.value, order=3000)
     half_duration = (duration/2)*24*60
     twice_duration = (duration*2)*24*60 #durationを2倍、単位をday→mi
@@ -224,8 +223,8 @@ def preprocess_each_lc(lc, duration, period, transit_time):
         poly_params = model.make_params(c0=1, c1=1, c2=1, c3=1, c4=1, c5=1, c6=1, c7=1)
         result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
         result.plot()
-        #plt.show()
-        plt.close()
+        plt.show()
+        #plt.close()
         result.params.valuesdict()
         poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
                         result.params.valuesdict()['c1'],\
@@ -272,35 +271,42 @@ lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
 period = np.linspace(1, 3, 10000)
 bls = lc.to_periodogram(method='bls', period=period, frequency_factor=500);
 
-period=2.20473541
-transit_time=121.3585417
-duration=0.162026
-
-lc_list = preprocess_each_lc(lc, duration, period, transit_time)
-import pdb; pdb.set_trace()
-transit_time_per_exposure = (duration * len(lc_list) / (lc.time[-1].value - lc.time[0].value))
-lc = lc.bin(bins=300/transit_time_per_exposure)
-lc_list = preprocess_each_lc(lc, duration, period, transit_time)
-import pdb; pdb.set_trace()
-folded_lc = folding_each_lc(lc_list)
-folded_lc.errorbar()
-plt.show()
-#plt.close()
-import pdb; pdb.set_trace()
-
-period=2.20473541
+period=2.20473541 #day
 transit_time=121.3585417
 duration=0.162026
 a_rs=4.602
 b=0.224
 rp_rs=0.075522
+i=87.21 * 0.0175 #radian
+a=0.0376 #Orbit Semi-Major Axis [au]
+a=562487835826.56 #cm
+rstar=1.952 * 6.9634 * 10**10 #Rstar cm
+#lc_list = preprocess_each_lc(lc, duration, period, transit_time)
+#transit_time_per_exposure = (duration * len(lc_list) / (lc.time[-1].value - lc.time[0].value))
+#lc = lc.bin(bins=int(300 // transit_time_per_exposure))
+tot = (rstar/a)* (np.sqrt(np.square(1+rp_rs)-np.square(b)) / np.sin(i))
+Ttot = (period/np.pi) * np.arcsin(tot)
+full = (rstar/a)* (np.sqrt(np.square(1-rp_rs)-np.square(b)) / np.sin(i))
+Tfull = (period/np.pi) * np.arcsin(full)
+ingress = (Ttot-Tfull) / 2 #day
+_ = ingress/period
+lc_list = preprocess_each_lc(lc, duration, period, transit_time)
+folded_lc = folding_each_lc(lc_list)
+folded_lc.errorbar()
+plt.savefig('folded_lc.png')
+#plt.show()
+plt.close()
 
+
+
+"""
 csvfile = '/Users/u_tsubasa/work/ring_planet_research/folded_lc.csv'
 folded_df = pd.read_csv(csvfile, sep=',')
 folded_df = folded_df[(folded_df['time'] >= -0.1) & (folded_df['time'] <= 0.1)]
 folded_table = Table.from_pandas(folded_df)
 folded_lc = lk.LightCurve(data=folded_table)
 import pdb; pdb.set_trace()
+"""
 #lm.minimizeのためのparamsのセッティング。これはリングありモデル
 ###parameters setting###
 names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
@@ -364,21 +370,20 @@ maxes = [0.1, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
 #vary_flags = [True, False, True, True, True, False, False, True, True]
 vary_flags = [False, False, True, True, True, False, False, True, True]
 no_ring_params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
-start = time.time()
+#start = time.time()
 out = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux_data, flux_err_data, names), max_nfev=1000)
 out2 = lmfit.minimize(no_ring_residual_transitfit, no_ring_params, args=(t, flux_data, flux_err_data, noringnames), max_nfev=10000)
-elapsed_time = time.time() - start
-print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
-import pdb; pdb.set_trace()
+#elapsed_time = time.time() - start
+#print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
 flux_model = ring_model_transitfit_from_lmparams(out.params, t)
 flux_model2 = no_ring_model_transitfit_from_lmparams(out2.params, t, noringnames)
 folded_lc.errorbar()
 plt.plot(t, flux_model, label='fit_model')
 plt.plot(t, flux_model2, label='fit_model_noring')
 plt.legend()
-#plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
-plt.show()
-
+#plt.savefig('fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
+plt.savefig('fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M')))
+plt.close()
 
 out_pdict = out.params.valuesdict()
 #import pdb; pdb.set_trace()
@@ -403,7 +408,7 @@ nwalkers, ndim = pos.shape
 #backend.reset(nwalkers, ndim)
 
 
-max_n = 11000
+max_n = 5000
 index = 0
 autocorr = np.empty(max_n)
 old_tau = np.inf
@@ -441,7 +446,7 @@ plt.xlim(0, n.max())
 plt.ylim(0, y.max() + 0.1 * (y.max() - y.min()))
 plt.xlabel("number of steps")
 plt.ylabel(r"mean $\hat{\tau}$")
-plt.show()
+plt.savefig('step.png')
 
 ###step visualization###
 fig, axes = plt.subplots(ndim, figsize=(10, 7), sharex=True)
@@ -456,7 +461,7 @@ for i in range(ndim):
     ax.set_ylabel(labels[i])
     ax.yaxis.set_label_coords(-0.1, 0.5)
 axes[-1].set_xlabel("step number");
-plt.show()
+#plt.show()
 
 ###corner visualization###
 samples = sampler.flatchain
@@ -466,7 +471,7 @@ truths = []
 for param in mcmc_params:
     truths.append(pdic_saturnlike[param])
 fig = corner.corner(samples, labels=labels, truths=truths);
-plt.show()
+plt.savefig('corner.png')
 
 tau = sampler.get_autocorr_time()
 burnin = int(2 * np.max(tau))
