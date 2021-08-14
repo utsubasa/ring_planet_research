@@ -305,7 +305,7 @@ plt.close()
 '''
 
 
-csvfile = '/Users/u_tsubasa/work/ring_planet_research/folded_lc.csv'
+csvfile = 'folded_lc.csv'
 folded_df = pd.read_csv(csvfile, sep=',')
 folded_table = Table.from_pandas(folded_df)
 folded_lc = lk.LightCurve(data=folded_table)
