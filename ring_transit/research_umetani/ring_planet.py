@@ -261,8 +261,10 @@ def make_rowlist(n_transit, lc, transit_time, period):
         mid_transit_row = getNearestRow(lc.time.value, target_val)
         list.append(mid_transit_row)
     return list
+
 #if __name__ ==  '__main__':
 ###use lightkurve(diffrent method from Aizawa+2018)###
+'''
 kic = "KIC10666592"
 tpf = lk.search_targetpixelfile(kic, author="Kepler", cadence="short").download()
 #tpf.plot(frame=100, scale='log', show_colorbar=True)
@@ -294,21 +296,20 @@ lc_list = preprocess_each_lc(lc, duration, period, transit_time)
 folded_lc = folding_each_lc(lc_list)
 folded_lc = folded_lc[folded_lc.time > -0.1]
 folded_lc = folded_lc[folded_lc.time < 0.1]
+import pdb; pdb.set_trace()
 folded_lc.errorbar()
+#folded_lc.write('folded_lc.csv', overwrite=True)
 plt.savefig('folded_lc.png')
 #plt.show()
 plt.close()
+'''
 
 
-
-"""
 csvfile = '/Users/u_tsubasa/work/ring_planet_research/folded_lc.csv'
 folded_df = pd.read_csv(csvfile, sep=',')
-folded_df = folded_df[(folded_df['time'] >= -0.1) & (folded_df['time'] <= 0.1)]
 folded_table = Table.from_pandas(folded_df)
 folded_lc = lk.LightCurve(data=folded_table)
-import pdb; pdb.set_trace()
-"""
+
 #lm.minimizeのためのparamsのセッティング。これはリングありモデル
 ###parameters setting###
 names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
