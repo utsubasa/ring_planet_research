@@ -394,7 +394,7 @@ plt.plot(t, flux_model, label='fit_model')
 plt.plot(t, flux_model2, label='fit_model_noring')
 plt.legend()
 #plt.savefig('fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
-plt.savefig('fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M')))
+plt.savefig('fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square))
 plt.close()
 
 out_pdict = out.params.valuesdict()
