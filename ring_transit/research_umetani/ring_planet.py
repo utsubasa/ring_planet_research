@@ -303,7 +303,16 @@ plt.savefig('folded_lc.png')
 #plt.show()
 plt.close()
 '''
-
+period=2.20473541 #day
+transit_time=121.3585417
+duration=0.162026
+a_rs=4.602
+b=0.224
+rp_rs=0.075522
+i=87.21 * 0.0175 #radian
+a=0.0376 #Orbit Semi-Major Axis [au]
+a=562487835826.56 #cm
+rstar=1.952 * 6.9634 * 10**10 #Rstar cm
 
 csvfile = 'folded_lc.csv'
 folded_df = pd.read_csv(csvfile, sep=',')
