@@ -420,7 +420,7 @@ nwalkers, ndim = pos.shape
 #backend.reset(nwalkers, ndim)
 
 
-max_n = 5000
+max_n = 11000
 index = 0
 autocorr = np.empty(max_n)
 old_tau = np.inf
@@ -458,7 +458,7 @@ plt.xlim(0, n.max())
 plt.ylim(0, y.max() + 0.1 * (y.max() - y.min()))
 plt.xlabel("number of steps")
 plt.ylabel(r"mean $\hat{\tau}$")
-plt.savefig('step.png')
+plt.savefig('tau.png')
 
 ###step visualization###
 fig, axes = plt.subplots(ndim, figsize=(10, 7), sharex=True)
@@ -513,7 +513,7 @@ plt.legend(fontsize=14)
 #plt.xlim(0, 10)
 plt.xlabel("t")
 plt.ylabel("flux");
-plt.show()
+plt.savefig("mcmc_result.png")
 
 
 #import pdb; pdb.set_trace()
