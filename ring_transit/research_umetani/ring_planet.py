@@ -422,7 +422,7 @@ nwalkers, ndim = pos.shape
 #backend.reset(nwalkers, ndim)
 
 
-max_n = 5000
+max_n = 15000
 index = 0
 autocorr = np.empty(max_n)
 old_tau = np.inf
@@ -465,6 +465,7 @@ if __name__ ==  '__main__':
     plt.xlabel("number of steps")
     plt.ylabel(r"mean $\hat{\tau}$")
     plt.savefig('tau.png')
+    plt.close()
 
 
     ###step visualization###
@@ -480,6 +481,8 @@ if __name__ ==  '__main__':
         ax.set_ylabel(labels[i])
         ax.yaxis.set_label_coords(-0.1, 0.5)
     axes[-1].set_xlabel("step number");
+    plt.savefig('step.png')
+    plt.close()
     #plt.show()
 
     ###corner visualization###
@@ -512,8 +515,8 @@ if __name__ ==  '__main__':
         sample = flat_samples[ind]
         plt.plot(t, np.dot(np.vander(t, 2), sample[:2]), "C1", alpha=0.1)
     for s in samples[np.random.randint(len(samples), size=24)]:
-        plt.plot(t, ring_model(t, pdic, v), color="#4682b4", alpha=0.3)
-    plt.errorbar(t, flux, yerr=error_scale, fmt=".k", capsize=0)
+        plt.plot(t, ring_model(t, pdic, mcmc_pvalues), color="#4682b4", alpha=0.3)
+    plt.errorbar(t, flux_data, yerr=flux_err_data, fmt=".k", capsize=0)
     plt.plot(t, ymodel, "k", label="truth")
     plt.legend(fontsize=14)
     #plt.xlim(0, 10)
@@ -524,14 +527,14 @@ if __name__ ==  '__main__':
 
     #import pdb; pdb.set_trace()
     #flux_model = no_ring_model_transitfit_from_lmparams(out.params, t, noringnames)
-    flux_model = ring_model_transitfit_from_lmparams(out.params, t)
+    #flux_model = ring_model_transitfit_from_lmparams(out.params, t)
     #plt.errorbar(time, flux_data,flux_err_data, label='data', fmt='.k', linestyle=None)
-    folded_lc.errorbar()
-    plt.plot(t, flux_model, label='fit_model')
+    #folded_lc.errorbar()
+    #plt.plot(t, flux_model, label='fit_model')
     #plt.plot(t, ymodel, label='model')
-    plt.legend()
+    #plt.legend()
     #plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
-    plt.show()
+    #plt.show()
 
     ###csvに書き出し###
     #input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
@@ -541,8 +544,10 @@ if __name__ ==  '__main__':
     output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
     #df = input_df.join((output_df, pd.Series(vary_flags, index=noringnames, name='vary_flags')))
     df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
-    df.to_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/fitting_result_{}_{:.0f}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=True, index=False)
+    #df.to_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/fitting_result_{}_{:.0f}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=True, index=False)
+    df.to_csv('./fitting_result_{}_{:.0f}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=True, index=False)
     fit_report = lmfit.fit_report(out)
+    print(fit_report)
 
 
     #import pdb; pdb.set_trace()
