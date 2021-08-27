@@ -422,7 +422,7 @@ nwalkers, ndim = pos.shape
 #backend.reset(nwalkers, ndim)
 
 
-max_n = 15000
+max_n = 5000
 index = 0
 autocorr = np.empty(max_n)
 old_tau = np.inf
@@ -436,6 +436,8 @@ old_tau = np.inf
 if __name__ ==  '__main__':
     with Pool() as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data.mean(), mcmc_params), pool=pool)
+        pos = sampler.run_mcmc(pos, 1000)
+        sampler.reset()
         for sample in sampler.sample(pos, iterations=max_n, progress=True):
             # Only check convergence every 100 steps
             if sampler.iteration % 100:
