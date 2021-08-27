@@ -496,6 +496,7 @@ if __name__ ==  '__main__':
         truths.append(pdic_saturnlike[param])
     fig = corner.corner(samples, labels=labels, truths=truths);
     plt.savefig('corner.png')
+    plt.close()
 
     """
     tau = sampler.get_autocorr_time()
