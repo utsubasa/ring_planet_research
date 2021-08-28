@@ -149,6 +149,8 @@ def log_prior(mcmc_pvalues, mcmc_params):
     for i, param in enumerate(mcmc_params):
         if df_for_mcmc['mins'][param] <= mcmc_pvalues[i] <= df_for_mcmc['maxes'][param]:
             pass
+        elif mcmc_pvalues[3] > mcmc_pvalues[4]:
+            return -np.inf
         else:
             return -np.inf
     #if 0.0 < theta < np.pi/2 and 0.0 < phi < np.pi/2 and 0.0 < rp_rs < 1 and 1.0 < r_in < 7.0:
@@ -437,8 +439,8 @@ old_tau = np.inf
 if __name__ ==  '__main__':
     with Pool() as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data.mean(), mcmc_params), pool=pool)
-        pos = sampler.run_mcmc(pos, 1000)
-        sampler.reset()
+        #pos = sampler.run_mcmc(pos, 1000)
+        #sampler.reset()
         for sample in sampler.sample(pos, iterations=max_n, progress=True):
             # Only check convergence every 100 steps
             if sampler.iteration % 100:
