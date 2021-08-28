@@ -415,7 +415,6 @@ mcmc_pvalues = mcmc_df['values'].values
 print('mcmc_params: ', mcmc_params)
 print('mcmc_pvalues: ', mcmc_pvalues)
 pos = mcmc_pvalues + 1e-5 * np.random.randn(32, len(mcmc_pvalues))
-import pdb; pdb.set_trace()
 #pos = np.array([rp_rs, theta, phi, r_in, r_out]) + 1e-8 * np.random.randn(32, 5)
 nwalkers, ndim = pos.shape
 
