@@ -413,6 +413,7 @@ mcmc_pvalues = mcmc_df['values'].values
 print('mcmc_params: ', mcmc_params)
 print('mcmc_pvalues: ', mcmc_pvalues)
 pos = mcmc_pvalues + 1e-5 * np.random.randn(32, len(mcmc_pvalues))
+import pdb; pdb.set_trace()
 #pos = np.array([rp_rs, theta, phi, r_in, r_out]) + 1e-8 * np.random.randn(32, 5)
 nwalkers, ndim = pos.shape
 
@@ -489,12 +490,12 @@ if __name__ ==  '__main__':
 
     ###corner visualization###
     samples = sampler.flatchain
-    flat_samples = sampler.get_chain(discard=100, thin=15, flat=True)
+    flat_samples = sampler.get_chain(discard=1000, thin=15, flat=True)
     print(flat_samples.shape)
     truths = []
     for param in labels:
         truths.append(pdic_saturnlike[param])
-    fig = corner.corner(samples, labels=labels, truths=truths);
+    fig = corner.corner(flat_samples, labels=labels, truths=truths);
     plt.savefig('corner.png')
     plt.close()
 
