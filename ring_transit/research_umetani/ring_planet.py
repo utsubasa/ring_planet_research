@@ -471,6 +471,7 @@ if __name__ ==  '__main__':
     plt.ylabel(r"mean $\hat{\tau}$")
     plt.savefig('tau.png')
     plt.close()
+    print(tau)
 
 
     ###step visualization###
@@ -514,7 +515,7 @@ if __name__ ==  '__main__':
 
 
     samples = sampler.flatchain
-    flat_samples = sampler.get_chain(discard=100, thin=15, flat=True)
+    flat_samples = sampler.get_chain(discard=1000, thin=15, flat=True)
     print(flat_samples.shape)
     inds = np.random.randint(len(flat_samples), size=100)
     for ind in inds:
