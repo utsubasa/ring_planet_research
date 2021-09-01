@@ -438,8 +438,9 @@ old_tau = np.inf
 if __name__ ==  '__main__':
     with Pool() as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data.mean(), mcmc_params), pool=pool)
-        #pos = sampler.run_mcmc(pos, 1000)
+        pos = sampler.run_mcmc(pos, 15000)
         #sampler.reset()
+        '''
         for sample in sampler.sample(pos, iterations=max_n, progress=True):
             # Only check convergence every 100 steps
             if sampler.iteration % 100:
@@ -458,8 +459,10 @@ if __name__ ==  '__main__':
             if converged:
                 break
             old_tau = tau
+        '''
 
     ###the autocorrelation time###
+    '''
     n = 100 * np.arange(1, index + 1)
     y = autocorr[:index]
     plt.plot(n, n / 100.0, "--k")
@@ -471,6 +474,7 @@ if __name__ ==  '__main__':
     plt.savefig('tau.png')
     plt.close()
     print(tau)
+    '''
 
 
     ###step visualization###
