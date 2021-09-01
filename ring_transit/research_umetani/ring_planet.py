@@ -438,7 +438,7 @@ old_tau = np.inf
 if __name__ ==  '__main__':
     with Pool() as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data.mean(), mcmc_params), pool=pool)
-        pos = sampler.run_mcmc(pos, 15000)
+        pos = sampler.run_mcmc(pos, max_n)
         #sampler.reset()
         '''
         for sample in sampler.sample(pos, iterations=max_n, progress=True):
