@@ -149,8 +149,6 @@ def log_prior(mcmc_pvalues, mcmc_params):
     for i, param in enumerate(mcmc_params):
         if df_for_mcmc['mins'][param] <= mcmc_pvalues[i] <= df_for_mcmc['maxes'][param]:
             pass
-        elif mcmc_pvalues[3] > mcmc_pvalues[4]:
-            return -np.inf
         else:
             return -np.inf
     #if 0.0 < theta < np.pi/2 and 0.0 < phi < np.pi/2 and 0.0 < rp_rs < 1 and 1.0 < r_in < 7.0:
