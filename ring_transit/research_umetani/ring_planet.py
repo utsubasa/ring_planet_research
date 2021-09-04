@@ -141,7 +141,7 @@ def no_ring_model_transitfit_from_lmparams(params, x, names):
     return model
 
 def lnlike(mcmc_pvalues, t, y, yerr):
-    return -0.5 * np.sum(((y-ring_model(t, pdic_saturnlike, mcmc_pvalues))/yerr) ** 2)
+    return -0.5 * np.sum(((y-ring_model(t, pdic, mcmc_pvalues))/yerr) ** 2)
 
 def log_prior(mcmc_pvalues, mcmc_params):
     #p_dict = dict(zip(mcmc_params, p))
@@ -159,7 +159,7 @@ def lnprob(mcmc_pvalues, t, y, yerr, mcmc_params):
     lp = log_prior(mcmc_pvalues, mcmc_params)
     if not np.isfinite(lp):
         return -np.inf
-    chi_square = np.sum(((y-ring_model(t, pdic_saturnlike, mcmc_pvalues))/yerr)**2)
+    chi_square = np.sum(((y-ring_model(t, pdic, mcmc_pvalues))/yerr)**2)
     print(chi_square)
     return lp + lnlike(mcmc_pvalues, t, y, yerr)
 
@@ -422,7 +422,7 @@ nwalkers, ndim = pos.shape
 #backend.reset(nwalkers, ndim)
 
 
-max_n = 15000
+max_n = 5000
 index = 0
 autocorr = np.empty(max_n)
 old_tau = np.inf
@@ -436,9 +436,8 @@ old_tau = np.inf
 if __name__ ==  '__main__':
     with Pool() as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data.mean(), mcmc_params), pool=pool)
-        pos = sampler.run_mcmc(pos, max_n)
+        #pos = sampler.run_mcmc(pos, max_n)
         #sampler.reset()
-        '''
         for sample in sampler.sample(pos, iterations=max_n, progress=True):
             # Only check convergence every 100 steps
             if sampler.iteration % 100:
@@ -457,10 +456,9 @@ if __name__ ==  '__main__':
             if converged:
                 break
             old_tau = tau
-        '''
+
 
     ###the autocorrelation time###
-    '''
     n = 100 * np.arange(1, index + 1)
     y = autocorr[:index]
     plt.plot(n, n / 100.0, "--k")
@@ -472,7 +470,6 @@ if __name__ ==  '__main__':
     plt.savefig('tau.png')
     plt.close()
     print(tau)
-    '''
 
 
     ###step visualization###
