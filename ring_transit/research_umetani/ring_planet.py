@@ -422,7 +422,7 @@ nwalkers, ndim = pos.shape
 #backend.reset(nwalkers, ndim)
 
 
-max_n = 5000
+max_n = 100000
 index = 0
 autocorr = np.empty(max_n)
 old_tau = np.inf
