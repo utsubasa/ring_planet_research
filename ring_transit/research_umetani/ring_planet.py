@@ -422,7 +422,7 @@ nwalkers, ndim = pos.shape
 #backend.reset(nwalkers, ndim)
 
 
-max_n = 100000
+max_n = 5000
 index = 0
 autocorr = np.empty(max_n)
 old_tau = np.inf
@@ -475,9 +475,9 @@ if __name__ ==  '__main__':
     ###step visualization###
     fig, axes = plt.subplots(ndim, figsize=(10, 7), sharex=True)
     samples = sampler.get_chain()
-    labels = ['rp_rs', 'theta', 'phi', 'r_in', 'r_out']
+    #labels = ['rp_rs', 'theta', 'phi', 'r_in', 'r_out']
     #labels = ['theta', 'phi']
-    #labels = mcmc_params
+    labels = mcmc_params
     for i in range(ndim):
         ax = axes[i]
         ax.plot(samples[:, :, i], "k", alpha=0.3)
@@ -493,10 +493,13 @@ if __name__ ==  '__main__':
     samples = sampler.flatchain
     flat_samples = sampler.get_chain(discard=1000, thin=15, flat=True)
     print(flat_samples.shape)
+    """
     truths = []
     for param in labels:
         truths.append(pdic_saturnlike[param])
     fig = corner.corner(flat_samples, labels=labels, truths=truths);
+    """
+    fig = corner.corner(flat_samples, labels=labels);
     plt.savefig('corner.png')
     plt.close()
 
@@ -518,11 +521,9 @@ if __name__ ==  '__main__':
     inds = np.random.randint(len(flat_samples), size=100)
     for ind in inds:
         sample = flat_samples[ind]
-        plt.plot(t, np.dot(np.vander(t, 2), sample[:2]), "C1", alpha=0.1)
-    for s in samples[np.random.randint(len(samples), size=24)]:
-        plt.plot(t, ring_model(t, pdic, mcmc_pvalues), color="#4682b4", alpha=0.3)
+        plt.plot(t, ring_model(t, pdic, sample), "C1", alpha=0.1)
     plt.errorbar(t, flux_data, yerr=flux_err_data, fmt=".k", capsize=0)
-    plt.plot(t, ymodel, "k", label="truth")
+    #plt.plot(t, ymodel, "k", label="truth")
     plt.legend(fontsize=14)
     #plt.xlim(0, 10)
     plt.xlabel("t")
