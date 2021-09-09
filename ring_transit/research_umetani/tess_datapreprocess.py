@@ -140,28 +140,26 @@ def no_ring_model_transitfit_from_lmparams(params, x, names):
     model = m.light_curve(params_batman)
     return model
 
-def lnlike(v, t, y, yerr):
-    return -0.5 * np.sum(((y-ring_model(t, pdic_saturnlike, v))/yerr) ** 2)
-
-def log_prior(v):
-    #p_dict = dict(zip(mcmc_params, p))
-    #rp_rs, theta, phi, r_in = p
-    for i, param in enumerate(mcmc_params):
-        if df_for_mcmc['mins'][param] <= v[i] <= df_for_mcmc['maxes'][param]:
+def clip_others_planet(lc, duration, period, transit_time, others_duration, others_period, others_transit_time):
+    for i in len(others_duration):
+        transit_start = others_transit_time[i] - (others_duration[i]/2)
+        transit_end = others_transit_time[i] + (others_duration[i]/2)
+        if transit_end < lc.time[0].value:
             pass
-        else:
-            return -np.inf
-    #if 0.0 < theta < np.pi/2 and 0.0 < phi < np.pi/2 and 0.0 < rp_rs < 1 and 1.0 < r_in < 7.0:
-    #    return 0.0
-    return 0.0
+        elif transit_start < lc.time[0].value　and lc.time[0].value < transit_end:
+            lc = lc[~(lc['time'].value < transit_start)]
+        elif transit_start < lc.time[0].value　and lc.time[-1].value < transit_end:
+            continue
+            #記録する
+        elif lc.time[0].value < transit_start and transit_end < lc.time[-1].value:
+            lc = lc[transit_start:transit_end]
+        elif lc.time[0].value < transit_start and lc.time[-1].value < transit_end:
+            hahs
+        elif lc.time[-1].value < transit_start:
+            pass
 
-def lnprob(v, x, y, yerr):
-    lp = log_prior(v)
-    if not np.isfinite(lp):
-        return -np.inf
-    chi_square = np.sum(((y-ring_model(x, pdic_saturnlike, v))/yerr)**2)
-    print(chi_square)
-    return lp + lnlike(v, x, y, yerr)
+
+    return lc
 
 def preprocess_each_lc(lc, duration, period, transit_time):
     #planet_b_model = bls.get_transit_model(period=period, transit_time=transit_time, duration=duration)
@@ -274,52 +272,13 @@ def make_rowlist(n_transit, lc, transit_time, period):
         return list
 
 #if __name__ ==  '__main__':
-###use lightkurve(diffrent method from Aizawa+2018)###
-'''
-kic = "KIC10666592"
-tpf = lk.search_targetpixelfile(kic, author="Kepler", cadence="short").download()
-#tpf.plot(frame=100, scale='log', show_colorbar=True)
-lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
-#lc.plot()
-period = np.linspace(1, 3, 10000)
-bls = lc.to_periodogram(method='bls', period=period, frequency_factor=500);
-
-period=2.20473541 #day
-transit_time=121.3585417
-duration=0.162026
-a_rs=4.602
-b=0.224
-rp_rs=0.075522
-i=87.21 * 0.0175 #radian
-a=0.0376 #Orbit Semi-Major Axis [au]
-a=562487835826.56 #cm
-rstar=1.952 * 6.9634 * 10**10 #Rstar cm
-#lc_list = preprocess_each_lc(lc, duration, period, transit_time)
-#transit_time_per_exposure = (duration * len(lc_list) / (lc.time[-1].value - lc.time[0].value))
-#lc = lc.bin(bins=int(300 // transit_time_per_exposure))
-tot = (rstar/a)* (np.sqrt(np.square(1+rp_rs)-np.square(b)) / np.sin(i))
-Ttot = (period/np.pi) * np.arcsin(tot)
-full = (rstar/a)* (np.sqrt(np.square(1-rp_rs)-np.square(b)) / np.sin(i))
-Tfull = (period/np.pi) * np.arcsin(full)
-ingress = (Ttot-Tfull) / 2 #day
-_ = ingress/period
-lc_list = preprocess_each_lc(lc, duration, period, transit_time)
-folded_lc = folding_each_lc(lc_list)
-folded_lc = folded_lc[folded_lc.time > -0.1]
-folded_lc = folded_lc[folded_lc.time < 0.1]
-import pdb; pdb.set_trace()
-folded_lc.errorbar()
-#folded_lc.write('folded_lc.csv', overwrite=True)
-plt.savefig('folded_lc.png')
-#plt.show()
-plt.close()
 '''
 #使う行のみ抽出
 sn_df=pd.read_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/toi-catalog.csv', encoding='shift_jis')
 sn_df.columns=sn_df.iloc[3].values
 sn_df=sn_df[4:]
 #カラムを入れ替える。
-'''
+
 sn_df=sn_df[['Signal-to-noise', 'Source Pipeline', 'TIC', 'Full TOI ID', 'TOI Disposition',
        'TIC Right Ascension', 'TIC Declination', 'TMag Value',
        'TMag Uncertainty', 'Epoch Value', 'Epoch Error',
@@ -334,7 +293,7 @@ sn_df=sn_df[['Signal-to-noise', 'Source Pipeline', 'TIC', 'Full TOI ID', 'TOI Di
        'Effective Stellar Flux Value', 'Centroid Offset',
        'TFOP Master', 'TFOP SG1a', 'TFOP SG1b', 'TFOP SG2', 'TFOP SG3',
        'TFOP SG4', 'TFOP SG5', 'Alerted', 'Updated']]
-       '''
+
 sn_df=sn_df[['Signal-to-noise', 'Source Pipeline', 'TIC', 'Full TOI ID', 'TOI Disposition']]
 sn_df['Signal-to-noise'] = sn_df['Signal-to-noise'].fillna(0)
 sn_df['Signal-to-noise'] = sn_df['Signal-to-noise'].astype(float)
@@ -346,6 +305,9 @@ sn_df2 = sn_df2.reset_index(drop=True)
 #sn_df2 = sn_df2.drop(columns='index')
 sn_df2.head()
 sn_df2['TIC'] = sn_df2['TIC'].apply(lambda x:int(x))
+'''
+
+sn_df2 = pd.read_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/toi_overSN100.csv')
 TIClist = sn_df2['TIC']
 params_df = pd.read_excel('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/TOI_parameters.xlsx')
 #params_df[params_df['TESS Input Catalog ID']==TIClist[0]].T
@@ -362,15 +324,17 @@ for TIC in TIClist:
         with open('error_tic.dat', 'a') as f:
             f.write(str(TIC) + '\n')
         continue
-    lc.plot()
-    plt.close()
     for index, item in param_df.iterrows():
+        import pdb; pdb.set_trace()
         duration = item['Planet Transit Duration Value [hours]'] / 24
         period = item['Planet Orbital Period Value [days]']
         transit_time = item['Planet Transit Midpoint Value [BJD]'] - 2457000.0 #translate BTJD
+        others_duration = param_df[param_df.index!=index]['Planet Transit Duration Value [hours]'].values / 24
+        others_period = param_df[param_df.index!=index]['Planet Orbital Period Value [days]'].values
+        others_transit_time = param_df[param_df.index!=index]['Planet Transit Midpoint Value [BJD]'].values - 2457000.0 #translate BTJD
         if lc.time.value[0] > transit_time or lc.time.value[-1] < transit_time:
             continue
-        lc_list = preprocess_each_lc(lc, duration, period, transit_time)
+        lc_list = preprocess_each_lc(lc, duration, period, transit_time, others_duration, others_period, others_transit_time)
         folded_lc = folding_each_lc(lc_list)
         folded_lc.errorbar()
         plt.savefig('./folded_dfs/folded_lc_figure/{}.png'.format('TOI' + str(item['TESS Object of Interest'])))
@@ -387,6 +351,7 @@ for TIC in TIClist:
     """
 
 #get transit paramter from TESS database
+'''
 print('hello')
 import pdb; pdb.set_trace()
 period=2.20473541
@@ -472,3 +437,4 @@ plt.clf()
 xdata = lc.fold(planet_b_period, planet_b_t0).phase.value
 ydata = lc.fold(planet_b_period, planet_b_t0).flux.value
 yerr  = lc.fold(planet_b_period, planet_b_t0).flux_err.value
+'''
