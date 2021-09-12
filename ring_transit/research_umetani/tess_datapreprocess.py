@@ -144,15 +144,16 @@ def clip_others_planet(lc, duration, period, transit_time, others_duration, othe
     for i in len(others_duration):
         transit_start = others_transit_time[i] - (others_duration[i]/2)
         transit_end = others_transit_time[i] + (others_duration[i]/2)
+        import pdb; pdb.set_trace()
         if transit_end < lc.time[0].value:
             pass
-        elif transit_start < lc.time[0].value　and lc.time[0].value < transit_end:
+        elif transit_start < lc.time[0].value and lc.time[0].value < transit_end:
             lc = lc[~(lc['time'].value < transit_start)]
-        elif transit_start < lc.time[0].value　and lc.time[-1].value < transit_end:
+        elif transit_start < lc.time[0].value and lc.time[-1].value < transit_end:
             continue
             #記録する
         elif lc.time[0].value < transit_start and transit_end < lc.time[-1].value:
-            lc = lc[transit_start:transit_end]
+            lc = lc[:transit_start] + lc[transit_end:]
         elif lc.time[0].value < transit_start and lc.time[-1].value < transit_end:
             hahs
         elif lc.time[-1].value < transit_start:
@@ -325,15 +326,14 @@ for TIC in TIClist:
             f.write(str(TIC) + '\n')
         continue
     for index, item in param_df.iterrows():
-        import pdb; pdb.set_trace()
         duration = item['Planet Transit Duration Value [hours]'] / 24
         period = item['Planet Orbital Period Value [days]']
         transit_time = item['Planet Transit Midpoint Value [BJD]'] - 2457000.0 #translate BTJD
         others_duration = param_df[param_df.index!=index]['Planet Transit Duration Value [hours]'].values / 24
         others_period = param_df[param_df.index!=index]['Planet Orbital Period Value [days]'].values
         others_transit_time = param_df[param_df.index!=index]['Planet Transit Midpoint Value [BJD]'].values - 2457000.0 #translate BTJD
-        if lc.time.value[0] > transit_time or lc.time.value[-1] < transit_time:
-            continue
+        #if lc.time.value[0] > transit_time or lc.time.value[-1] < transit_time:
+        #    continue
         lc_list = preprocess_each_lc(lc, duration, period, transit_time, others_duration, others_period, others_transit_time)
         folded_lc = folding_each_lc(lc_list)
         folded_lc.errorbar()
