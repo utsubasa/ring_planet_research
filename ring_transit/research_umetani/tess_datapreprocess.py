@@ -17,7 +17,7 @@ import corner
 from multiprocessing import Pool
 #from lightkurve import search_targetpixelfile
 from scipy import signal
-from astropy.table import Table
+from astropy.table import Table, vstack
 
 warnings.filterwarnings('ignore')
 
@@ -140,26 +140,42 @@ def no_ring_model_transitfit_from_lmparams(params, x, names):
     model = m.light_curve(params_batman)
     return model
 
-def clip_others_planet(lc, duration, period, transit_time, others_duration, others_period, others_transit_time):
-    for i in len(others_duration):
+def clip_others_planet_transit(lc, duration, period, transit_time, others_duration, others_period, others_transit_time):
+    for i in range(len(others_duration)):
         transit_start = others_transit_time[i] - (others_duration[i]/2)
         transit_end = others_transit_time[i] + (others_duration[i]/2)
         import pdb; pdb.set_trace()
-        if transit_end < lc.time[0].value:
-            pass
-        elif transit_start < lc.time[0].value and lc.time[0].value < transit_end:
-            lc = lc[~(lc['time'].value < transit_start)]
-        elif transit_start < lc.time[0].value and lc.time[-1].value < transit_end:
-            continue
-            #記録する
-        elif lc.time[0].value < transit_start and transit_end < lc.time[-1].value:
-            lc = lc[:transit_start] + lc[transit_end:]
-        elif lc.time[0].value < transit_start and lc.time[-1].value < transit_end:
-            hahs
-        elif lc.time[-1].value < transit_start:
-            pass
+        clip_transit_duration(lc, transit_start, transit_end)
+
+        if others_transit_time[i] < np.median(lc['time'].value):
+            while lc.time[-1].value < transit_start:
+                others_transit_time[i] = others_transit_time[i] + others_period[i]
+                transit_start = others_transit_time[i] - (others_duration[i]/2)
+                transit_end = others_transit_time[i] + (others_duration[i]/2)
+                lc = clip_transit_duration(lc, transit_start, transit_end)
+        elif others_transit_time[i] > np.median(lc['time'].value):
+            while transit_end < lc.time[0].value:
+                others_transit_time[i] = others_transit_time[i] - others_period[i]
+                transit_start = others_transit_time[i] - (others_duration[i]/2)
+                transit_end = others_transit_time[i] + (others_duration[i]/2)
+                lc = clip_transit_duration(lc, transit_start, transit_end)
+    retun lc_list
 
 
+def clip_transit_duration(lc, transit_start, transit_end):
+    if transit_end < lc.time[0].value:
+        pass
+    elif transit_start < lc.time[0].value and lc.time[0].value < transit_end:
+        lc = lc[~(lc['time'].value < transit_start)]
+    elif transit_start < lc.time[0].value and lc.time[-1].value < transit_end:
+        continue
+        #記録する
+    elif lc.time[0].value < transit_start and transit_end < lc.time[-1].value:
+        lc = vstack([lc[lc['time'].value < transit_start], lc[lc['time'].value > transit_end]])
+    elif lc.time[0].value < transit_start and lc.time[-1].value < transit_end:
+        lc = lc[lc['time'].value < transit_start]
+    elif lc.time[-1].value < transit_start:
+        pass
     return lc
 
 def preprocess_each_lc(lc, duration, period, transit_time):
@@ -334,7 +350,8 @@ for TIC in TIClist:
         others_transit_time = param_df[param_df.index!=index]['Planet Transit Midpoint Value [BJD]'].values - 2457000.0 #translate BTJD
         #if lc.time.value[0] > transit_time or lc.time.value[-1] < transit_time:
         #    continue
-        lc_list = preprocess_each_lc(lc, duration, period, transit_time, others_duration, others_period, others_transit_time)
+        lc = clip_others_planet_transit(lc, duration, period, transit_time, others_duration, others_period, others_transit_time)
+        lc_list = preprocess_each_lc(lc, duration, period)
         folded_lc = folding_each_lc(lc_list)
         folded_lc.errorbar()
         plt.savefig('./folded_dfs/folded_lc_figure/{}.png'.format('TOI' + str(item['TESS Object of Interest'])))
