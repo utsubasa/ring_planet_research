@@ -144,8 +144,8 @@ def clip_others_planet_transit(lc, duration, period, transit_time, others_durati
     for i in range(len(others_duration)):
         transit_start = others_transit_time[i] - (others_duration[i]/2)
         transit_end = others_transit_time[i] + (others_duration[i]/2)
-        import pdb; pdb.set_trace()
-        clip_transit_duration(lc, transit_start, transit_end)
+        #import pdb; pdb.set_trace()
+        lc = clip_transit_duration(lc, transit_start, transit_end)
 
         if others_transit_time[i] < np.median(lc['time'].value):
             while lc.time[-1].value < transit_start:
@@ -159,7 +159,7 @@ def clip_others_planet_transit(lc, duration, period, transit_time, others_durati
                 transit_start = others_transit_time[i] - (others_duration[i]/2)
                 transit_end = others_transit_time[i] + (others_duration[i]/2)
                 lc = clip_transit_duration(lc, transit_start, transit_end)
-    retun lc_list
+    return lc
 
 
 def clip_transit_duration(lc, transit_start, transit_end):
@@ -168,7 +168,9 @@ def clip_transit_duration(lc, transit_start, transit_end):
     elif transit_start < lc.time[0].value and lc.time[0].value < transit_end:
         lc = lc[~(lc['time'].value < transit_start)]
     elif transit_start < lc.time[0].value and lc.time[-1].value < transit_end:
-        continue
+        #with open('huge_transit.csv') as f:
+            #f.write()
+        print('huge !')
         #記録する
     elif lc.time[0].value < transit_start and transit_end < lc.time[-1].value:
         lc = vstack([lc[lc['time'].value < transit_start], lc[lc['time'].value > transit_end]])
@@ -351,8 +353,12 @@ for TIC in TIClist:
         #if lc.time.value[0] > transit_time or lc.time.value[-1] < transit_time:
         #    continue
         lc = clip_others_planet_transit(lc, duration, period, transit_time, others_duration, others_period, others_transit_time)
-        lc_list = preprocess_each_lc(lc, duration, period)
-        folded_lc = folding_each_lc(lc_list)
+        lc_list = preprocess_each_lc(lc, duration, period, transit_time)
+        try:
+            folded_lc = folding_each_lc(lc_list)
+        except ValueError:
+            print('no transit!')
+            continue
         folded_lc.errorbar()
         plt.savefig('./folded_dfs/folded_lc_figure/{}.png'.format('TOI' + str(item['TESS Object of Interest'])))
         #plt.show()
