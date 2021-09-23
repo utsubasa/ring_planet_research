@@ -140,49 +140,111 @@ def no_ring_model_transitfit_from_lmparams(params, x, names):
     model = m.light_curve(params_batman)
     return model
 
-def clip_others_planet_transit(lc, duration, period, transit_time, others_duration, others_period, others_transit_time):
-    for i in range(len(others_duration)):
-        transit_start = others_transit_time[i] - (others_duration[i]/2)
-        transit_end = others_transit_time[i] + (others_duration[i]/2)
-        #import pdb; pdb.set_trace()
-        lc = clip_transit_duration(lc, transit_start, transit_end)
+def clip_transit_hoge(lc, duration, period, transit_time, clip_transit=False):
+    contain_transit = 0
+    transit_start = transit_time - (duration/2)
+    transit_end = transit_time + (duration/2)
+    #import pdb; pdb.set_trace()
+    case = judge_transit_contain(lc, transit_start, transit_end)
+    #他の惑星処理に使う場合は以下の処理を行う。
+    if clip_transit == True:
+        lc = clip_transit(case, lc, transit_start, transit_end)
+    else:
+        if case == 2 or case == 3 or case == 4 or case == 5:
+            contain_transit = 1
+            return contain_transit
+        else:
+            pass
 
-        if others_transit_time[i] < np.median(lc['time'].value):
-            while lc.time[-1].value < transit_start:
-                others_transit_time[i] = others_transit_time[i] + others_period[i]
-                transit_start = others_transit_time[i] - (others_duration[i]/2)
-                transit_end = others_transit_time[i] + (others_duration[i]/2)
-                lc = clip_transit_duration(lc, transit_start, transit_end)
-        elif others_transit_time[i] > np.median(lc['time'].value):
-            while transit_end < lc.time[0].value:
-                others_transit_time[i] = others_transit_time[i] - others_period[i]
-                transit_start = others_transit_time[i] - (others_duration[i]/2)
-                transit_end = others_transit_time[i] + (others_duration[i]/2)
-                lc = clip_transit_duration(lc, transit_start, transit_end)
-    return lc
+    if transit_time < np.median(lc['time'].value):
+        while lc.time[-1].value < transit_start:
+            transit_time = transit_time + period
+            transit_start = transit_time - (duration/2)
+            transit_end = transit_time + (duration/2)
+            case = judge_transit_contain(lc, transit_start, transit_end)
+            if clip_transit == True:
+                lc = clip_transit(case, lc, transit_start, transit_end)
+            else:
+                if case == 2 or case == 3 or case == 4 or case == 5:
+                    contain_transit = 1
+                    return contain_transit
+    elif transit_time > np.median(lc['time'].value):
+        while transit_end < lc.time[0].value:
+            transit_time = transit_time - period
+            transit_start = transit_time - (duration/2)
+            transit_end = transit_time + (duration/2)
+            case = judge_transit_contain(lc, transit_start, transit_end)
+            if clip_transit == True:
+                lc = clip_transit(case, lc, transit_start, transit_end)
+            else:
+                if case == 2 or case == 3 or case == 4 or case == 5:
+                    contain_transit = 1
+                    return contain_transit
+
+    return lc, contain_transit
 
 
-def clip_transit_duration(lc, transit_start, transit_end):
+def judge_transit_contain(lc, transit_start, transit_end):
     if transit_end < lc.time[0].value:
-        pass
+        case = 1
     elif transit_start < lc.time[0].value and lc.time[0].value < transit_end:
-        lc = lc[~(lc['time'].value < transit_start)]
+        case = 2
     elif transit_start < lc.time[0].value and lc.time[-1].value < transit_end:
+        case = 3
+    elif lc.time[0].value < transit_start and transit_end < lc.time[-1].value:
+        case = 4
+    elif lc.time[0].value < transit_start and lc.time[-1].value < transit_end:
+        case = 5
+    elif lc.time[-1].value < transit_start:
+        case = 6
+
+    return case
+
+
+def clip_transit(case, lc, transit_start, transit_end):
+    if case == 1:
+        pass
+    elif case == 2:
+        lc = lc[~(lc['time'].value < transit_start)]
+        print('case: ', case)
+    elif case == 3:
         #with open('huge_transit.csv') as f:
             #f.write()
         print('huge !')
         #記録する
-    elif lc.time[0].value < transit_start and transit_end < lc.time[-1].value:
+    elif case == 4:
         lc = vstack([lc[lc['time'].value < transit_start], lc[lc['time'].value > transit_end]])
-    elif lc.time[0].value < transit_start and lc.time[-1].value < transit_end:
+        print('case: ', case)
+    elif case == 5:
         lc = lc[lc['time'].value < transit_start]
-    elif lc.time[-1].value < transit_start:
+        print('case: ', case)
+    elif case == 6:
         pass
+
     return lc
+
 
 def preprocess_each_lc(lc, duration, period, transit_time):
     #planet_b_model = bls.get_transit_model(period=period, transit_time=transit_time, duration=duration)
-    n_transit = int((lc.time[-1].value - transit_time) // period)
+    '''
+    try:
+        n_transit = int((lc.time[-1].value - transit_time) // period)
+    except ValueError:
+        print('value error')
+        '''
+    aaa = transit_time
+    transit_time_list = []
+    if transit_time < np.median(lc['time'].value):
+        while aaa < lc.time[-1].value:
+            transit_time_list.append(aaa)
+            aaa = aaa + period
+    elif transit_time > np.median(lc['time'].value):
+        while aaa > lc.time[0].value:
+            transit_time_list.append(aaa)
+            aaa = aaa - period
+    transit_time_list = np.array(transit_time_list)
+    transit_time_list = transit_time_list[(transit_time_list > lc.time[0].value) & (transit_time_list < lc.time[-1].value)]
+    n_transit = len(transit_time_list)
     transit_row_list = make_rowlist(n_transit, lc, transit_time, period)
     #minId = signal.argrelmin(lc.flux.value, order=3000)
     half_duration = (duration/2)*24*60
@@ -225,7 +287,7 @@ def preprocess_each_lc(lc, duration, period, transit_time):
                 each_lc.normalize().errorbar()
                 plt.plot(each_lc.time.value, flux_model, label='fit_model')
                 plt.legend()
-                #plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
+                plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
                 #plt.show()
                 plt.close()
                 break
@@ -257,13 +319,15 @@ def preprocess_each_lc(lc, duration, period, transit_time):
                         result.params.valuesdict()['c5'],\
                         result.params.valuesdict()['c6'],\
                         result.params.valuesdict()['c7']])
+
+        #normalization
         each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
         each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
         each_lc_df = each_lc.to_pandas()
         lc_list.append(each_lc_df)
     return lc_list
 
-def folding_each_lc(lc_list):
+def folding_each_lc(lc_list, period, transit_time):
     lc = pd.concat(lc_list)
     lc = lc.reset_index()
     lc = Table.from_pandas(lc)
@@ -291,6 +355,73 @@ def make_rowlist(n_transit, lc, transit_time, period):
         return list
 
 #if __name__ ==  '__main__':
+
+
+sn_df = pd.read_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/toi_overSN100.csv')
+TIClist = sn_df['TIC']
+params_df = pd.read_excel('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/TOI_parameters.xlsx')
+#params_df[params_df['TESS Input Catalog ID']==TIClist[0]].T
+
+for TIC in TIClist:
+    param_df = params_df[params_df['TESS Input Catalog ID'] == TIC]
+    tpf = lk.search_targetpixelfile('TIC {}'.format(TIC), mission='TESS', cadence="short").download()
+    #tpf.plot(frame=100, scale='log', show_colorbar=True)
+    try:
+        lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
+    except AttributeError:
+        with open('error_tic.dat', 'a') as f:
+            f.write(str(TIC) + '\n')
+        continue
+
+    for index, item in param_df.iterrows():
+        import pdb; pdb.set_trace()
+        duration = item['Planet Transit Duration Value [hours]'] / 24
+        period = item['Planet Orbital Period Value [days]']
+        transit_time = item['Planet Transit Midpoint Value [BJD]'] - 2457000.0 #translate BTJD
+        #ターゲットの惑星の信号がデータに影響を与えているか判断
+        _, contain_transit = clip_transit_hoge(lc, duration, period, transit_time, clip_transit=False)
+
+        #ターゲットの惑星の信号がデータに影響を与えていないなら処理を中断する
+        if contain_transit == 1:
+            pass
+        else:
+            print(f'no transit in data: TOI {item['TESS Object of Interest']}.')
+            continue
+
+        #他の惑星がある場合、データに影響を与えているか判断。ならその信号を除去する。
+        if len(param_df.index) != 1:
+            others_duration = param_df[param_df.index!=index]['Planet Transit Duration Value [hours]'].values / 24
+            others_period = param_df[param_df.index!=index]['Planet Orbital Period Value [days]'].values
+            others_transit_time = param_df[param_df.index!=index]['Planet Transit Midpoint Value [BJD]'].values - 2457000.0 #translate BTJD
+
+            for others_duration, others_period, others_transit_time in zip(others_duration, others_period, others_transit_time):
+                lc, _ = clip_transit_hoge(lc, others_duration, others_period, others_transit_time, clip_transit=True)
+
+        #トランジットがデータに何個あるか判断しその周りのライトカーブデータを作成、カーブフィッティングでノーマライズ
+        lc_list = preprocess_each_lc(lc, duration, period, transit_time)
+        try:
+            print('TOI' + str(item['TESS Object of Interest']))
+            import pdb; pdb.set_trace()
+            folded_lc = folding_each_lc(lc_list, period, transit_time)
+            import pdb; pdb.set_trace()
+        except ValueError:
+            print('no transit!')
+            continue
+        folded_lc.errorbar()
+        plt.savefig('./folded_dfs/folded_lc_figure/{}.png'.format('TOI' + str(item['TESS Object of Interest'])))
+        #plt.show()
+        plt.close()
+        folded_lc.write('./folded_dfs/folded_lc_{}.csv'.format('TOI' + str(item['TESS Object of Interest'])))
+
+    """
+    lc_list = preprocess_each_lc(lc, duration, period, transit_time)
+    folded_lc = folding_each_lc(lc_list)
+    folded_lc.errorbar()
+    plt.show()
+    import pdb; pdb.set_trace()
+    """
+
+#get transit paramter from TESS database
 '''
 #使う行のみ抽出
 sn_df=pd.read_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/toi-catalog.csv', encoding='shift_jis')
@@ -326,54 +457,6 @@ sn_df2.head()
 sn_df2['TIC'] = sn_df2['TIC'].apply(lambda x:int(x))
 '''
 
-sn_df2 = pd.read_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/toi_overSN100.csv')
-TIClist = sn_df2['TIC']
-params_df = pd.read_excel('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/TOI_parameters.xlsx')
-#params_df[params_df['TESS Input Catalog ID']==TIClist[0]].T
-#import pdb; pdb.set_trace()
-for TIC in TIClist:
-    param_df = params_df[params_df['TESS Input Catalog ID'] == TIC]
-
-    tpf = lk.search_targetpixelfile('TIC {}'.format(TIC), mission='TESS', cadence="short").download()
-
-    #tpf.plot(frame=100, scale='log', show_colorbar=True)
-    try:
-        lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
-    except AttributeError:
-        with open('error_tic.dat', 'a') as f:
-            f.write(str(TIC) + '\n')
-        continue
-    for index, item in param_df.iterrows():
-        duration = item['Planet Transit Duration Value [hours]'] / 24
-        period = item['Planet Orbital Period Value [days]']
-        transit_time = item['Planet Transit Midpoint Value [BJD]'] - 2457000.0 #translate BTJD
-        others_duration = param_df[param_df.index!=index]['Planet Transit Duration Value [hours]'].values / 24
-        others_period = param_df[param_df.index!=index]['Planet Orbital Period Value [days]'].values
-        others_transit_time = param_df[param_df.index!=index]['Planet Transit Midpoint Value [BJD]'].values - 2457000.0 #translate BTJD
-        #if lc.time.value[0] > transit_time or lc.time.value[-1] < transit_time:
-        #    continue
-        lc = clip_others_planet_transit(lc, duration, period, transit_time, others_duration, others_period, others_transit_time)
-        lc_list = preprocess_each_lc(lc, duration, period, transit_time)
-        try:
-            folded_lc = folding_each_lc(lc_list)
-        except ValueError:
-            print('no transit!')
-            continue
-        folded_lc.errorbar()
-        plt.savefig('./folded_dfs/folded_lc_figure/{}.png'.format('TOI' + str(item['TESS Object of Interest'])))
-        #plt.show()
-        plt.close()
-        folded_lc.write('./folded_dfs/folded_lc_{}.csv'.format('TOI' + str(item['TESS Object of Interest'])))
-
-    """
-    lc_list = preprocess_each_lc(lc, duration, period, transit_time)
-    folded_lc = folding_each_lc(lc_list)
-    folded_lc.errorbar()
-    plt.show()
-    import pdb; pdb.set_trace()
-    """
-
-#get transit paramter from TESS database
 '''
 print('hello')
 import pdb; pdb.set_trace()
