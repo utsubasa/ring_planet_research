@@ -551,7 +551,7 @@ for try_n in range(5):
         #df = input_df.join((output_df, pd.Series(vary_flags, index=noringnames, name='vary_flags')))
         df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
         #df.to_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/fitting_result_{}_{:.0f}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=True, index=False)
-        df.to_csv(f'./fitting_result_{datetime.datetime.now().strftime('%y%m%d')}_{chi_square:.0f}_{try_n}.csv', header=True, index=False)
+        df.to_csv(f'./fitting_result_{datetime.datetime.now().strftime("%y%m%d")}_{chi_square:.0f}_{try_n}.csv', header=True, index=False)
         fit_report = lmfit.fit_report(out)
         print(fit_report)
 
