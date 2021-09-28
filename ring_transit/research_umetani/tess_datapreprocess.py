@@ -141,67 +141,74 @@ def no_ring_model_transitfit_from_lmparams(params, x, names):
     return model
 
 def clip_transit_hoge(lc, duration, period, transit_time, clip_transit=False):
+
     contain_transit = 0
+    transit_time_list = []
+
     transit_start = transit_time - (duration/2)
     transit_end = transit_time + (duration/2)
-    #import pdb; pdb.set_trace()
+    import pdb; pdb.set_trace()
     case = judge_transit_contain(lc, transit_start, transit_end)
     #他の惑星処理に使う場合は以下の処理を行う。
     if clip_transit == True:
-        lc = clip_transit(case, lc, transit_start, transit_end)
+        lc = remove_transit_signal(case, lc, transit_start, transit_end)
     else:
         if case == 2 or case == 3 or case == 4 or case == 5:
             contain_transit = 1
-            return contain_transit
+            transit_time_list.append(transit_time)
         else:
             pass
 
     if transit_time < np.median(lc['time'].value):
-        while lc.time[-1].value < transit_start:
+        while judge_transit_contain(lc, transit_start, transit_end) == 6:
             transit_time = transit_time + period
             transit_start = transit_time - (duration/2)
             transit_end = transit_time + (duration/2)
             case = judge_transit_contain(lc, transit_start, transit_end)
             if clip_transit == True:
-                lc = clip_transit(case, lc, transit_start, transit_end)
+                lc = remove_transit_signal(case, lc, transit_start, transit_end)
             else:
                 if case == 2 or case == 3 or case == 4 or case == 5:
                     contain_transit = 1
-                    return contain_transit
+                    transit_time_list.append(transit_time)
+                else:
+                    pass
     elif transit_time > np.median(lc['time'].value):
-        while transit_end < lc.time[0].value:
+        while judge_transit_contain(lc, transit_start, transit_end) == 1:
             transit_time = transit_time - period
             transit_start = transit_time - (duration/2)
             transit_end = transit_time + (duration/2)
             case = judge_transit_contain(lc, transit_start, transit_end)
             if clip_transit == True:
-                lc = clip_transit(case, lc, transit_start, transit_end)
+                lc = remove_transit_signal(case, lc, transit_start, transit_end)
             else:
                 if case == 2 or case == 3 or case == 4 or case == 5:
                     contain_transit = 1
-                    return contain_transit
+                    transit_time_list.append(transit_time)
+                else:
+                    pass
 
-    return lc, contain_transit
+    return lc, contain_transit, transit_time_list
 
 
 def judge_transit_contain(lc, transit_start, transit_end):
     if transit_end < lc.time[0].value:
         case = 1
-    elif transit_start < lc.time[0].value and lc.time[0].value < transit_end:
+    elif transit_start < lc.time[0].value and lc.time[0].value < transit_end and transit_end < lc.time[-1].value:
         case = 2
     elif transit_start < lc.time[0].value and lc.time[-1].value < transit_end:
         case = 3
-    elif lc.time[0].value < transit_start and transit_end < lc.time[-1].value:
+    elif lc.time[0].value < transit_start and transit_start < lc.time[-1].value and lc.time[0].value < transit_end and transit_end < lc.time[-1].value:
         case = 4
-    elif lc.time[0].value < transit_start and lc.time[-1].value < transit_end:
+    elif lc.time[0].value < transit_start and transit_start < lc.time[-1].value and lc.time[-1].value < transit_end:
         case = 5
     elif lc.time[-1].value < transit_start:
         case = 6
-
+    print('case:', case)
     return case
 
 
-def clip_transit(case, lc, transit_start, transit_end):
+def remove_transit_signal(case, lc, transit_start, transit_end):
     if case == 1:
         pass
     elif case == 2:
@@ -224,14 +231,14 @@ def clip_transit(case, lc, transit_start, transit_end):
     return lc
 
 
-def preprocess_each_lc(lc, duration, period, transit_time):
+def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TOInumber):
     #planet_b_model = bls.get_transit_model(period=period, transit_time=transit_time, duration=duration)
     '''
     try:
         n_transit = int((lc.time[-1].value - transit_time) // period)
     except ValueError:
         print('value error')
-        '''
+
     aaa = transit_time
     transit_time_list = []
     if transit_time < np.median(lc['time'].value):
@@ -242,10 +249,12 @@ def preprocess_each_lc(lc, duration, period, transit_time):
         while aaa > lc.time[0].value:
             transit_time_list.append(aaa)
             aaa = aaa - period
+    '''
     transit_time_list = np.array(transit_time_list)
-    transit_time_list = transit_time_list[(transit_time_list > lc.time[0].value) & (transit_time_list < lc.time[-1].value)]
+    #transit_time_list = transit_time_list[(transit_time_list > lc.time[0].value) & (transit_time_list < lc.time[-1].value)]
     n_transit = len(transit_time_list)
-    transit_row_list = make_rowlist(n_transit, lc, transit_time, period)
+    print('n_transit: ', n_transit)
+    transit_row_list = make_rowlist(n_transit, lc, transit_time, transit_time_list)
     #minId = signal.argrelmin(lc.flux.value, order=3000)
     half_duration = (duration/2)*24*60
     twice_duration = (duration*2)*24*60 #durationを2倍、単位をday→mi
@@ -261,8 +270,8 @@ def preprocess_each_lc(lc, duration, period, transit_time):
         if end > len(lc):
             end = len(lc)
         #each_lc = lc[start:end].normalize()
+
         each_lc = lc[start:end]
-        print('before clip length: ', len(each_lc.flux))
 
         ###params setting
         noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
@@ -284,16 +293,17 @@ def preprocess_each_lc(lc, duration, period, transit_time):
             inverse_mask = np.logical_not(mask)
             if np.all(inverse_mask) == True:
                 print('after clip length: ', len(each_lc.flux))
-                each_lc.normalize().errorbar()
-                plt.plot(each_lc.time.value, flux_model, label='fit_model')
+                clip_lc.errorbar()
+                plt.plot(clip_lc.time.value, flux_model, label='fit_model')
                 plt.legend()
-                plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
+                plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/outlier/{TOInumber}_{str(i)}_{datetime.datetime.now().strftime("%y%m%d")}_{chi_square:.3f}.png', header=False, index=False)
                 #plt.show()
                 plt.close()
                 break
             else:
                 print('cliped:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
-                each_lc = each_lc[~mask]
+                clip_lc = clip_lc[~mask]
+
 
         ###curve fiting
 
@@ -304,11 +314,42 @@ def preprocess_each_lc(lc, duration, period, transit_time):
         out_transit = out_transit.reset_index()
         out_transit = Table.from_pandas(out_transit)
         out_transit = lk.LightCurve(data=out_transit)
+        """
+        each_lc_pre = lc[:start]
+        each_lc_mid = lc[start:end]
+        each_lc_post = lc[end:]
+        print('before clip length: ', len(each_lc.flux))
+        for each_lc in [each_lc_pre, each_lc_post]:
+            clip_lc = each_lc.normalize().copy()
+            _, mask = clip_lc.remove_outliers(return_mask=True)
+            inverse_mask = np.logical_not(mask)
+            """
+
+        ###remove outliers
+        """
+        while True:
+            clip_lc = out_transit.normalize().copy()
+            _, mask = out_transit.remove_outliers(return_mask=True)
+            inverse_mask = np.logical_not(mask)
+            if np.all(inverse_mask) == True:
+                print('after clip length: ', len(each_lc.flux))
+                each_lc.normalize().errorbar()
+                plt.errorbar(out_transit.time.value, out_transit.flux.value, yerr=out_transit.flux_err.value, label='fit_model')
+                plt.legend()
+                plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/each_lc/{TOInumber}_{datetime.datetime.now().strftime("%y%m%d")}_{str(i)}.png', header=False, index=False)
+                #plt.show()
+                plt.close()
+                break
+            else:
+                print('cliped:', len(out_transit.flux.value)-len(out_transit[~mask].flux.value))
+                out_transit = out_transit[~mask]
+                """
+
         model = lmfit.models.PolynomialModel()
         poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
         result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
         result.plot()
-        plt.savefig('./folded_dfs/curvefit_figure/{}.png'.format('TOI' + str(item['TESS Object of Interest'])))
+        plt.savefig(f'./folded_dfs/curvefit_figure/{TOInumber}.png')
         #plt.show()
         plt.close()
         poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
@@ -323,6 +364,22 @@ def preprocess_each_lc(lc, duration, period, transit_time):
         #normalization
         each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
         each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
+        while True:
+            clip_lc = each_lc.normalize().copy()
+            _, mask = each_lc.remove_outliers(return_mask=True)
+            inverse_mask = np.logical_not(mask)
+            if np.all(inverse_mask) == True:
+                print('after clip length: ', len(each_lc.flux))
+                each_lc.normalize().errorbar()
+                plt.errorbar(each_lc.time.value, each_lc.flux.value, yerr=each_lc.flux_err.value, label='fit_model')
+                plt.legend()
+                plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}.png'.format(datetime.datetime.now().strftime('%y%m%d')), header=False, index=False)
+                #plt.show()
+                plt.close()
+                break
+            else:
+                print('cliped:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
+                each_lc = each_lc[~mask]
         each_lc_df = each_lc.to_pandas()
         lc_list.append(each_lc_df)
     return lc_list
@@ -341,15 +398,15 @@ def getNearestRow(list, num):
     idx = np.abs(np.asarray(list) - num).argmin()
     return idx
 
-def make_rowlist(n_transit, lc, transit_time, period):
+def make_rowlist(n_transit, lc, transit_time, transit_time_list):
     list = []
     if n_transit == 0:
         mid_transit_row = getNearestRow(lc.time.value, transit_time)
         list.append(mid_transit_row)
         return list
     else:
-        for n in range(n_transit):
-            target_val = transit_time + (period * n)
+        for val in transit_time_list:
+            target_val = val
             mid_transit_row = getNearestRow(lc.time.value, target_val)
             list.append(mid_transit_row)
         return list
@@ -374,36 +431,43 @@ for TIC in TIClist:
         continue
 
     for index, item in param_df.iterrows():
-        import pdb; pdb.set_trace()
         duration = item['Planet Transit Duration Value [hours]'] / 24
         period = item['Planet Orbital Period Value [days]']
         transit_time = item['Planet Transit Midpoint Value [BJD]'] - 2457000.0 #translate BTJD
+        TOInumber = 'TOI' + str(item["TESS Object of Interest"])
+        print('analysing: ', TOInumber)
+
+        print('judge whether transit in data...')
+        time.sleep(1)
         #ターゲットの惑星の信号がデータに影響を与えているか判断
-        _, contain_transit = clip_transit_hoge(lc, duration, period, transit_time, clip_transit=False)
+        _, contain_transit, transit_time_list = clip_transit_hoge(lc, duration, period, transit_time, clip_transit=False)
 
         #ターゲットの惑星の信号がデータに影響を与えていないなら処理を中断する
         if contain_transit == 1:
             pass
         else:
-            print(f'no transit in data: TOI {item['TESS Object of Interest']}.')
+            print('no transit in data: ', TOInumber)
             continue
 
         #他の惑星がある場合、データに影響を与えているか判断。ならその信号を除去する。
+        print('remove others planet transit in data...')
+        time.sleep(1)
         if len(param_df.index) != 1:
             others_duration = param_df[param_df.index!=index]['Planet Transit Duration Value [hours]'].values / 24
             others_period = param_df[param_df.index!=index]['Planet Orbital Period Value [days]'].values
             others_transit_time = param_df[param_df.index!=index]['Planet Transit Midpoint Value [BJD]'].values - 2457000.0 #translate BTJD
 
             for others_duration, others_period, others_transit_time in zip(others_duration, others_period, others_transit_time):
-                lc, _ = clip_transit_hoge(lc, others_duration, others_period, others_transit_time, clip_transit=True)
+                lc, _, _ = clip_transit_hoge(lc, others_duration, others_period, others_transit_time, clip_transit=True)
 
         #トランジットがデータに何個あるか判断しその周りのライトカーブデータを作成、カーブフィッティングでノーマライズ
-        lc_list = preprocess_each_lc(lc, duration, period, transit_time)
+        print('preprocess...')
+        time.sleep(1)
+        lc_list = preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TOInumber)
         try:
-            print('TOI' + str(item['TESS Object of Interest']))
-            import pdb; pdb.set_trace()
+            print('folding...')
+            time.sleep(1)
             folded_lc = folding_each_lc(lc_list, period, transit_time)
-            import pdb; pdb.set_trace()
         except ValueError:
             print('no transit!')
             continue
@@ -412,6 +476,7 @@ for TIC in TIClist:
         #plt.show()
         plt.close()
         folded_lc.write('./folded_dfs/folded_lc_{}.csv'.format('TOI' + str(item['TESS Object of Interest'])))
+        import pdb; pdb.set_trace()
 
     """
     lc_list = preprocess_each_lc(lc, duration, period, transit_time)

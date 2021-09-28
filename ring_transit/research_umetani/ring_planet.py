@@ -403,15 +403,23 @@ plt.close()
 out_pdict = out.params.valuesdict()
 #import pdb; pdb.set_trace()
 
+
 ###mcmc setting###
+for n in range(5):
 mcmc_df = params_df[params_df['vary_flags']==True]
 mcmc_params = mcmc_df.index.to_list()
 for i, param in enumerate(mcmc_params):
     mcmc_df.iloc[i, 0] = out_pdict[param]
 mcmc_pvalues = mcmc_df['values'].values
 #vary_dic = make_dic(names, vary_flags)
+###generate initial value for theta, phi
+mcmc_df.at['theta', 'values'] = np.random.uniform(low=mcmc_df.at['theta', 'mins'], high=mcmc_df.at['theta', 'maxes'])
+mcmc_df.at['phi', 'values'] = np.random.uniform(low=mcmc_df.at['phi', 'mins'], high=mcmc_df.at['phi', 'maxes'])
 print('mcmc_params: ', mcmc_params)
 print('mcmc_pvalues: ', mcmc_pvalues)
+
+
+import pdb; pdb.set_trace()
 pos = mcmc_pvalues + 1e-5 * np.random.randn(32, len(mcmc_pvalues))
 #pos = np.array([rp_rs, theta, phi, r_in, r_out]) + 1e-8 * np.random.randn(32, 5)
 nwalkers, ndim = pos.shape
