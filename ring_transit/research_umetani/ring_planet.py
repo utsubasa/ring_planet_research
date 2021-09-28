@@ -434,7 +434,7 @@ for try_n in range(5):
     ###mcmc run###
     #sampler.run_mcmc(pos, max_n, progress=True)
     if __name__ ==  '__main__':
-        with Pool() as pool:
+        with Pool(processes=4) as pool:
             sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data.mean(), mcmc_params), pool=pool)
             #pos = sampler.run_mcmc(pos, max_n)
             #sampler.reset()
