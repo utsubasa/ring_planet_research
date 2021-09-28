@@ -405,292 +405,284 @@ out_pdict = out.params.valuesdict()
 
 
 ###mcmc setting###
-for n in range(5):
-mcmc_df = params_df[params_df['vary_flags']==True]
-mcmc_params = mcmc_df.index.to_list()
-for i, param in enumerate(mcmc_params):
-    mcmc_df.iloc[i, 0] = out_pdict[param]
-mcmc_pvalues = mcmc_df['values'].values
-#vary_dic = make_dic(names, vary_flags)
-###generate initial value for theta, phi
-mcmc_df.at['theta', 'values'] = np.random.uniform(low=mcmc_df.at['theta', 'mins'], high=mcmc_df.at['theta', 'maxes'])
-mcmc_df.at['phi', 'values'] = np.random.uniform(low=mcmc_df.at['phi', 'mins'], high=mcmc_df.at['phi', 'maxes'])
-print('mcmc_params: ', mcmc_params)
-print('mcmc_pvalues: ', mcmc_pvalues)
+for try_n in range(5):
+    mcmc_df = params_df[params_df['vary_flags']==True]
+    mcmc_params = mcmc_df.index.to_list()
+    for i, param in enumerate(mcmc_params):
+        mcmc_df.iloc[i, 0] = out_pdict[param]
+    mcmc_pvalues = mcmc_df['values'].values
+    #vary_dic = make_dic(names, vary_flags)
+    ###generate initial value for theta, phi
+    mcmc_df.at['theta', 'values'] = np.random.uniform(low=mcmc_df.at['theta', 'mins'], high=mcmc_df.at['theta', 'maxes'])
+    mcmc_df.at['phi', 'values'] = np.random.uniform(low=mcmc_df.at['phi', 'mins'], high=mcmc_df.at['phi', 'maxes'])
+    print('mcmc_params: ', mcmc_params)
+    print('mcmc_pvalues: ', mcmc_pvalues)
+    pos = mcmc_pvalues + 1e-5 * np.random.randn(32, len(mcmc_pvalues))
+    #pos = np.array([rp_rs, theta, phi, r_in, r_out]) + 1e-8 * np.random.randn(32, 5)
+    nwalkers, ndim = pos.shape
+    #filename = "emcee_{0}.h5".format(datetime.datetime.now().strftime('%y%m%d%H%M'))
+    #backend = emcee.backends.HDFBackend(filename)
+    #backend.reset(nwalkers, ndim)
+    max_n = 5000
+    index = 0
+    autocorr = np.empty(max_n)
+    old_tau = np.inf
+    #sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), pool=pool)
+
+    #sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), backend=backend)
+
+    ###mcmc run###
+    #sampler.run_mcmc(pos, max_n, progress=True)
+    if __name__ ==  '__main__':
+        with Pool() as pool:
+            sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data.mean(), mcmc_params), pool=pool)
+            #pos = sampler.run_mcmc(pos, max_n)
+            #sampler.reset()
+            for sample in sampler.sample(pos, iterations=max_n, progress=True):
+                # Only check convergence every 100 steps
+                if sampler.iteration % 100:
+                    continue
+
+                # Compute the autocorrelation time so far
+                # Using tol=0 means that we'll always get an estimate even
+                # if it isn't trustworthy
+                tau = sampler.get_autocorr_time(tol=0)
+                autocorr[index] = np.mean(tau)
+                index += 1
+
+                # Check convergence
+                converged = np.all(tau * 100 < sampler.iteration)
+                converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
+                if converged:
+                    break
+                old_tau = tau
 
 
-import pdb; pdb.set_trace()
-pos = mcmc_pvalues + 1e-5 * np.random.randn(32, len(mcmc_pvalues))
-#pos = np.array([rp_rs, theta, phi, r_in, r_out]) + 1e-8 * np.random.randn(32, 5)
-nwalkers, ndim = pos.shape
+        ###the autocorrelation time###
+        n = 100 * np.arange(1, index + 1)
+        y = autocorr[:index]
+        plt.plot(n, n / 100.0, "--k")
+        plt.plot(n, y)
+        plt.xlim(0, n.max())
+        plt.ylim(0, y.max() + 0.1 * (y.max() - y.min()))
+        plt.xlabel("number of steps")
+        plt.ylabel(r"mean $\hat{\tau}$")
+        plt.savefig(f'tau_{try_n}.png')
+        plt.close()
+        print(tau)
 
 
-#filename = "emcee_{0}.h5".format(datetime.datetime.now().strftime('%y%m%d%H%M'))
-#backend = emcee.backends.HDFBackend(filename)
-#backend.reset(nwalkers, ndim)
+        ###step visualization###
+        fig, axes = plt.subplots(ndim, figsize=(10, 7), sharex=True)
+        samples = sampler.get_chain()
+        #labels = ['rp_rs', 'theta', 'phi', 'r_in', 'r_out']
+        #labels = ['theta', 'phi']
+        labels = mcmc_params
+        for i in range(ndim):
+            ax = axes[i]
+            ax.plot(samples[:, :, i], "k", alpha=0.3)
+            ax.set_xlim(0, len(samples))
+            ax.set_ylabel(labels[i])
+            ax.yaxis.set_label_coords(-0.1, 0.5)
+        axes[-1].set_xlabel("step number");
+        plt.savefig(f'step_{try_n}.png')
+        plt.close()
+        #plt.show()
+
+        ###corner visualization###
+        samples = sampler.flatchain
+        flat_samples = sampler.get_chain(discard=1000, thin=15, flat=True)
+        print(flat_samples.shape)
+        """
+        truths = []
+        for param in labels:
+            truths.append(pdic_saturnlike[param])
+        fig = corner.corner(flat_samples, labels=labels, truths=truths);
+        """
+        fig = corner.corner(flat_samples, labels=labels);
+        plt.savefig(f'corner_{try_n}.png')
+        plt.close()
+
+        """
+        tau = sampler.get_autocorr_time()
+        burnin = int(2 * np.max(tau))
+        thin = int(0.5 * np.min(tau))
+        samples = sampler.get_chain(discard=burnin, flat=True, thin=thin)
+
+        print("burn-in: {0}".format(burnin))
+        print("thin: {0}".format(thin))
+        print("flat chain shape: {0}".format(samples.shape))
+        """
 
 
-max_n = 5000
-index = 0
-autocorr = np.empty(max_n)
-old_tau = np.inf
-#sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), pool=pool)
-
-#sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), backend=backend)
-
-###mcmc run###
-#sampler.run_mcmc(pos, max_n, progress=True)
-#import pdb; pdb.set_trace()
-if __name__ ==  '__main__':
-    with Pool() as pool:
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data.mean(), mcmc_params), pool=pool)
-        #pos = sampler.run_mcmc(pos, max_n)
-        #sampler.reset()
-        for sample in sampler.sample(pos, iterations=max_n, progress=True):
-            # Only check convergence every 100 steps
-            if sampler.iteration % 100:
-                continue
-
-            # Compute the autocorrelation time so far
-            # Using tol=0 means that we'll always get an estimate even
-            # if it isn't trustworthy
-            tau = sampler.get_autocorr_time(tol=0)
-            autocorr[index] = np.mean(tau)
-            index += 1
-
-            # Check convergence
-            converged = np.all(tau * 100 < sampler.iteration)
-            converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
-            if converged:
-                break
-            old_tau = tau
+        samples = sampler.flatchain
+        flat_samples = sampler.get_chain(discard=1000, thin=15, flat=True)
+        print(flat_samples.shape)
+        inds = np.random.randint(len(flat_samples), size=100)
+        for ind in inds:
+            sample = flat_samples[ind]
+            plt.plot(t, ring_model(t, pdic, sample), "C1", alpha=0.1)
+        plt.errorbar(t, flux_data, yerr=flux_err_data, fmt=".k", capsize=0)
+        #plt.plot(t, ymodel, "k", label="truth")
+        plt.legend(fontsize=14)
+        #plt.xlim(0, 10)
+        plt.xlabel("t")
+        plt.ylabel("flux");
+        plt.savefig(f"mcmc_result_{try_n}.png")
 
 
-    ###the autocorrelation time###
-    n = 100 * np.arange(1, index + 1)
-    y = autocorr[:index]
-    plt.plot(n, n / 100.0, "--k")
-    plt.plot(n, y)
-    plt.xlim(0, n.max())
-    plt.ylim(0, y.max() + 0.1 * (y.max() - y.min()))
-    plt.xlabel("number of steps")
-    plt.ylabel(r"mean $\hat{\tau}$")
-    plt.savefig('tau.png')
-    plt.close()
-    print(tau)
+        #import pdb; pdb.set_trace()
+        #flux_model = no_ring_model_transitfit_from_lmparams(out.params, t, noringnames)
+        #flux_model = ring_model_transitfit_from_lmparams(out.params, t)
+        #plt.errorbar(time, flux_data,flux_err_data, label='data', fmt='.k', linestyle=None)
+        #folded_lc.errorbar()
+        #plt.plot(t, flux_model, label='fit_model')
+        #plt.plot(t, ymodel, label='model')
+        #plt.legend()
+        #plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
+        #plt.show()
+
+        ###csvに書き出し###
+        #input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
+        input_df = pd.DataFrame.from_dict(saturnlike_params.valuesdict(), orient="index",columns=["input_value"])
+        output_df = pd.DataFrame.from_dict(out.params.valuesdict(), orient="index",columns=["output_value"])
+        input_df=input_df.applymap(lambda x: '{:.6f}'.format(x))
+        output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
+        #df = input_df.join((output_df, pd.Series(vary_flags, index=noringnames, name='vary_flags')))
+        df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
+        #df.to_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/fitting_result_{}_{:.0f}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=True, index=False)
+        df.to_csv(f'./fitting_result_{datetime.datetime.now().strftime('%y%m%d')}_{chi_square:.0f}_{try_n}.csv', header=True, index=False)
+        fit_report = lmfit.fit_report(out)
+        print(fit_report)
 
 
-    ###step visualization###
-    fig, axes = plt.subplots(ndim, figsize=(10, 7), sharex=True)
-    samples = sampler.get_chain()
-    #labels = ['rp_rs', 'theta', 'phi', 'r_in', 'r_out']
-    #labels = ['theta', 'phi']
-    labels = mcmc_params
-    for i in range(ndim):
-        ax = axes[i]
-        ax.plot(samples[:, :, i], "k", alpha=0.3)
-        ax.set_xlim(0, len(samples))
-        ax.set_ylabel(labels[i])
-        ax.yaxis.set_label_coords(-0.1, 0.5)
-    axes[-1].set_xlabel("step number");
-    plt.savefig('step.png')
-    plt.close()
-    #plt.show()
+        #import pdb; pdb.set_trace()
 
-    ###corner visualization###
-    samples = sampler.flatchain
-    flat_samples = sampler.get_chain(discard=1000, thin=15, flat=True)
-    print(flat_samples.shape)
-    """
-    truths = []
-    for param in labels:
-        truths.append(pdic_saturnlike[param])
-    fig = corner.corner(flat_samples, labels=labels, truths=truths);
-    """
-    fig = corner.corner(flat_samples, labels=labels);
-    plt.savefig('corner.png')
-    plt.close()
+        '''for TESS data
+        #使う行のみ抽出
+        df=pd.read_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/toi-catalog.csv', encoding='shift_jis')
+        df.columns=df.iloc[3].values
+        df=df[4:]
+        #カラムを入れ替える。
+        df=df[['Signal-to-noise', 'Source Pipeline', 'TIC', 'Full TOI ID', 'TOI Disposition',
+               'TIC Right Ascension', 'TIC Declination', 'TMag Value',
+               'TMag Uncertainty', 'Epoch Value', 'Epoch Error',
+               'Orbital Period Value', 'Orbital Period Error',
+               'Transit Duration Value', 'Transit Duration Error',
+               'Transit Depth Value', 'Transit Depth Error', 'Sectors',
+               'Public Comment', 'Surface Gravity Value',
+               'Surface Gravity Uncertainty', 'Signal ID', 'Star Radius Value',
+               'Star Radius Error', 'Planet Radius Value', 'Planet Radius Error',
+               'Planet Equilibrium Temperature (K) Value',
+               'Effective Temperature Value', 'Effective Temperature Uncertainty',
+               'Effective Stellar Flux Value', 'Centroid Offset',
+               'TFOP Master', 'TFOP SG1a', 'TFOP SG1b', 'TFOP SG2', 'TFOP SG3',
+               'TFOP SG4', 'TFOP SG5', 'Alerted', 'Updated']]
+        df['Signal-to-noise'] = df['Signal-to-noise'].fillna(0)
+        df['Signal-to-noise'] = df['Signal-to-noise'].astype(float)
+        df = df.sort_values('Signal-to-noise', ascending=False)
+        df
+        #SN比 ≧ 100のデータを抽出。
+        df2 = df[df['Signal-to-noise'] >= 100]
+        df2 = df2.reset_index()
+        #df2 = df2.drop(columns='index')
+        df2.head()
+        import pdb; pdb.set_trace()
+        TIClist = df2['TIC'].apply(lambda x:int(x))
+        for TIC in TIClist:
+            tpf = lk.search_targetpixelfile('TIC {}'.format(TIC), mission='TESS', cadence="short").download()
+            #tpf.plot(frame=100, scale='log', show_colorbar=True)
+            lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
+            lc.plot()
+            plt.show()
+            import pdb; pdb.set_trace()
 
-    """
-    tau = sampler.get_autocorr_time()
-    burnin = int(2 * np.max(tau))
-    thin = int(0.5 * np.min(tau))
-    samples = sampler.get_chain(discard=burnin, flat=True, thin=thin)
+        #get transit paramter from TESS database
+        period=2.20473541
+        transit_time=121.3585417
+        duration=0.162026
 
-    print("burn-in: {0}".format(burnin))
-    print("thin: {0}".format(thin))
-    print("flat chain shape: {0}".format(samples.shape))
-    """
-
-
-    samples = sampler.flatchain
-    flat_samples = sampler.get_chain(discard=1000, thin=15, flat=True)
-    print(flat_samples.shape)
-    inds = np.random.randint(len(flat_samples), size=100)
-    for ind in inds:
-        sample = flat_samples[ind]
-        plt.plot(t, ring_model(t, pdic, sample), "C1", alpha=0.1)
-    plt.errorbar(t, flux_data, yerr=flux_err_data, fmt=".k", capsize=0)
-    #plt.plot(t, ymodel, "k", label="truth")
-    plt.legend(fontsize=14)
-    #plt.xlim(0, 10)
-    plt.xlabel("t")
-    plt.ylabel("flux");
-    plt.savefig("mcmc_result.png")
-
-
-    #import pdb; pdb.set_trace()
-    #flux_model = no_ring_model_transitfit_from_lmparams(out.params, t, noringnames)
-    #flux_model = ring_model_transitfit_from_lmparams(out.params, t)
-    #plt.errorbar(time, flux_data,flux_err_data, label='data', fmt='.k', linestyle=None)
-    #folded_lc.errorbar()
-    #plt.plot(t, flux_model, label='fit_model')
-    #plt.plot(t, ymodel, label='model')
-    #plt.legend()
-    #plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
-    #plt.show()
-
-    ###csvに書き出し###
-    #input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
-    input_df = pd.DataFrame.from_dict(saturnlike_params.valuesdict(), orient="index",columns=["input_value"])
-    output_df = pd.DataFrame.from_dict(out.params.valuesdict(), orient="index",columns=["output_value"])
-    input_df=input_df.applymap(lambda x: '{:.6f}'.format(x))
-    output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
-    #df = input_df.join((output_df, pd.Series(vary_flags, index=noringnames, name='vary_flags')))
-    df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
-    #df.to_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/fitting_result_{}_{:.0f}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=True, index=False)
-    df.to_csv('./fitting_result_{}_{:.0f}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=True, index=False)
-    fit_report = lmfit.fit_report(out)
-    print(fit_report)
-
-
-    #import pdb; pdb.set_trace()
-
-    '''for TESS data
-    #使う行のみ抽出
-    df=pd.read_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/toi-catalog.csv', encoding='shift_jis')
-    df.columns=df.iloc[3].values
-    df=df[4:]
-    #カラムを入れ替える。
-    df=df[['Signal-to-noise', 'Source Pipeline', 'TIC', 'Full TOI ID', 'TOI Disposition',
-           'TIC Right Ascension', 'TIC Declination', 'TMag Value',
-           'TMag Uncertainty', 'Epoch Value', 'Epoch Error',
-           'Orbital Period Value', 'Orbital Period Error',
-           'Transit Duration Value', 'Transit Duration Error',
-           'Transit Depth Value', 'Transit Depth Error', 'Sectors',
-           'Public Comment', 'Surface Gravity Value',
-           'Surface Gravity Uncertainty', 'Signal ID', 'Star Radius Value',
-           'Star Radius Error', 'Planet Radius Value', 'Planet Radius Error',
-           'Planet Equilibrium Temperature (K) Value',
-           'Effective Temperature Value', 'Effective Temperature Uncertainty',
-           'Effective Stellar Flux Value', 'Centroid Offset',
-           'TFOP Master', 'TFOP SG1a', 'TFOP SG1b', 'TFOP SG2', 'TFOP SG3',
-           'TFOP SG4', 'TFOP SG5', 'Alerted', 'Updated']]
-    df['Signal-to-noise'] = df['Signal-to-noise'].fillna(0)
-    df['Signal-to-noise'] = df['Signal-to-noise'].astype(float)
-    df = df.sort_values('Signal-to-noise', ascending=False)
-    df
-    #SN比 ≧ 100のデータを抽出。
-    df2 = df[df['Signal-to-noise'] >= 100]
-    df2 = df2.reset_index()
-    #df2 = df2.drop(columns='index')
-    df2.head()
-    import pdb; pdb.set_trace()
-    TIClist = df2['TIC'].apply(lambda x:int(x))
-    for TIC in TIClist:
-        tpf = lk.search_targetpixelfile('TIC {}'.format(TIC), mission='TESS', cadence="short").download()
-        #tpf.plot(frame=100, scale='log', show_colorbar=True)
-        lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
-        lc.plot()
+        lc_list = preprocess_each_lc(lc, duration, period, transit_time)
+        folded_lc = folding_each_lc(lc_list)
+        folded_lc.errorbar()
+        plt.show()
+        #すべてのlightcurveの可視化
+        lc_collection = search_result.download_all()
+        lc_collection.plot();
         plt.show()
         import pdb; pdb.set_trace()
 
-    #get transit paramter from TESS database
-    period=2.20473541
-    transit_time=121.3585417
-    duration=0.162026
+        #tpf.plot(frame=100, scale='log', show_colorbar=True)
+        lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
+        #lc.plot()
+        period = np.linspace(1, 3, 10000)
+        bls = lc.to_periodogram(method='bls', period=period, frequency_factor=500);
 
-    lc_list = preprocess_each_lc(lc, duration, period, transit_time)
-    folded_lc = folding_each_lc(lc_list)
-    folded_lc.errorbar()
-    plt.show()
-    #すべてのlightcurveの可視化
-    lc_collection = search_result.download_all()
-    lc_collection.plot();
-    plt.show()
-    import pdb; pdb.set_trace()
+        period=2.20473541
+        transit_time=121.3585417
+        duration=0.162026
 
-    #tpf.plot(frame=100, scale='log', show_colorbar=True)
-    lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
-    #lc.plot()
-    period = np.linspace(1, 3, 10000)
-    bls = lc.to_periodogram(method='bls', period=period, frequency_factor=500);
-
-    period=2.20473541
-    transit_time=121.3585417
-    duration=0.162026
-
-    lc_list = preprocess_each_lc(lc, duration, period, transit_time)
-    folded_lc = folding_each_lc(lc_list)
-    folded_lc.errorbar()
-    #plt.show()
-    plt.close()
-    # foldingを任せた場合 すべての観測を平坦化しノーマライズする。これは"a stitched light curve"で表される。詳しくは Kepler data with Lightkurve.
-    #lc = lc_collection.stitch().flatten(window_length=901).remove_outliers()
-    #lc.plot();
-    #lc = lc_collection.stitch().flatten(window_length=901).remove_outliers()
-    ### foldingを自分でやる場合
-    lc_single = search_result[3].download()
-    #lc_single.plot();
-    lc = lc_single.flatten(window_length=901).remove_outliers()
-    #lc.plot();
-    ### orbital periodをBLSで探す
-    # Create array of periods to search
-    period = np.linspace(1, 30, 10000)
-    # Create a BLSPeriodogram
-    bls = lc.to_periodogram(method='bls', period=period, frequency_factor=500);
-    #bls.plot();
-    planet_b_period = bls.period_at_max_power
-    planet_b_t0 = bls.transit_time_at_max_power
-    planet_b_dur = bls.duration_at_max_power
-    # Check the value for period
-    print('planet_b_period: ', planet_b_period)
-    print('planet_b_t0: ', planet_b_t0)
-    print('planet_b_dur: ', planet_b_dur)
-    ### カタログのorbital periodを使う
-    df2[df2['TIC']=='142087638']
-    #planet_b_period = float(df2[df2['TIC']=='142087638']['Orbital Period Value'].values[0])
-    #planet_b_t0 = float(df2[df2['TIC']=='142087638']['Epoch Value'].values[0])
-    #planet_b_dur = float(df2[df2['TIC']=='142087638']['Transit Duration Value'].values[0])
-    # Check the value for period
-    print('planet_b_period: ', planet_b_period)
-    print('planet_b_t0: ', planet_b_t0)
-    print('planet_b_dur: ', planet_b_dur)
-    ### folding
-    ax = lc.fold(period=planet_b_period, epoch_time=planet_b_t0).scatter()
-    #ax.set_xlim(-5, 5);
-    ax = lc.fold(period=planet_b_period, epoch_time=planet_b_t0).scatter()
-    #ax.set_xlim(-0.5, 0.5);
-    # Create a cadence mask using the BLS parameters
-    planet_b_mask = bls.get_transit_mask(period=planet_b_period,
-                                         transit_time=planet_b_t0,
-                                         duration=planet_b_dur)
-    masked_lc = lc[~planet_b_mask]
-    #ax = masked_lc.scatter();
-    #lc[planet_b_mask].scatter(ax=ax, c='r', label='Masked');
-    # Create a BLS model using the BLS parameters
-    planet_b_model = bls.get_transit_model(period=planet_b_period,
-                                           transit_time=planet_b_t0,
-                                           duration=planet_b_dur)
-    ax = lc.fold(planet_b_period, planet_b_t0).scatter()
-    planet_b_model.fold(planet_b_period, planet_b_t0).plot(ax=ax, c='r', lw=2)
-    #ax.set_xlim(-0.5, 0.5);
-    #ax.set_xlim(-5, 5);
-    #plt.show()
-    plt.cla()
-    plt.clf()
-    # read the data file (xdata, ydata, yerr)
-    xdata = lc.fold(planet_b_period, planet_b_t0).phase.value
-    ydata = lc.fold(planet_b_period, planet_b_t0).flux.value
-    yerr  = lc.fold(planet_b_period, planet_b_t0).flux_err.value
-    '''
+        lc_list = preprocess_each_lc(lc, duration, period, transit_time)
+        folded_lc = folding_each_lc(lc_list)
+        folded_lc.errorbar()
+        #plt.show()
+        plt.close()
+        # foldingを任せた場合 すべての観測を平坦化しノーマライズする。これは"a stitched light curve"で表される。詳しくは Kepler data with Lightkurve.
+        #lc = lc_collection.stitch().flatten(window_length=901).remove_outliers()
+        #lc.plot();
+        #lc = lc_collection.stitch().flatten(window_length=901).remove_outliers()
+        ### foldingを自分でやる場合
+        lc_single = search_result[3].download()
+        #lc_single.plot();
+        lc = lc_single.flatten(window_length=901).remove_outliers()
+        #lc.plot();
+        ### orbital periodをBLSで探す
+        # Create array of periods to search
+        period = np.linspace(1, 30, 10000)
+        # Create a BLSPeriodogram
+        bls = lc.to_periodogram(method='bls', period=period, frequency_factor=500);
+        #bls.plot();
+        planet_b_period = bls.period_at_max_power
+        planet_b_t0 = bls.transit_time_at_max_power
+        planet_b_dur = bls.duration_at_max_power
+        # Check the value for period
+        print('planet_b_period: ', planet_b_period)
+        print('planet_b_t0: ', planet_b_t0)
+        print('planet_b_dur: ', planet_b_dur)
+        ### カタログのorbital periodを使う
+        df2[df2['TIC']=='142087638']
+        #planet_b_period = float(df2[df2['TIC']=='142087638']['Orbital Period Value'].values[0])
+        #planet_b_t0 = float(df2[df2['TIC']=='142087638']['Epoch Value'].values[0])
+        #planet_b_dur = float(df2[df2['TIC']=='142087638']['Transit Duration Value'].values[0])
+        # Check the value for period
+        print('planet_b_period: ', planet_b_period)
+        print('planet_b_t0: ', planet_b_t0)
+        print('planet_b_dur: ', planet_b_dur)
+        ### folding
+        ax = lc.fold(period=planet_b_period, epoch_time=planet_b_t0).scatter()
+        #ax.set_xlim(-5, 5);
+        ax = lc.fold(period=planet_b_period, epoch_time=planet_b_t0).scatter()
+        #ax.set_xlim(-0.5, 0.5);
+        # Create a cadence mask using the BLS parameters
+        planet_b_mask = bls.get_transit_mask(period=planet_b_period,
+                                             transit_time=planet_b_t0,
+                                             duration=planet_b_dur)
+        masked_lc = lc[~planet_b_mask]
+        #ax = masked_lc.scatter();
+        #lc[planet_b_mask].scatter(ax=ax, c='r', label='Masked');
+        # Create a BLS model using the BLS parameters
+        planet_b_model = bls.get_transit_model(period=planet_b_period,
+                                               transit_time=planet_b_t0,
+                                               duration=planet_b_dur)
+        ax = lc.fold(planet_b_period, planet_b_t0).scatter()
+        planet_b_model.fold(planet_b_period, planet_b_t0).plot(ax=ax, c='r', lw=2)
+        #ax.set_xlim(-0.5, 0.5);
+        #ax.set_xlim(-5, 5);
+        #plt.show()
+        plt.cla()
+        plt.clf()
+        # read the data file (xdata, ydata, yerr)
+        xdata = lc.fold(planet_b_period, planet_b_t0).phase.value
+        ydata = lc.fold(planet_b_period, planet_b_t0).flux.value
+        yerr  = lc.fold(planet_b_period, planet_b_t0).flux_err.value
+        '''
