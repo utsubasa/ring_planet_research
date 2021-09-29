@@ -269,11 +269,38 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
         end = int(transit + lc_cut_point)
         if end > len(lc):
             end = len(lc)
-        #each_lc = lc[start:end].normalize()
+        #each_lc = lc[start:end]
+        each_lc_pre = lc[:start]
+        each_lc_mid = lc[start:end]
+        each_lc_post = lc[end:]
+        print('before clip length: ', len(each_lc.flux))
+        for each_lc in [each_lc_pre, each_lc_post]:
+            clip_lc = each_lc.normalize().copy()
 
-        each_lc = lc[start:end]
+            _, mask = clip_lc.remove_outliers(return_mask=True)
+            inverse_mask = np.logical_not(mask)
+        ###remove outliers
+        while True:
+            clip_lc = out_transit.normalize().copy()
+            _, mask = out_transit.remove_outliers(return_mask=True)
+            inverse_mask = np.logical_not(mask)
+            if np.all(inverse_mask) == True:
+                print('after clip length: ', len(each_lc.flux))
+                each_lc.normalize().errorbar()
+                plt.errorbar(out_transit.time.value, out_transit.flux.value, yerr=out_transit.flux_err.value, label='fit_model')
+                plt.legend()
+                plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/each_lc/{TOInumber}_{datetime.datetime.now().strftime("%y%m%d")}_{str(i)}.png', header=False, index=False)
+                #plt.show()
+                plt.close()
+                break
+            else:
+                print('cliped:', len(out_transit.flux.value)-len(out_transit[~mask].flux.value))
+                out_transit = out_transit[~mask]
 
+
+        ###transit fitting and clip outliers
         ###params setting
+        '''
         noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
         #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
         values = [transit_time+period*i, period, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
@@ -283,7 +310,7 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
         vary_flags = [False, False, True, True, True, False, False, True, True]
         no_ring_params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
 
-        ###transit fitting and clip outliers
+
         while True:
             out = lmfit.minimize(no_ring_residual_transitfit,no_ring_params,args=(each_lc.normalize().time.value, each_lc.normalize().flux.value, each_lc.normalize().flux_err.value, noringnames),max_nfev=1000)
             flux_model = no_ring_model_transitfit_from_lmparams(out.params, each_lc.normalize().time.value, noringnames)
@@ -303,10 +330,10 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
             else:
                 print('cliped:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
                 clip_lc = clip_lc[~mask]
+                '''
 
 
         ###curve fiting
-
         each_lc_df = each_lc.to_pandas()
         before_transit = each_lc_df[each_lc_df.index < (transit_time+period*i)-(duration/2)]
         after_transit = each_lc_df[each_lc_df.index > (transit_time+period*i)+(duration/2)]
@@ -314,36 +341,7 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
         out_transit = out_transit.reset_index()
         out_transit = Table.from_pandas(out_transit)
         out_transit = lk.LightCurve(data=out_transit)
-        """
-        each_lc_pre = lc[:start]
-        each_lc_mid = lc[start:end]
-        each_lc_post = lc[end:]
-        print('before clip length: ', len(each_lc.flux))
-        for each_lc in [each_lc_pre, each_lc_post]:
-            clip_lc = each_lc.normalize().copy()
-            _, mask = clip_lc.remove_outliers(return_mask=True)
-            inverse_mask = np.logical_not(mask)
-            """
 
-        ###remove outliers
-        """
-        while True:
-            clip_lc = out_transit.normalize().copy()
-            _, mask = out_transit.remove_outliers(return_mask=True)
-            inverse_mask = np.logical_not(mask)
-            if np.all(inverse_mask) == True:
-                print('after clip length: ', len(each_lc.flux))
-                each_lc.normalize().errorbar()
-                plt.errorbar(out_transit.time.value, out_transit.flux.value, yerr=out_transit.flux_err.value, label='fit_model')
-                plt.legend()
-                plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/each_lc/{TOInumber}_{datetime.datetime.now().strftime("%y%m%d")}_{str(i)}.png', header=False, index=False)
-                #plt.show()
-                plt.close()
-                break
-            else:
-                print('cliped:', len(out_transit.flux.value)-len(out_transit[~mask].flux.value))
-                out_transit = out_transit[~mask]
-                """
 
         model = lmfit.models.PolynomialModel()
         poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
@@ -421,7 +419,18 @@ params_df = pd.read_excel('/Users/u_tsubasa/work/ring_planet_research/ring_trans
 
 for TIC in TIClist:
     param_df = params_df[params_df['TESS Input Catalog ID'] == TIC]
-    tpf = lk.search_targetpixelfile('TIC {}'.format(TIC), mission='TESS', cadence="short").download()
+    #tpf = lk.search_targetpixelfile('TIC {}'.format(TIC), mission='TESS', cadence="short").download()
+    search_result = lk.search_lightcurve(f'TIC {TIC}', mission='TESS', cadence="short")
+    lc_collection = search_result.download_all()
+    try:
+        lc_collection.plot()
+        plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/lc_collection/TIC{TIC}.png')
+    except AttributeError:
+        with open('error_tic.dat', 'a') as f:
+            f.write(str(TIC) + '\n')
+        continue
+
+    continue
     #tpf.plot(frame=100, scale='log', show_colorbar=True)
     try:
         lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
@@ -429,6 +438,7 @@ for TIC in TIClist:
         with open('error_tic.dat', 'a') as f:
             f.write(str(TIC) + '\n')
         continue
+    lc = lc_collection.stitch().flatten().remove_outliers()
 
     for index, item in param_df.iterrows():
         duration = item['Planet Transit Duration Value [hours]'] / 24
@@ -470,6 +480,8 @@ for TIC in TIClist:
             folded_lc = folding_each_lc(lc_list, period, transit_time)
         except ValueError:
             print('no transit!')
+            with open('error_tic.dat', 'a') as f:
+                f.write('no transit!: ' + 'str(TIC)' + '\n')
             continue
         folded_lc.errorbar()
         plt.savefig('./folded_dfs/folded_lc_figure/{}.png'.format('TOI' + str(item['TESS Object of Interest'])))

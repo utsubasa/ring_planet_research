@@ -378,12 +378,12 @@ flux = ymodel + eps_data
 
 noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
 #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
-values = [0, period, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
-mins = [-0.1, 4.0, 0.03, 4, 80, 0, 90, 0.0, 0.0]
-maxes = [0.1, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
+noringvalues = [0, period, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
+noringmins = [-0.1, 4.0, 0.03, 4, 80, 0, 90, 0.0, 0.0]
+noringmaxes = [0.1, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
 #vary_flags = [True, False, True, True, True, False, False, True, True]
-vary_flags = [False, False, True, True, True, False, False, True, True]
-no_ring_params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
+noringvary_flags = [False, False, True, True, True, False, False, True, True]
+no_ring_params = set_params_lm(noringnames, noringvalues, noringmins, noringmaxes, noringvary_flags)
 #start = time.time()
 
 out = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux_data, flux_err_data.mean(), names), max_nfev=1000)
@@ -519,10 +519,10 @@ for try_n in range(5):
         flat_samples = sampler.get_chain(discard=1000, thin=15, flat=True)
         print(flat_samples.shape)
         inds = np.random.randint(len(flat_samples), size=100)
+        plt.errorbar(t, flux_data, yerr=flux_err_data, fmt=".k", capsize=0)
         for ind in inds:
             sample = flat_samples[ind]
             plt.plot(t, ring_model(t, pdic, sample), "C1", alpha=0.1)
-        plt.errorbar(t, flux_data, yerr=flux_err_data, fmt=".k", capsize=0)
         #plt.plot(t, ymodel, "k", label="truth")
         plt.legend(fontsize=14)
         #plt.xlim(0, 10)
@@ -558,7 +558,7 @@ for try_n in range(5):
 
         #import pdb; pdb.set_trace()
 
-        '''for TESS data
+        """for TESS data
         #使う行のみ抽出
         df=pd.read_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/toi-catalog.csv', encoding='shift_jis')
         df.columns=df.iloc[3].values
@@ -685,4 +685,4 @@ for try_n in range(5):
         xdata = lc.fold(planet_b_period, planet_b_t0).phase.value
         ydata = lc.fold(planet_b_period, planet_b_t0).flux.value
         yerr  = lc.fold(planet_b_period, planet_b_t0).flux_err.value
-        '''
+        """
