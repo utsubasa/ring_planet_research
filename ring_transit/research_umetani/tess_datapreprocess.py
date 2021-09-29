@@ -114,7 +114,7 @@ def ring_residual_transitfit(params, x, data, eps_data, names):
     model = ring_model(x, params.valuesdict())
     chi_square = np.sum(((data-model)/eps_data)**2)
     #print(params)
-    print(chi_square)
+    #print(chi_square)
     #print(np.max(((data-model)/eps_data)**2))
 
     return (data-model) / eps_data
@@ -127,7 +127,7 @@ def no_ring_residual_transitfit(params, x, data, eps_data, names):
     model = m.light_curve(params_batman)         #calculates light curve
     chi_square = np.sum(((data-model)/eps_data)**2)
     #print(params)
-    print(chi_square)
+    #print(chi_square)
     return (data-model) / eps_data
 
 def ring_model_transitfit_from_lmparams(params, x):
@@ -141,44 +141,36 @@ def no_ring_model_transitfit_from_lmparams(params, x, names):
     return model
 
 def clip_transit_hoge(lc, duration, period, transit_time, clip_transit=False):
-
     contain_transit = 0
     transit_time_list = []
-
+    print(f'transit_time: {transit_time}')
     transit_start = transit_time - (duration/2)
     transit_end = transit_time + (duration/2)
-    import pdb; pdb.set_trace()
-    case = judge_transit_contain(lc, transit_start, transit_end)
-    #他の惑星処理に使う場合は以下の処理を行う。
-    if clip_transit == True:
-        lc = remove_transit_signal(case, lc, transit_start, transit_end)
-    else:
-        if case == 2 or case == 3 or case == 4 or case == 5:
-            contain_transit = 1
-            transit_time_list.append(transit_time)
-        else:
-            pass
 
     if transit_time < np.median(lc['time'].value):
-        while judge_transit_contain(lc, transit_start, transit_end) == 6:
+        while judge_transit_contain(lc, transit_start, transit_end) < 6:
+            print(f'transit_time: {transit_time}')
+            transit_start = transit_time - (duration/2)
+            transit_end = transit_time + (duration/2)
+            case = judge_transit_contain(lc, transit_start, transit_end)
+            print('case:', case)
+            #他の惑星処理に使う場合は以下の処理を行う。
+            if clip_transit == True:
+                lc = remove_transit_signal(case, lc, transit_start, transit_end)
+            else:
+                if case == 2 or case == 3 or case == 4 or case == 5:
+                    contain_transit = 1
+                    transit_time_list.append(transit_time)
+                else:
+                    pass
             transit_time = transit_time + period
-            transit_start = transit_time - (duration/2)
-            transit_end = transit_time + (duration/2)
-            case = judge_transit_contain(lc, transit_start, transit_end)
-            if clip_transit == True:
-                lc = remove_transit_signal(case, lc, transit_start, transit_end)
-            else:
-                if case == 2 or case == 3 or case == 4 or case == 5:
-                    contain_transit = 1
-                    transit_time_list.append(transit_time)
-                else:
-                    pass
     elif transit_time > np.median(lc['time'].value):
-        while judge_transit_contain(lc, transit_start, transit_end) == 1:
-            transit_time = transit_time - period
+        while judge_transit_contain(lc, transit_start, transit_end) > 1:
+            print(f'transit_time: {transit_time}')
             transit_start = transit_time - (duration/2)
             transit_end = transit_time + (duration/2)
             case = judge_transit_contain(lc, transit_start, transit_end)
+            print('case:', case)
             if clip_transit == True:
                 lc = remove_transit_signal(case, lc, transit_start, transit_end)
             else:
@@ -187,69 +179,48 @@ def clip_transit_hoge(lc, duration, period, transit_time, clip_transit=False):
                     transit_time_list.append(transit_time)
                 else:
                     pass
+            transit_time = transit_time - period
 
     return lc, contain_transit, transit_time_list
 
 
 def judge_transit_contain(lc, transit_start, transit_end):
-    if transit_end < lc.time[0].value:
+    if transit_end < lc.time[0].value: # ||-----
         case = 1
-    elif transit_start < lc.time[0].value and lc.time[0].value < transit_end and transit_end < lc.time[-1].value:
+    elif transit_start < lc.time[0].value and lc.time[0].value < transit_end and transit_end < lc.time[-1].value: # |--|---
         case = 2
-    elif transit_start < lc.time[0].value and lc.time[-1].value < transit_end:
+    elif transit_start < lc.time[0].value and lc.time[-1].value < transit_end: # |-----|
         case = 3
-    elif lc.time[0].value < transit_start and transit_start < lc.time[-1].value and lc.time[0].value < transit_end and transit_end < lc.time[-1].value:
+    elif lc.time[0].value < transit_start and transit_start < lc.time[-1].value and lc.time[0].value < transit_end and transit_end < lc.time[-1].value: # --|-|--
         case = 4
-    elif lc.time[0].value < transit_start and transit_start < lc.time[-1].value and lc.time[-1].value < transit_end:
+    elif lc.time[0].value < transit_start and transit_start < lc.time[-1].value and lc.time[-1].value < transit_end: # ---|--|
         case = 5
-    elif lc.time[-1].value < transit_start:
+    elif lc.time[-1].value < transit_start: # -----||
         case = 6
-    print('case:', case)
     return case
 
 
 def remove_transit_signal(case, lc, transit_start, transit_end):
-    if case == 1:
+    if case == 1:　# ||-----
         pass
-    elif case == 2:
+    elif case == 2: # |--|---
         lc = lc[~(lc['time'].value < transit_start)]
-        print('case: ', case)
-    elif case == 3:
+    elif case == 3: # |-----|
         #with open('huge_transit.csv') as f:
             #f.write()
         print('huge !')
         #記録する
-    elif case == 4:
+    elif case == 4: # --|-|--
         lc = vstack([lc[lc['time'].value < transit_start], lc[lc['time'].value > transit_end]])
-        print('case: ', case)
-    elif case == 5:
+    elif case == 5: # ---|--|
         lc = lc[lc['time'].value < transit_start]
-        print('case: ', case)
-    elif case == 6:
+    elif case == 6: # -----||
         pass
 
     return lc
 
 
 def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TOInumber):
-    #planet_b_model = bls.get_transit_model(period=period, transit_time=transit_time, duration=duration)
-    '''
-    try:
-        n_transit = int((lc.time[-1].value - transit_time) // period)
-    except ValueError:
-        print('value error')
-
-    aaa = transit_time
-    transit_time_list = []
-    if transit_time < np.median(lc['time'].value):
-        while aaa < lc.time[-1].value:
-            transit_time_list.append(aaa)
-            aaa = aaa + period
-    elif transit_time > np.median(lc['time'].value):
-        while aaa > lc.time[0].value:
-            transit_time_list.append(aaa)
-            aaa = aaa - period
-    '''
     transit_time_list = np.array(transit_time_list)
     #transit_time_list = transit_time_list[(transit_time_list > lc.time[0].value) & (transit_time_list < lc.time[-1].value)]
     n_transit = len(transit_time_list)
@@ -269,7 +240,7 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
         end = int(transit + lc_cut_point)
         if end > len(lc):
             end = len(lc)
-        #each_lc = lc[start:end]
+        """
         each_lc_pre = lc[:start]
         each_lc_mid = lc[start:end]
         each_lc_post = lc[end:]
@@ -289,18 +260,19 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
                 each_lc.normalize().errorbar()
                 plt.errorbar(out_transit.time.value, out_transit.flux.value, yerr=out_transit.flux_err.value, label='fit_model')
                 plt.legend()
-                plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/each_lc/{TOInumber}_{datetime.datetime.now().strftime("%y%m%d")}_{str(i)}.png', header=False, index=False)
+                plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{datetime.datetime.now().strftime("%y%m%d")}_{str(i)}.png', header=False, index=False)
                 #plt.show()
                 plt.close()
                 break
             else:
                 print('cliped:', len(out_transit.flux.value)-len(out_transit[~mask].flux.value))
                 out_transit = out_transit[~mask]
+        """
 
 
         ###transit fitting and clip outliers
         ###params setting
-        '''
+        each_lc = lc[start:end]
         noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
         #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
         values = [transit_time+period*i, period, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
@@ -323,14 +295,14 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
                 clip_lc.errorbar()
                 plt.plot(clip_lc.time.value, flux_model, label='fit_model')
                 plt.legend()
-                plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/outlier/{TOInumber}_{str(i)}_{datetime.datetime.now().strftime("%y%m%d")}_{chi_square:.3f}.png', header=False, index=False)
+                plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}_{datetime.datetime.now().strftime("%y%m%d")}_{chi_square:.3f}.png', header=False, index=False)
                 #plt.show()
                 plt.close()
                 break
             else:
                 print('cliped:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
                 clip_lc = clip_lc[~mask]
-                '''
+
 
 
         ###curve fiting
@@ -347,7 +319,7 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
         poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
         result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
         result.plot()
-        plt.savefig(f'./folded_dfs/curvefit_figure/{TOInumber}.png')
+        plt.savefig(f'{homedir}/fitting_result/curvefit_figure/{TOInumber}.png')
         #plt.show()
         plt.close()
         poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
@@ -363,15 +335,14 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
         each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
         each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
         while True:
-            clip_lc = each_lc.normalize().copy()
             _, mask = each_lc.remove_outliers(return_mask=True)
             inverse_mask = np.logical_not(mask)
             if np.all(inverse_mask) == True:
                 print('after clip length: ', len(each_lc.flux))
-                each_lc.normalize().errorbar()
+                each_lc.errorbar()
                 plt.errorbar(each_lc.time.value, each_lc.flux.value, yerr=each_lc.flux_err.value, label='fit_model')
                 plt.legend()
-                plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}.png'.format(datetime.datetime.now().strftime('%y%m%d')), header=False, index=False)
+                plt.savefig(f'{homedir}/fitting_result/figure/{TOInumber}_{str(i)}_{datetime.datetime.now().strftime("%y%m%d")}.png', header=False, index=False)
                 #plt.show()
                 plt.close()
                 break
@@ -410,11 +381,11 @@ def make_rowlist(n_transit, lc, transit_time, transit_time_list):
         return list
 
 #if __name__ ==  '__main__':
+homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
 
-
-sn_df = pd.read_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/toi_overSN100.csv')
+sn_df = pd.read_csv(f'{homedir}/toi_overSN100.csv')
 TIClist = sn_df['TIC']
-params_df = pd.read_excel('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/TOI_parameters.xlsx')
+params_df = pd.read_excel(f'{homedir}/TOI_parameters.xlsx')
 #params_df[params_df['TESS Input Catalog ID']==TIClist[0]].T
 
 for TIC in TIClist:
@@ -424,30 +395,23 @@ for TIC in TIClist:
     lc_collection = search_result.download_all()
     try:
         lc_collection.plot()
-        plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/lc_collection/TIC{TIC}.png')
+        plt.close()
+        #plt.savefig(f'{homedir}/lc_collection/TIC{TIC}.png')
     except AttributeError:
-        with open('error_tic.dat', 'a') as f:
-            f.write(str(TIC) + '\n')
+        #with open('error_tic.dat', 'a') as f:
+            #f.write(str(TIC) + '\n')
         continue
-
-    continue
-    #tpf.plot(frame=100, scale='log', show_colorbar=True)
-    try:
-        lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
-    except AttributeError:
-        with open('error_tic.dat', 'a') as f:
-            f.write(str(TIC) + '\n')
-        continue
-    lc = lc_collection.stitch().flatten().remove_outliers()
 
     for index, item in param_df.iterrows():
+        lc = lc_collection.stitch().flatten().remove_outliers() #initialize lc
+
         duration = item['Planet Transit Duration Value [hours]'] / 24
         period = item['Planet Orbital Period Value [days]']
         transit_time = item['Planet Transit Midpoint Value [BJD]'] - 2457000.0 #translate BTJD
         TOInumber = 'TOI' + str(item["TESS Object of Interest"])
         print('analysing: ', TOInumber)
 
-        print('judge whether transit in data...')
+        print('judging whether or not transit is included in the data...')
         time.sleep(1)
         #ターゲットの惑星の信号がデータに影響を与えているか判断
         _, contain_transit, transit_time_list = clip_transit_hoge(lc, duration, period, transit_time, clip_transit=False)
@@ -460,18 +424,23 @@ for TIC in TIClist:
             continue
 
         #他の惑星がある場合、データに影響を与えているか判断。ならその信号を除去する。
-        print('remove others planet transit in data...')
-        time.sleep(1)
+
         if len(param_df.index) != 1:
+            print('removing others planet transit in data...')
+            time.sleep(1)
             others_duration = param_df[param_df.index!=index]['Planet Transit Duration Value [hours]'].values / 24
             others_period = param_df[param_df.index!=index]['Planet Orbital Period Value [days]'].values
             others_transit_time = param_df[param_df.index!=index]['Planet Transit Midpoint Value [BJD]'].values - 2457000.0 #translate BTJD
 
             for others_duration, others_period, others_transit_time in zip(others_duration, others_period, others_transit_time):
+                lc.errorbar()
+                plt.show()
                 lc, _, _ = clip_transit_hoge(lc, others_duration, others_period, others_transit_time, clip_transit=True)
+                lc.errorbar()
+                plt.show()
 
         #トランジットがデータに何個あるか判断しその周りのライトカーブデータを作成、カーブフィッティングでノーマライズ
-        print('preprocess...')
+        print('preprocessing...')
         time.sleep(1)
         lc_list = preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TOInumber)
         try:
@@ -484,10 +453,10 @@ for TIC in TIClist:
                 f.write('no transit!: ' + 'str(TIC)' + '\n')
             continue
         folded_lc.errorbar()
-        plt.savefig('./folded_dfs/folded_lc_figure/{}.png'.format('TOI' + str(item['TESS Object of Interest'])))
+        plt.savefig(f'{homedir}/folded_lc/figure/{TOInumber}.png'))
         #plt.show()
         plt.close()
-        folded_lc.write('./folded_dfs/folded_lc_{}.csv'.format('TOI' + str(item['TESS Object of Interest'])))
+        folded_lc.write(f'{homedir}/folded_lc/data/{TOInumber}.csv'))
         import pdb; pdb.set_trace()
 
     """
@@ -497,127 +466,3 @@ for TIC in TIClist:
     plt.show()
     import pdb; pdb.set_trace()
     """
-
-#get transit paramter from TESS database
-'''
-#使う行のみ抽出
-sn_df=pd.read_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/toi-catalog.csv', encoding='shift_jis')
-sn_df.columns=sn_df.iloc[3].values
-sn_df=sn_df[4:]
-#カラムを入れ替える。
-
-sn_df=sn_df[['Signal-to-noise', 'Source Pipeline', 'TIC', 'Full TOI ID', 'TOI Disposition',
-       'TIC Right Ascension', 'TIC Declination', 'TMag Value',
-       'TMag Uncertainty', 'Epoch Value', 'Epoch Error',
-       'Orbital Period Value', 'Orbital Period Error',
-       'Transit Duration Value', 'Transit Duration Error',
-       'Transit Depth Value', 'Transit Depth Error', 'Sectors',
-       'Public Comment', 'Surface Gravity Value',
-       'Surface Gravity Uncertainty', 'Signal ID', 'Star Radius Value',
-       'Star Radius Error', 'Planet Radius Value', 'Planet Radius Error',
-       'Planet Equilibrium Temperature (K) Value',
-       'Effective Temperature Value', 'Effective Temperature Uncertainty',
-       'Effective Stellar Flux Value', 'Centroid Offset',
-       'TFOP Master', 'TFOP SG1a', 'TFOP SG1b', 'TFOP SG2', 'TFOP SG3',
-       'TFOP SG4', 'TFOP SG5', 'Alerted', 'Updated']]
-
-sn_df=sn_df[['Signal-to-noise', 'Source Pipeline', 'TIC', 'Full TOI ID', 'TOI Disposition']]
-sn_df['Signal-to-noise'] = sn_df['Signal-to-noise'].fillna(0)
-sn_df['Signal-to-noise'] = sn_df['Signal-to-noise'].astype(float)
-sn_df = sn_df.sort_values('Signal-to-noise', ascending=False)
-
-#SN比 ≧ 100のデータを抽出。
-sn_df2 = sn_df[sn_df['Signal-to-noise'] >= 100]
-sn_df2 = sn_df2.reset_index(drop=True)
-#sn_df2 = sn_df2.drop(columns='index')
-sn_df2.head()
-sn_df2['TIC'] = sn_df2['TIC'].apply(lambda x:int(x))
-'''
-
-'''
-print('hello')
-import pdb; pdb.set_trace()
-period=2.20473541
-transit_time=121.3585417
-duration=0.162026
-
-lc_list = preprocess_each_lc(lc, duration, period, transit_time)
-folded_lc = folding_each_lc(lc_list)
-folded_lc.errorbar()
-plt.show()
-#すべてのlightcurveの可視化
-lc_collection = search_result.download_all()
-lc_collection.plot();
-plt.show()
-
-#tpf.plot(frame=100, scale='log', show_colorbar=True)
-lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
-#lc.plot()
-period = np.linspace(1, 3, 10000)
-bls = lc.to_periodogram(method='bls', period=period, frequency_factor=500);
-
-
-lc_list = preprocess_each_lc(lc, duration, period, transit_time)
-folded_lc = folding_each_lc(lc_list)
-folded_lc.errorbar()
-#plt.show()
-plt.close()
-# foldingを任せた場合 すべての観測を平坦化しノーマライズする。これは"a stitched light curve"で表される。詳しくは Kepler data with Lightkurve.
-#lc = lc_collection.stitch().flatten(window_length=901).remove_outliers()
-#lc.plot();
-#lc = lc_collection.stitch().flatten(window_length=901).remove_outliers()
-### foldingを自分でやる場合
-lc_single = search_result[3].download()
-#lc_single.plot();
-lc = lc_single.flatten(window_length=901).remove_outliers()
-#lc.plot();
-### orbital periodをBLSで探す
-# Create array of periods to search
-period = np.linspace(1, 30, 10000)
-# Create a BLSPeriodogram
-bls = lc.to_periodogram(method='bls', period=period, frequency_factor=500);
-#bls.plot();
-planet_b_period = bls.period_at_max_power
-planet_b_t0 = bls.transit_time_at_max_power
-planet_b_dur = bls.duration_at_max_power
-# Check the value for period
-print('planet_b_period: ', planet_b_period)
-print('planet_b_t0: ', planet_b_t0)
-print('planet_b_dur: ', planet_b_dur)
-### カタログのorbital periodを使う
-sn_df2[sn_df2['TIC']=='142087638']
-#planet_b_period = float(sn_df2[sn_df2['TIC']=='142087638']['Orbital Period Value'].values[0])
-#planet_b_t0 = float(sn_df2[sn_df2['TIC']=='142087638']['Epoch Value'].values[0])
-#planet_b_dur = float(sn_df2[sn_df2['TIC']=='142087638']['Transit Duration Value'].values[0])
-# Check the value for period
-print('planet_b_period: ', planet_b_period)
-print('planet_b_t0: ', planet_b_t0)
-print('planet_b_dur: ', planet_b_dur)
-### folding
-ax = lc.fold(period=planet_b_period, epoch_time=planet_b_t0).scatter()
-#ax.set_xlim(-5, 5);
-ax = lc.fold(period=planet_b_period, epoch_time=planet_b_t0).scatter()
-#ax.set_xlim(-0.5, 0.5);
-# Create a cadence mask using the BLS parameters
-planet_b_mask = bls.get_transit_mask(period=planet_b_period,
-                                     transit_time=planet_b_t0,
-                                     duration=planet_b_dur)
-masked_lc = lc[~planet_b_mask]
-#ax = masked_lc.scatter();
-#lc[planet_b_mask].scatter(ax=ax, c='r', label='Masked');
-# Create a BLS model using the BLS parameters
-planet_b_model = bls.get_transit_model(period=planet_b_period,
-                                       transit_time=planet_b_t0,
-                                       duration=planet_b_dur)
-ax = lc.fold(planet_b_period, planet_b_t0).scatter()
-planet_b_model.fold(planet_b_period, planet_b_t0).plot(ax=ax, c='r', lw=2)
-#ax.set_xlim(-0.5, 0.5);
-#ax.set_xlim(-5, 5);
-#plt.show()
-plt.cla()
-plt.clf()
-# read the data file (xdata, ydata, yerr)
-xdata = lc.fold(planet_b_period, planet_b_t0).phase.value
-ydata = lc.fold(planet_b_period, planet_b_t0).flux.value
-yerr  = lc.fold(planet_b_period, planet_b_t0).flux_err.value
-'''
