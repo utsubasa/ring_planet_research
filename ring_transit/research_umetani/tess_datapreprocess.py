@@ -275,7 +275,7 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
 
         noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
         #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
-        values = [transit_time+period*i, period, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
+        values = [transit_time+period*i, period, rp/rs, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
         mins = [-0.1, 4.0, 0.03, 4, 80, 0, 90, 0.0, 0.0]
         maxes = [0.1, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
         #vary_flags = [True, False, True, True, True, False, False, True, True]
@@ -296,7 +296,6 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
                 plt.plot(clip_lc.time.value, flux_model, label='fit_model')
                 plt.legend()
                 plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}_{datetime.datetime.now().strftime("%y%m%d")}_{chi_square:.3f}.png', header=False, index=False)
-                import pdb; pdb.set_trace()
                 #plt.show()
                 plt.close()
                 break
@@ -392,6 +391,9 @@ for TIC in TIClist:
         period = item['Planet Orbital Period Value [days]']
         transit_time = item['Planet Transit Midpoint Value [BJD]'] - 2457000.0 #translate BTJD
         TOInumber = 'TOI' + str(item["TESS Object of Interest"])
+        rp = item['Planet Radius Value [R_Earth]'] * 0.00916794 #translate to Rsun
+        rs = item['Stellar Radius Value [R_Sun]']
+
         print('analysing: ', TOInumber)
 
         print('judging whether or not transit is included in the data...')
