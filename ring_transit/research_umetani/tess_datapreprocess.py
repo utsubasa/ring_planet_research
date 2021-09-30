@@ -201,7 +201,7 @@ def judge_transit_contain(lc, transit_start, transit_end):
 
 
 def remove_transit_signal(case, lc, transit_start, transit_end):
-    if case == 1:　# ||-----
+    if case == 1: # ||-----
         pass
     elif case == 2: # |--|---
         lc = lc[~(lc['time'].value < transit_start)]
@@ -222,24 +222,16 @@ def remove_transit_signal(case, lc, transit_start, transit_end):
 
 def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TOInumber):
     transit_time_list = np.array(transit_time_list)
-    #transit_time_list = transit_time_list[(transit_time_list > lc.time[0].value) & (transit_time_list < lc.time[-1].value)]
     n_transit = len(transit_time_list)
     print('n_transit: ', n_transit)
-    transit_row_list = make_rowlist(n_transit, lc, transit_time, transit_time_list)
-    #minId = signal.argrelmin(lc.flux.value, order=3000)
-    half_duration = (duration/2)*24*60
-    twice_duration = (duration*2)*24*60 #durationを2倍、単位をday→mi
+    half_duration = (duration/2)
+    twice_duration = (duration*2) #durationを2倍、単位をday→mi
     lc_cut_point = half_duration + twice_duration
     lc_list=[]
-    for i, transit in enumerate(transit_row_list):
-        print('No.{} transit: '.format(i))
-
-        start = int(transit - lc_cut_point)
-        if start < 0:
-            start = 0
-        end = int(transit + lc_cut_point)
-        if end > len(lc):
-            end = len(lc)
+    for i, mid_transit in enumerate(transit_time_list):
+        print(f'No.{i} transit: ')
+        transit_start = mid_transit - lc_cut_point
+        transit_end = mid_transit + lc_cut_point
         """
         each_lc_pre = lc[:start]
         each_lc_mid = lc[start:end]
@@ -272,7 +264,15 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
 
         ###transit fitting and clip outliers
         ###params setting
-        each_lc = lc[start:end]
+        each_lc = lc[(lc['time'].value > transit_start) & (lc['time'].value < transit_end)]
+
+        ###ignore the case of no bins around transit.
+        if len(each_lc) == 0:
+            print('no data around transit.')
+            continue
+        else:
+            pass
+
         noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
         #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
         values = [transit_time+period*i, period, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
@@ -284,10 +284,10 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
 
 
         while True:
-            out = lmfit.minimize(no_ring_residual_transitfit,no_ring_params,args=(each_lc.normalize().time.value, each_lc.normalize().flux.value, each_lc.normalize().flux_err.value, noringnames),max_nfev=1000)
-            flux_model = no_ring_model_transitfit_from_lmparams(out.params, each_lc.normalize().time.value, noringnames)
+            out = lmfit.minimize(no_ring_residual_transitfit,no_ring_params,args=(each_lc.time.value, each_lc.flux.value, each_lc.flux_err.value, noringnames),max_nfev=1000)
+            flux_model = no_ring_model_transitfit_from_lmparams(out.params, each_lc.time.value, noringnames)
             clip_lc = each_lc.normalize().copy()
-            clip_lc.flux = clip_lc.flux-flux_model
+            #clip_lc.flux = clip_lc.flux-flux_model
             _, mask = clip_lc.remove_outliers(return_mask=True)
             inverse_mask = np.logical_not(mask)
             if np.all(inverse_mask) == True:
@@ -296,6 +296,7 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
                 plt.plot(clip_lc.time.value, flux_model, label='fit_model')
                 plt.legend()
                 plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}_{datetime.datetime.now().strftime("%y%m%d")}_{chi_square:.3f}.png', header=False, index=False)
+                import pdb; pdb.set_trace()
                 #plt.show()
                 plt.close()
                 break
@@ -342,7 +343,7 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
                 each_lc.errorbar()
                 plt.errorbar(each_lc.time.value, each_lc.flux.value, yerr=each_lc.flux_err.value, label='fit_model')
                 plt.legend()
-                plt.savefig(f'{homedir}/fitting_result/figure/{TOInumber}_{str(i)}_{datetime.datetime.now().strftime("%y%m%d")}.png', header=False, index=False)
+                plt.savefig(f'{homedir}/fitting_result/figure//{TOInumber}_{str(i)}_{datetime.datetime.now().strftime("%y%m%d")}.png', header=False, index=False)
                 #plt.show()
                 plt.close()
                 break
@@ -361,24 +362,6 @@ def folding_each_lc(lc_list, period, transit_time):
     lc = lc.normalize()
     print('total length: ', len(lc))
     return lc.fold(period=period, epoch_time=transit_time)
-
-def getNearestRow(list, num):
-    # リスト要素と対象値の差分を計算し最小値のインデックスを取得
-    idx = np.abs(np.asarray(list) - num).argmin()
-    return idx
-
-def make_rowlist(n_transit, lc, transit_time, transit_time_list):
-    list = []
-    if n_transit == 0:
-        mid_transit_row = getNearestRow(lc.time.value, transit_time)
-        list.append(mid_transit_row)
-        return list
-    else:
-        for val in transit_time_list:
-            target_val = val
-            mid_transit_row = getNearestRow(lc.time.value, target_val)
-            list.append(mid_transit_row)
-        return list
 
 #if __name__ ==  '__main__':
 homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
@@ -433,11 +416,7 @@ for TIC in TIClist:
             others_transit_time = param_df[param_df.index!=index]['Planet Transit Midpoint Value [BJD]'].values - 2457000.0 #translate BTJD
 
             for others_duration, others_period, others_transit_time in zip(others_duration, others_period, others_transit_time):
-                lc.errorbar()
-                plt.show()
                 lc, _, _ = clip_transit_hoge(lc, others_duration, others_period, others_transit_time, clip_transit=True)
-                lc.errorbar()
-                plt.show()
 
         #トランジットがデータに何個あるか判断しその周りのライトカーブデータを作成、カーブフィッティングでノーマライズ
         print('preprocessing...')
@@ -453,11 +432,11 @@ for TIC in TIClist:
                 f.write('no transit!: ' + 'str(TIC)' + '\n')
             continue
         folded_lc.errorbar()
-        plt.savefig(f'{homedir}/folded_lc/figure/{TOInumber}.png'))
+        plt.savefig(f'{homedir}/folded_lc/figure/{TOInumber}.png')
         #plt.show()
         plt.close()
-        folded_lc.write(f'{homedir}/folded_lc/data/{TOInumber}.csv'))
-        import pdb; pdb.set_trace()
+        folded_lc.write(f'{homedir}/folded_lc/data/{TOInumber}.csv')
+    import pdb; pdb.set_trace()
 
     """
     lc_list = preprocess_each_lc(lc, duration, period, transit_time)
