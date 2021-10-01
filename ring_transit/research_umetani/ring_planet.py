@@ -423,7 +423,7 @@ for try_n in range(5):
     #filename = "emcee_{0}.h5".format(datetime.datetime.now().strftime('%y%m%d%H%M'))
     #backend = emcee.backends.HDFBackend(filename)
     #backend.reset(nwalkers, ndim)
-    max_n = 5000
+    max_n = 3000
     index = 0
     autocorr = np.empty(max_n)
     old_tau = np.inf
