@@ -519,10 +519,10 @@ for try_n in range(5):
         flat_samples = sampler.get_chain(discard=1000, thin=15, flat=True)
         print(flat_samples.shape)
         inds = np.random.randint(len(flat_samples), size=100)
-        plt.errorbar(t, flux_data, yerr=flux_err_data, fmt=".k", capsize=0)
+        plt.errorbar(t, flux_data, yerr=flux_err_data, fmt=".k", capsize=0, alpha=0.1)
         for ind in inds:
             sample = flat_samples[ind]
-            plt.plot(t, ring_model(t, pdic, sample), "C1", alpha=0.1)
+            plt.plot(t, ring_model(t, pdic, sample), "C1", alpha=0.5)
         #plt.plot(t, ymodel, "k", label="truth")
         plt.legend(fontsize=14)
         #plt.xlim(0, 10)
