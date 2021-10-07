@@ -155,14 +155,17 @@ def clip_transit_hoge(lc, duration, period, transit_time, clip_transit=False):
             case = judge_transit_contain(lc, transit_start, transit_end)
             print('case:', case)
             #他の惑星処理に使う場合は以下の処理を行う。
-            if clip_transit == True:
-                lc = remove_transit_signal(case, lc, transit_start, transit_end)
-            else:
-                if case == 2 or case == 3 or case == 4 or case == 5:
-                    contain_transit = 1
-                    transit_time_list.append(transit_time)
+            if len(lc[(lc['time'].value > transit_start) & (lc['time'].value < transit_end)]) != 0:
+                if clip_transit == True:
+                    lc = remove_transit_signal(case, lc, transit_start, transit_end)
                 else:
-                    pass
+                    if case == 2 or case == 3 or case == 4 or case == 5:
+                        contain_transit = 1
+                        transit_time_list.append(transit_time)
+                    else:
+                        pass
+            else:
+                print("don't need clip because no data around transit")
             transit_time = transit_time + period
     elif transit_time > np.median(lc['time'].value):
         while judge_transit_contain(lc, transit_start, transit_end) > 1:
@@ -171,14 +174,18 @@ def clip_transit_hoge(lc, duration, period, transit_time, clip_transit=False):
             transit_end = transit_time + (duration/2)
             case = judge_transit_contain(lc, transit_start, transit_end)
             print('case:', case)
-            if clip_transit == True:
-                lc = remove_transit_signal(case, lc, transit_start, transit_end)
-            else:
-                if case == 2 or case == 3 or case == 4 or case == 5:
-                    contain_transit = 1
-                    transit_time_list.append(transit_time)
+            if len(lc[(lc['time'].value > transit_start) & (lc['time'].value < transit_end)]) != 0:
+                if clip_transit == True:
+
+                    lc = remove_transit_signal(case, lc, transit_start, transit_end)
                 else:
-                    pass
+                    if case == 2 or case == 3 or case == 4 or case == 5:
+                        contain_transit = 1
+                        transit_time_list.append(transit_time)
+                    else:
+                        pass
+            else:
+                print("don't need clip because no data around transit")
             transit_time = transit_time - period
 
     return lc, contain_transit, transit_time_list
@@ -197,6 +204,9 @@ def judge_transit_contain(lc, transit_start, transit_end):
         case = 5
     elif lc.time[-1].value < transit_start: # -----||
         case = 6
+    else:
+        print('unexcepted case')
+        import pdb; pdb.set_trace()
     return case
 
 
@@ -211,7 +221,9 @@ def remove_transit_signal(case, lc, transit_start, transit_end):
         print('huge !')
         #記録する
     elif case == 4: # --|-|--
-        lc = vstack([lc[lc['time'].value < transit_start], lc[lc['time'].value > transit_end]])
+        #lc = vstack([lc[lc['time'].value < transit_start], lc[lc['time'].value > transit_end]])
+        lc = lc[(lc['time'].value < transit_start) | (lc['time'].value > transit_end)]
+
     elif case == 5: # ---|--|
         lc = lc[lc['time'].value < transit_start]
     elif case == 6: # -----||
@@ -270,12 +282,29 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
         if len(each_lc) == 0:
             print('no data around transit.')
             continue
+        elif np.all(np.isnan(each_lc.flux.value)):
+            print('all nan data.')
+            continue
         else:
             pass
 
+        #nanをreplaceする
+        nan_index = np.where(np.isnan(each_lc.flux.value))[0].tolist()
+        for index in nan_index:
+            index_dic = dict(zip(np.where(~(np.isnan(each_lc.flux.value)))[0],  np.abs(np.where(~(np.isnan(each_lc.flux.value)))[0] - index)))
+            index_dic_sorted = sorted(index_dic.items(), key=lambda x:x[1])
+            replace_flux = (each_lc.flux[index_dic_sorted[0][0]]+each_lc.flux[index_dic_sorted[1][1]]) / 2
+            each_lc.flux[index] = replace_flux + #gausian noise
+            replace_flux_err = (each_lc.flux_err[index_dic_sorted[0][0]]+each_lc.flux_err[index_dic_sorted[1][1]]) / 2
+            each_lc.flux_err[index] = replace_flux_err + #gausian noise 
+
         noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
         #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
-        values = [transit_time+period*i, period, rp/rs, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
+        if np.isnan(rp/rs):
+            values = [mid_transit+period*i, period, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
+        else:
+            values = [mid_transit+period*i, period, rp/rs, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
+
         mins = [-0.1, 4.0, 0.03, 4, 80, 0, 90, 0.0, 0.0]
         maxes = [0.1, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
         #vary_flags = [True, False, True, True, True, False, False, True, True]
@@ -284,7 +313,11 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
 
 
         while True:
-            out = lmfit.minimize(no_ring_residual_transitfit,no_ring_params,args=(each_lc.time.value, each_lc.flux.value, each_lc.flux_err.value, noringnames),max_nfev=1000)
+            try:
+                out = lmfit.minimize(no_ring_residual_transitfit,no_ring_params,args=(each_lc.time.value, each_lc.flux.value, each_lc.flux_err.value, noringnames),max_nfev=1000)
+            except ValueError:
+                print('cant fiting')
+                import pdb; pdb.set_trace()
             flux_model = no_ring_model_transitfit_from_lmparams(out.params, each_lc.time.value, noringnames)
             clip_lc = each_lc.normalize().copy()
             #clip_lc.flux = clip_lc.flux-flux_model
@@ -293,17 +326,17 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
             if np.all(inverse_mask) == True:
                 print('after clip length: ', len(each_lc.flux))
                 clip_lc.errorbar()
-                plt.plot(clip_lc.time.value, flux_model, label='fit_model')
+                plt.plot(clip_lc.time.value, flux_model, label='fit_model', color='black')
+                plt.axvline(x=mid_transit, color='blue')
                 plt.legend()
-                plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}_{datetime.datetime.now().strftime("%y%m%d")}_{chi_square:.3f}.png', header=False, index=False)
+                plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}_{chi_square:.3f}.png', header=False, index=False)
                 #plt.show()
                 plt.close()
+                each_lc = clip_lc
                 break
             else:
                 print('cliped:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
-                clip_lc = clip_lc[~mask]
-
-
+                each_lc = clip_lc[~mask]
 
         ###curve fiting
         each_lc_df = each_lc.to_pandas()
@@ -320,8 +353,8 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
         result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
         result.plot()
         plt.savefig(f'{homedir}/fitting_result/curvefit_figure/{TOInumber}.png')
-        #plt.show()
-        plt.close()
+        plt.show()
+        #plt.close()
         poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
                         result.params.valuesdict()['c1'],\
                         result.params.valuesdict()['c2'],\
@@ -334,17 +367,18 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
         #normalization
         each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
         each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
+        print('before clip length: ', len(each_lc.flux))
         while True:
             _, mask = each_lc.remove_outliers(return_mask=True)
             inverse_mask = np.logical_not(mask)
             if np.all(inverse_mask) == True:
                 print('after clip length: ', len(each_lc.flux))
-                each_lc.errorbar()
-                plt.errorbar(each_lc.time.value, each_lc.flux.value, yerr=each_lc.flux_err.value, label='fit_model')
-                plt.legend()
-                plt.savefig(f'{homedir}/fitting_result/figure//{TOInumber}_{str(i)}_{datetime.datetime.now().strftime("%y%m%d")}.png', header=False, index=False)
+                #each_lc.errorbar()
+                #plt.errorbar(each_lc.time.value, each_lc.flux.value, yerr=each_lc.flux_err.value, label='fit_model')
+                #plt.legend()
+                #plt.savefig(f'{homedir}/fitting_result/figure//{TOInumber}_{str(i)}_{datetime.datetime.now().strftime("%y%m%d")}.png', header=False, index=False)
                 #plt.show()
-                plt.close()
+                #plt.close()
                 break
             else:
                 print('cliped:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
@@ -358,6 +392,7 @@ def folding_each_lc(lc_list, period, transit_time):
     lc = lc.reset_index()
     lc = Table.from_pandas(lc)
     lc = lk.LightCurve(data=lc)
+    lc = lk.LightCurve(time=lc['time'], flux=lc['flux'], flux_err=lc['flux_err'])
     lc = lc.normalize()
     print('total length: ', len(lc))
     return lc.fold(period=period, epoch_time=transit_time)
@@ -377,15 +412,17 @@ for TIC in TIClist:
     lc_collection = search_result.download_all()
     try:
         lc_collection.plot()
-        plt.close()
         #plt.savefig(f'{homedir}/lc_collection/TIC{TIC}.png')
+        plt.close()
+
     except AttributeError:
         #with open('error_tic.dat', 'a') as f:
             #f.write(str(TIC) + '\n')
         continue
 
+
     for index, item in param_df.iterrows():
-        lc = lc_collection.stitch().flatten().remove_outliers() #initialize lc
+        lc = lc_collection.stitch().flatten() #initialize lc
 
         duration = item['Planet Transit Duration Value [hours]'] / 24
         period = item['Planet Orbital Period Value [days]']
@@ -393,6 +430,14 @@ for TIC in TIClist:
         TOInumber = 'TOI' + str(item["TESS Object of Interest"])
         rp = item['Planet Radius Value [R_Earth]'] * 0.00916794 #translate to Rsun
         rs = item['Stellar Radius Value [R_Sun]']
+
+        ###もしもどれかのパラメータがnanだったらそのTIC or TOIを記録して、処理はスキップする。
+        pdf = pd.Series([duration, period, transit_time], index=['duration', 'period', 'transit_time'])
+        if np.sum(pdf.isnull()) != 0:
+            with open('error_tic.dat', 'a') as f:
+                f.write(f'nan {pdf[pdf.isnull()].index.tolist()}!:{str(TIC)}+ "\n"')
+            continue
+
 
         print('analysing: ', TOInumber)
 
@@ -403,11 +448,20 @@ for TIC in TIClist:
 
         #ターゲットの惑星の信号がデータに影響を与えていないなら処理を中断する
         if contain_transit == 1:
+
+            lc.scatter()
+            for transit in transit_time_list:
+                #plt.axvline(x=transit, ymax=np.max(lc.flux.value), ymin=np.min(lc.flux.value), color='red')
+                plt.axvline(x=transit, color='blue')
+            plt.savefig(f'{homedir}/check_transit_timing/TIC{TIC}.png')
+            #plt.show()
+            plt.close()
+
             pass
+
         else:
             print('no transit in data: ', TOInumber)
             continue
-
         #他の惑星がある場合、データに影響を与えているか判断。ならその信号を除去する。
 
         if len(param_df.index) != 1:
@@ -417,8 +471,11 @@ for TIC in TIClist:
             others_period = param_df[param_df.index!=index]['Planet Orbital Period Value [days]'].values
             others_transit_time = param_df[param_df.index!=index]['Planet Transit Midpoint Value [BJD]'].values - 2457000.0 #translate BTJD
 
-            for others_duration, others_period, others_transit_time in zip(others_duration, others_period, others_transit_time):
-                lc, _, _ = clip_transit_hoge(lc, others_duration, others_period, others_transit_time, clip_transit=True)
+            for other_duration, other_period, other_transit_time in zip(others_duration, others_period, others_transit_time):
+                if np.any(np.isnan([other_period, other_duration, other_transit_time])):
+                    continue
+                else:
+                    lc, _, _ = clip_transit_hoge(lc, other_duration, other_period, other_transit_time, clip_transit=True)
 
         #トランジットがデータに何個あるか判断しその周りのライトカーブデータを作成、カーブフィッティングでノーマライズ
         print('preprocessing...')
@@ -428,16 +485,17 @@ for TIC in TIClist:
             print('folding...')
             time.sleep(1)
             folded_lc = folding_each_lc(lc_list, period, transit_time)
+            #import pdb; pdb.set_trace()
         except ValueError:
             print('no transit!')
             with open('error_tic.dat', 'a') as f:
                 f.write('no transit!: ' + 'str(TIC)' + '\n')
             continue
-        folded_lc.errorbar()
-        plt.savefig(f'{homedir}/folded_lc/figure/{TOInumber}.png')
+        folded_lc.scatter()
+        plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
         #plt.show()
         plt.close()
-        folded_lc.write(f'{homedir}/folded_lc/data/{TOInumber}.csv')
+        folded_lc.write(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/data/{TOInumber}.csv')
     import pdb; pdb.set_trace()
 
     """
