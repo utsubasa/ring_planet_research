@@ -231,7 +231,7 @@ def remove_transit_signal(case, lc, transit_start, transit_end):
     return lc
 
 
-def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TOInumber):
+def preprocess_each_lc(lc, duration, period, transit_time_list, TOInumber):
     transit_time_list = np.array(transit_time_list)
     n_transit = len(transit_time_list)
     print('n_transit: ', n_transit)
@@ -287,15 +287,23 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
         else:
             pass
 
+        '''
         #nanをreplaceする
         nan_index = np.where(np.isnan(each_lc.flux.value))[0].tolist()
         for index in nan_index:
             index_dic = dict(zip(np.where(~(np.isnan(each_lc.flux.value)))[0],  np.abs(np.where(~(np.isnan(each_lc.flux.value)))[0] - index)))
             index_dic_sorted = sorted(index_dic.items(), key=lambda x:x[1])
-            replace_flux = (each_lc.flux[index_dic_sorted[0][0]]+each_lc.flux[index_dic_sorted[1][1]]) / 2
-            each_lc.flux[index] = replace_flux# + #gausian noise
-            replace_flux_err = (each_lc.flux_err[index_dic_sorted[0][0]]+each_lc.flux_err[index_dic_sorted[1][1]]) / 2
-            each_lc.flux_err[index] = replace_flux_err# + #gausian noise
+            replace_flux = (each_lc.flux[index_dic_sorted[0][0]] + each_lc.flux[index_dic_sorted[1][0]]) / 2
+            replace_flux_var = np.var(np.array([each_lc.flux[index_dic_sorted[0][0]].value, each_lc.flux[index_dic_sorted[1][0]].value]))
+            each_lc.flux[index] = replace_flux + np.random.normal(loc=replace_flux, scale=replace_flux_var)
+            replace_flux_err = (each_lc.flux_err[index_dic_sorted[0][0]] + each_lc.flux_err[index_dic_sorted[1][0]]) / 2
+            replace_flux_err_var = np.var(np.array([each_lc.flux_err[index_dic_sorted[0][0]].value, each_lc.flux_err[index_dic_sorted[1][0]].value]))
+            each_lc.flux_err[index] = replace_flux_err + np.random.normal(loc=replace_flux, scale=replace_flux_err_var)
+            '''
+        #nanをカットする
+        not_nan_index = np.where(~np.isnan(each_lc.flux.value))[0].tolist()
+        each_lc = each_lc[not_nan_index]
+
 
         noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
         #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
@@ -338,17 +346,14 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
                 each_lc = clip_lc[~mask]
 
         ###curve fiting
-        out_transit = each_lc[(each_lc['time'].value < (transit_time+period*i)-(duration/2)) | (each_lc['time'].value > (transit_time+period*i)+(duration/2))]
-        import pdb; pdb.set_trace()fff
-        
-
-
+        #out_transit = each_lc[(each_lc['time'].value < (transit_time+period*i)-(duration/2)) | (each_lc['time'].value > (transit_time+period*i)+(duration/2))]
+        out_transit = each_lc[(each_lc['time'].value < mid_transit-(duration/2)) | (each_lc['time'].value > mid_transit+(duration/2))]
         model = lmfit.models.PolynomialModel()
         poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
         result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
         result.plot()
         plt.savefig(f'{homedir}/fitting_result/curvefit_figure/{TOInumber}.png')
-        plt.show()
+        #plt.show()
         #plt.close()
         poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
                         result.params.valuesdict()['c1'],\
@@ -475,7 +480,7 @@ for TIC in TIClist:
         #トランジットがデータに何個あるか判断しその周りのライトカーブデータを作成、カーブフィッティングでノーマライズ
         print('preprocessing...')
         time.sleep(1)
-        lc_list = preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TOInumber)
+        lc_list = preprocess_each_lc(lc, duration, period, transit_time_list, TOInumber)
         try:
             print('folding...')
             time.sleep(1)
