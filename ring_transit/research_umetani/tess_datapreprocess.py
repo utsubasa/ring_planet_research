@@ -339,7 +339,8 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
 
         ###curve fiting
         out_transit = each_lc[(each_lc['time'].value < (transit_time+period*i)-(duration/2)) | (each_lc['time'].value > (transit_time+period*i)+(duration/2))]
-        import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()fff
+        
 
 
         model = lmfit.models.PolynomialModel()
