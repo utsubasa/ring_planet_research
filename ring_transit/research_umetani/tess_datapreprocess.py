@@ -352,7 +352,7 @@ def preprocess_each_lc(lc, duration, period, transit_time_list, TOInumber):
         poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
         result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
         result.plot()
-        plt.savefig(f'{homedir}/fitting_result/curvefit_figure/{TOInumber}.png')
+        plt.savefig(f'{homedir}/fitting_result/curvefit_figure/{TOInumber}_{i}.png')
         #plt.show()
         #plt.close()
         poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
