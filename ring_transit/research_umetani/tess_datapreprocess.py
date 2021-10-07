@@ -75,7 +75,6 @@ def set_params_lm(names, values, mins, maxes, vary_flags):
 # Ouput flux (1d array)
 def ring_model(x, pdic, v=None):
     if v is not None:
-        ##import pdb; pdb.set_trace()
         for i, param in enumerate(mcmc_params):
             #print(i, v[i])
             pdic[param] = v[i]
@@ -294,9 +293,9 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
             index_dic = dict(zip(np.where(~(np.isnan(each_lc.flux.value)))[0],  np.abs(np.where(~(np.isnan(each_lc.flux.value)))[0] - index)))
             index_dic_sorted = sorted(index_dic.items(), key=lambda x:x[1])
             replace_flux = (each_lc.flux[index_dic_sorted[0][0]]+each_lc.flux[index_dic_sorted[1][1]]) / 2
-            each_lc.flux[index] = replace_flux + #gausian noise
+            each_lc.flux[index] = replace_flux# + #gausian noise
             replace_flux_err = (each_lc.flux_err[index_dic_sorted[0][0]]+each_lc.flux_err[index_dic_sorted[1][1]]) / 2
-            each_lc.flux_err[index] = replace_flux_err + #gausian noise 
+            each_lc.flux_err[index] = replace_flux_err# + #gausian noise
 
         noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
         #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
@@ -339,13 +338,8 @@ def preprocess_each_lc(lc, duration, period, transit_time, transit_time_list, TO
                 each_lc = clip_lc[~mask]
 
         ###curve fiting
-        each_lc_df = each_lc.to_pandas()
-        before_transit = each_lc_df[each_lc_df.index < (transit_time+period*i)-(duration/2)]
-        after_transit = each_lc_df[each_lc_df.index > (transit_time+period*i)+(duration/2)]
-        out_transit = pd.concat([before_transit, after_transit])
-        out_transit = out_transit.reset_index()
-        out_transit = Table.from_pandas(out_transit)
-        out_transit = lk.LightCurve(data=out_transit)
+        out_transit = each_lc[(each_lc['time'].value < (transit_time+period*i)-(duration/2)) | (each_lc['time'].value > (transit_time+period*i)+(duration/2))]
+        import pdb; pdb.set_trace()
 
 
         model = lmfit.models.PolynomialModel()
@@ -485,7 +479,6 @@ for TIC in TIClist:
             print('folding...')
             time.sleep(1)
             folded_lc = folding_each_lc(lc_list, period, transit_time)
-            #import pdb; pdb.set_trace()
         except ValueError:
             print('no transit!')
             with open('error_tic.dat', 'a') as f:
@@ -503,5 +496,4 @@ for TIC in TIClist:
     folded_lc = folding_each_lc(lc_list)
     folded_lc.errorbar()
     plt.show()
-    import pdb; pdb.set_trace()
     """
