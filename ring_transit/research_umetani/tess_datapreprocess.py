@@ -327,19 +327,20 @@ def preprocess_each_lc(lc, duration, period, transit_time_list, TOInumber):
                 import pdb; pdb.set_trace()
             flux_model = no_ring_model_transitfit_from_lmparams(out.params, each_lc.time.value, noringnames)
             clip_lc = each_lc.normalize().copy()
-            #clip_lc.flux = clip_lc.flux-flux_model
+            clip_lc.flux = np.sqrt(np.square(flux_model - clip_lc.flux))
             _, mask = clip_lc.remove_outliers(return_mask=True)
             inverse_mask = np.logical_not(mask)
             if np.all(inverse_mask) == True:
                 print('after clip length: ', len(each_lc.flux))
-                clip_lc.errorbar()
-                plt.plot(clip_lc.time.value, flux_model, label='fit_model', color='black')
+                each_lc.errorbar()
+                plt.plot(each_lc.time.value, flux_model, label='fit_model', color='black')
                 plt.axvline(x=mid_transit, color='blue')
                 plt.legend()
-                plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}_{chi_square:.3f}.png', header=False, index=False)
-                #plt.show()
+                #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}_{chi_square:.3f}.png', header=False, index=False)
+                plt.show()
+                import pdb; pdb.set_trace()
                 plt.close()
-                each_lc = clip_lc
+                #each_lc = clip_lc
                 break
             else:
                 print('cliped:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
@@ -352,9 +353,9 @@ def preprocess_each_lc(lc, duration, period, transit_time_list, TOInumber):
         poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
         result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
         result.plot()
-        plt.savefig(f'{homedir}/fitting_result/curvefit_figure/{TOInumber}_{i}.png')
-        #plt.show()
-        #plt.close()
+        #plt.savefig(f'{homedir}/fitting_result/curvefit_figure/{TOInumber}_{i}.png')
+        plt.show()
+        plt.close()
         poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
                         result.params.valuesdict()['c1'],\
                         result.params.valuesdict()['c2'],\
@@ -408,7 +409,15 @@ params_df = pd.read_excel(f'{homedir}/TOI_parameters.xlsx')
 for TIC in TIClist:
     param_df = params_df[params_df['TESS Input Catalog ID'] == TIC]
     #tpf = lk.search_targetpixelfile('TIC {}'.format(TIC), mission='TESS', cadence="short").download()
-    search_result = lk.search_lightcurve(f'TIC {TIC}', mission='TESS', cadence="short")
+    while True:
+        try:
+            search_result = lk.search_lightcurve(f'TIC {TIC}', mission='TESS', cadence="short")
+        except HTTPError:
+            priont('HTTPError, retry.')
+        else:
+            break
+
+    #import pdb; pdb.set_trace()
     lc_collection = search_result.download_all()
     try:
         lc_collection.plot()
@@ -422,7 +431,7 @@ for TIC in TIClist:
 
 
     for index, item in param_df.iterrows():
-        lc = lc_collection.stitch().flatten() #initialize lc
+        lc = lc_collection.stitch() #initialize lc
 
         duration = item['Planet Transit Duration Value [hours]'] / 24
         period = item['Planet Orbital Period Value [days]']
@@ -430,6 +439,21 @@ for TIC in TIClist:
         TOInumber = 'TOI' + str(item["TESS Object of Interest"])
         rp = item['Planet Radius Value [R_Earth]'] * 0.00916794 #translate to Rsun
         rs = item['Stellar Radius Value [R_Sun]']
+
+        bls_period = np.linspace(period*0.6, period*1.5, 10000)
+        bls = lc.to_periodogram(method='bls',period=bls_period)#oversample_factor=1)\
+        print('planet_b_period = ', bls.period_at_max_power)
+        print(f'period = {period}')
+        print('planet_b_t0 = ', bls.transit_time_at_max_power)
+        print(f'period = {transit_time}')
+        print('planet_b_dur = ', bls.duration_at_max_power)
+        print(f'period = {duration}')
+        duration = bls.duration_at_max_power.value
+        period = bls.period_at_max_power.value
+        transit_time = bls.transit_time_at_max_power.value
+        TOInumber = 'TOI' + str(item["TESS Object of Interest"])
+        import pdb; pdb.set_trace()
+
 
         ###もしもどれかのパラメータがnanだったらそのTIC or TOIを記録して、処理はスキップする。
         pdf = pd.Series([duration, period, transit_time], index=['duration', 'period', 'transit_time'])
@@ -448,22 +472,28 @@ for TIC in TIClist:
 
         #ターゲットの惑星の信号がデータに影響を与えていないなら処理を中断する
         if contain_transit == 1:
-
-            lc.scatter()
+            '''
+            #lc.scatter()
+            fig, ax = plt.subplots(figsize =(18, 9))
             for transit in transit_time_list:
                 #plt.axvline(x=transit, ymax=np.max(lc.flux.value), ymin=np.min(lc.flux.value), color='red')
-                plt.axvline(x=transit, color='blue')
+                ax.axvline(x=transit, color='blue')
+            aaa=lc[lc.time.value < 2000]
+            aaa.scatter(ax=ax)
+            ax.set_xlim(1325,1355)
+            plt.show()
+            import pdb; pdb.set_trace()
             plt.savefig(f'{homedir}/check_transit_timing/TIC{TIC}.png')
             #plt.show()
             plt.close()
-
+            '''
             pass
 
         else:
             print('no transit in data: ', TOInumber)
             continue
-        #他の惑星がある場合、データに影響を与えているか判断。ならその信号を除去する。
 
+        #他の惑星がある場合、データに影響を与えているか判断。ならその信号を除去する。
         if len(param_df.index) != 1:
             print('removing others planet transit in data...')
             time.sleep(1)
@@ -491,11 +521,11 @@ for TIC in TIClist:
                 f.write('no transit!: ' + 'str(TIC)' + '\n')
             continue
         folded_lc.scatter()
-        plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
-        #plt.show()
+        #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
+        plt.show()
         plt.close()
-        folded_lc.write(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/data/{TOInumber}.csv')
-    import pdb; pdb.set_trace()
+        #folded_lc.write(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/data/{TOInumber}.csv')
+    #import pdb; pdb.set_trace()
 
     """
     lc_list = preprocess_each_lc(lc, duration, period, transit_time)
