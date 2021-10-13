@@ -18,6 +18,7 @@ from multiprocessing import Pool
 #from lightkurve import search_targetpixelfile
 from scipy import signal
 from astropy.table import Table, vstack
+import astropy.units as u
 
 warnings.filterwarnings('ignore')
 
@@ -312,8 +313,8 @@ def preprocess_each_lc(lc, duration, period, transit_time_list, TOInumber):
         else:
             values = [mid_transit+period*i, period, rp/rs, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
 
-        mins = [-0.1, 4.0, 0.03, 4, 80, 0, 90, 0.0, 0.0]
-        maxes = [0.1, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
+        mins = [-0.5, 4.0, 0.03, 4, 80, 0, 90, 0.0, 0.0]
+        maxes = [0.5, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
         #vary_flags = [True, False, True, True, True, False, False, True, True]
         vary_flags = [False, False, True, True, True, False, False, True, True]
         no_ring_params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
@@ -411,7 +412,7 @@ for TIC in TIClist:
     #tpf = lk.search_targetpixelfile('TIC {}'.format(TIC), mission='TESS', cadence="short").download()
     while True:
         try:
-            search_result = lk.search_lightcurve(f'TIC {TIC}', mission='TESS', cadence="short")
+            search_result = lk.search_lightcurve(f'TIC {TIC}', mission='TESS', cadence="short", author='SPOC')
         except HTTPError:
             priont('HTTPError, retry.')
         else:
@@ -431,7 +432,7 @@ for TIC in TIClist:
 
 
     for index, item in param_df.iterrows():
-        lc = lc_collection.stitch() #initialize lc
+        lc = lc_collection.stitch().flatten() #initialize lc
 
         duration = item['Planet Transit Duration Value [hours]'] / 24
         period = item['Planet Orbital Period Value [days]']
@@ -440,6 +441,7 @@ for TIC in TIClist:
         rp = item['Planet Radius Value [R_Earth]'] * 0.00916794 #translate to Rsun
         rs = item['Stellar Radius Value [R_Sun]']
 
+        '''
         bls_period = np.linspace(period*0.6, period*1.5, 10000)
         bls = lc.to_periodogram(method='bls',period=bls_period)#oversample_factor=1)\
         print('planet_b_period = ', bls.period_at_max_power)
@@ -451,9 +453,8 @@ for TIC in TIClist:
         duration = bls.duration_at_max_power.value
         period = bls.period_at_max_power.value
         transit_time = bls.transit_time_at_max_power.value
+        '''
         TOInumber = 'TOI' + str(item["TESS Object of Interest"])
-        import pdb; pdb.set_trace()
-
 
         ###もしもどれかのパラメータがnanだったらそのTIC or TOIを記録して、処理はスキップする。
         pdf = pd.Series([duration, period, transit_time], index=['duration', 'period', 'transit_time'])
@@ -461,10 +462,7 @@ for TIC in TIClist:
             with open('error_tic.dat', 'a') as f:
                 f.write(f'nan {pdf[pdf.isnull()].index.tolist()}!:{str(TIC)}+ "\n"')
             continue
-
-
         print('analysing: ', TOInumber)
-
         print('judging whether or not transit is included in the data...')
         time.sleep(1)
         #ターゲットの惑星の信号がデータに影響を与えているか判断
