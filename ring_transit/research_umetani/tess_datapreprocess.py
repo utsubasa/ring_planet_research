@@ -503,12 +503,13 @@ for TIC in TIClist:
                 if np.any(np.isnan([other_period, other_duration, other_transit_time])):
                     continue
                 else:
-                    lc, _, _ = clip_transit_hoge(lc, other_duration, other_period, other_transit_time, clip_transit=True)
-
+                    cliped_lc, _, _ = clip_transit_hoge(lc, other_duration, other_period, other_transit_time, clip_transit=True)
+                    
         #トランジットがデータに何個あるか判断しその周りのライトカーブデータを作成、カーブフィッティングでノーマライズ
+        continue
         print('preprocessing...')
         time.sleep(1)
-        lc_list = preprocess_each_lc(lc, duration, period, transit_time_list, TOInumber)
+        lc_list = preprocess_each_lc(cliped_lclc, duration, period, transit_time_list, TOInumber)
         try:
             print('folding...')
             time.sleep(1)
