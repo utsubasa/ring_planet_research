@@ -232,120 +232,190 @@ def remove_transit_signal(case, lc, transit_start, transit_end):
     return lc
 
 
-def preprocess_each_lc(lc, duration, period, transit_time_list, TOInumber):
-    transit_time_list = np.array(transit_time_list)
-    n_transit = len(transit_time_list)
-    print('n_transit: ', n_transit)
-    half_duration = (duration/2)
-    twice_duration = (duration*2) #durationを2倍、単位をday→mi
-    lc_cut_point = half_duration + twice_duration
-    lc_list=[]
-    for i, mid_transit in enumerate(transit_time_list):
-        print(f'No.{i} transit: ')
-        transit_start = mid_transit - lc_cut_point
-        transit_end = mid_transit + lc_cut_point
-        """
-        each_lc_pre = lc[:start]
-        each_lc_mid = lc[start:end]
-        each_lc_post = lc[end:]
-        print('before clip length: ', len(each_lc.flux))
-        for each_lc in [each_lc_pre, each_lc_post]:
-            clip_lc = each_lc.normalize().copy()
+def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
+    folded_lc = lc.fold(period=period , epoch_time=transit_time)
+    ###nanをカットする
+    not_nan_index = np.where(~np.isnan(folded_lc.flux.value))[0].tolist()
+    folded_lc = folded_lc[not_nan_index]
 
-            _, mask = clip_lc.remove_outliers(return_mask=True)
-            inverse_mask = np.logical_not(mask)
-        ###remove outliers
-        while True:
-            clip_lc = out_transit.normalize().copy()
-            _, mask = out_transit.remove_outliers(return_mask=True)
-            inverse_mask = np.logical_not(mask)
-            if np.all(inverse_mask) == True:
-                print('after clip length: ', len(each_lc.flux))
-                each_lc.normalize().errorbar()
-                plt.errorbar(out_transit.time.value, out_transit.flux.value, yerr=out_transit.flux_err.value, label='fit_model')
-                plt.legend()
-                plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{datetime.datetime.now().strftime("%y%m%d")}_{str(i)}.png', header=False, index=False)
-                #plt.show()
-                plt.close()
-                break
-            else:
-                print('cliped:', len(out_transit.flux.value)-len(out_transit[~mask].flux.value))
-                out_transit = out_transit[~mask]
-        """
+    #binned_lc = folded_lc.bin(time_bin_size=duration/20)
+    #binned_lc.scatter()
+    #plt.show()
+
+    epoch_all_time = ( (folded_lc.time_original.value - transit_time) + 0.5 *period) /period
+    epoch_all= np.array(epoch_all_time, dtype = int)
+    epoch_all_list = list(set(epoch_all))
+    folded_lc.epoch_all = epoch_all
+    #transit_time_list = np.array(transit_time_list)
+    if len(np.unique(epoch_all)) != len(epoch_all_list):
+        import pdb; pdb.set_trace()
+    #n_transit = len(transit_time_list)
+    #print('n_transit: ', n_transit)
+    print(f'n_transit: {len(np.unique(epoch_all))}')
+    names = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
+    if np.isnan(rp/rs):
+        values = [0, period, 0.02, 10, 87, 0, 90, 0.3, 0.2]
+    else:
+        values = [0, period, rp/rs, 10, 87, 0, 90, 0.3, 0.2]
+    mins = [-0.5, period, 0.001, 1, 70, 0, 90, 0.0, 0.0]
+    maxes = [0.5, period, 0.2, 100, 110, 0, 90, 1.0, 1.0]
+    vary_flags = [True, False, True, True, True, False, False,False , False]
+    params = set_params_lm(names, values, mins, maxes, vary_flags)
+    t0arr = []
+    t0arr_err = []
 
 
-        ###transit fitting and clip outliers
-        ###params setting
-        each_lc = lc[(lc['time'].value > transit_start) & (lc['time'].value < transit_end)]
-
-        ###ignore the case of no bins around transit.
-        if len(each_lc) == 0:
-            print('no data around transit.')
-            continue
-        elif np.all(np.isnan(each_lc.flux.value)):
-            print('all nan data.')
-            continue
-        else:
-            pass
-
+    time_now_arr = []
+    for epoch_now in epoch_all_list:
+        flag = folded_lc.epoch_all == epoch_now
+        print(np.min(folded_lc[flag].time_original.value), np.max(folded_lc[flag].time_original.value))
+        #folded_lc[flag].plot()
+        #plt.xlim(-0.3, 0.3)
         '''
-        #nanをreplaceする
-        nan_index = np.where(np.isnan(each_lc.flux.value))[0].tolist()
-        for index in nan_index:
-            index_dic = dict(zip(np.where(~(np.isnan(each_lc.flux.value)))[0],  np.abs(np.where(~(np.isnan(each_lc.flux.value)))[0] - index)))
-            index_dic_sorted = sorted(index_dic.items(), key=lambda x:x[1])
-            replace_flux = (each_lc.flux[index_dic_sorted[0][0]] + each_lc.flux[index_dic_sorted[1][0]]) / 2
-            replace_flux_var = np.var(np.array([each_lc.flux[index_dic_sorted[0][0]].value, each_lc.flux[index_dic_sorted[1][0]].value]))
-            each_lc.flux[index] = replace_flux + np.random.normal(loc=replace_flux, scale=replace_flux_var)
-            replace_flux_err = (each_lc.flux_err[index_dic_sorted[0][0]] + each_lc.flux_err[index_dic_sorted[1][0]]) / 2
-            replace_flux_err_var = np.var(np.array([each_lc.flux_err[index_dic_sorted[0][0]].value, each_lc.flux_err[index_dic_sorted[1][0]].value]))
-            each_lc.flux_err[index] = replace_flux_err + np.random.normal(loc=replace_flux, scale=replace_flux_err_var)
-            '''
-        #nanをカットする
-        not_nan_index = np.where(~np.isnan(each_lc.flux.value))[0].tolist()
-        each_lc = each_lc[not_nan_index]
-
-
-        noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
-        #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
-        if np.isnan(rp/rs):
-            values = [mid_transit+period*i, period, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
+        if np.min(folded_lc[flag].time_original.value) < 2000:
+            values = [0.0, period, 0.1, 10, 87, 0, 90, 0.3, 0.2]
         else:
-            values = [mid_transit+period*i, period, rp/rs, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
+            values = [0.0, period, 0.1, 10, 87, 0, 90, 0.3, 0.2]
+        '''
+        params = set_params_lm(names, values, mins, maxes, vary_flags)
+        time = folded_lc[flag].time.value
+        flux = folded_lc[flag].flux.value
+        flux_err = folded_lc[flag].flux_err.value
+        flag_time = np.abs(time)<1.0
+        try:
+            out = lmfit.minimize(no_ring_residual_transitfit, params, args=(time[flag_time],flux[flag_time], flux_err[flag_time], names))
+        except TypeError:
+            continue
+        try:
+            if np.isfinite(out.params["t0"].stderr):
+                t0arr.append(out.params["t0"].value)
+                t0arr_err.append(out.params["t0"].stderr)
 
-        mins = [-0.5, 4.0, 0.03, 4, 80, 0, 90, 0.0, 0.0]
-        maxes = [0.5, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
-        #vary_flags = [True, False, True, True, True, False, False, True, True]
-        vary_flags = [False, False, True, True, True, False, False, True, True]
-        no_ring_params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
-
-
-        while True:
-            try:
-                out = lmfit.minimize(no_ring_residual_transitfit,no_ring_params,args=(each_lc.time.value, each_lc.flux.value, each_lc.flux_err.value, noringnames),max_nfev=1000)
-            except ValueError:
-                print('cant fiting')
-                import pdb; pdb.set_trace()
-            flux_model = no_ring_model_transitfit_from_lmparams(out.params, each_lc.time.value, noringnames)
-            clip_lc = each_lc.normalize().copy()
-            clip_lc.flux = np.sqrt(np.square(flux_model - clip_lc.flux))
-            _, mask = clip_lc.remove_outliers(return_mask=True)
-            inverse_mask = np.logical_not(mask)
-            if np.all(inverse_mask) == True:
-                print('after clip length: ', len(each_lc.flux))
-                each_lc.errorbar()
-                plt.plot(each_lc.time.value, flux_model, label='fit_model', color='black')
-                plt.axvline(x=mid_transit, color='blue')
+                time_now_arr.append(0.5 * np.min(folded_lc[flag].time_original.value) + 0.5* np.max(folded_lc[flag].time_original.value))
+                flux_model = no_ring_model_transitfit_from_lmparams(out.params, time[flag_time], names)
+                folded_lc[flag].errorbar()
+                plt.plot(time[flag_time],flux_model, label='fit_model')
                 plt.legend()
-                #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}_{chi_square:.3f}.png', header=False, index=False)
+                #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}_{int(chi_square)}.png', header=False, index=False)
                 plt.show()
-                import pdb; pdb.set_trace()
                 plt.close()
-                #each_lc = clip_lc
-                break
+        except TypeError:
+            import pdb; pdb.set_trace()
+
+
+        continue
+        '''
+        half_duration = (duration/2)
+        twice_duration = (duration*2) #durationを2倍、単位をday→mi
+        lc_cut_point = half_duration + twice_duration
+        lc_list=[]
+        for i, mid_transit in enumerate(transit_time_list):
+            print(f'No.{i} transit: ')
+            transit_start = mid_transit - lc_cut_point
+            transit_end = mid_transit + lc_cut_point
+            """
+            each_lc_pre = lc[:start]
+            each_lc_mid = lc[start:end]
+            each_lc_post = lc[end:]
+            print('before clip length: ', len(each_lc.flux))
+            for each_lc in [each_lc_pre, each_lc_post]:
+                clip_lc = each_lc.normalize().copy()
+
+                _, mask = clip_lc.remove_outliers(return_mask=True)
+                inverse_mask = np.logical_not(mask)
+            ###remove outliers
+            while True:
+                clip_lc = out_transit.normalize().copy()
+                _, mask = out_transit.remove_outliers(return_mask=True)
+                inverse_mask = np.logical_not(mask)
+                if np.all(inverse_mask) == True:
+                    print('after clip length: ', len(each_lc.flux))
+                    each_lc.normalize().errorbar()
+                    plt.errorbar(out_transit.time.value, out_transit.flux.value, yerr=out_transit.flux_err.value, label='fit_model')
+                    plt.legend()
+                    plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{datetime.datetime.now().strftime("%y%m%d")}_{str(i)}.png', header=False, index=False)
+                    #plt.show()
+                    plt.close()
+                    break
+                else:
+                    print('cliped:', len(out_transit.flux.value)-len(out_transit[~mask].flux.value))
+                    out_transit = out_transit[~mask]
+            """
+
+
+            ###transit fitting and clip outliers
+            ###params setting
+            each_lc = lc[(lc['time'].value > transit_start) & (lc['time'].value < transit_end)]
+
+            ###ignore the case of no bins around transit.
+            if len(each_lc) == 0:
+                print('no data around transit.')
+                continue
+            elif np.all(np.isnan(each_lc.flux.value)):
+                print('all nan data.')
+                continue
             else:
-                print('cliped:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
-                each_lc = clip_lc[~mask]
+                pass
+
+            """
+            #nanをreplaceする
+            nan_index = np.where(np.isnan(each_lc.flux.value))[0].tolist()
+            for index in nan_index:
+                index_dic = dict(zip(np.where(~(np.isnan(each_lc.flux.value)))[0],  np.abs(np.where(~(np.isnan(each_lc.flux.value)))[0] - index)))
+                index_dic_sorted = sorted(index_dic.items(), key=lambda x:x[1])
+                replace_flux = (each_lc.flux[index_dic_sorted[0][0]] + each_lc.flux[index_dic_sorted[1][0]]) / 2
+                replace_flux_var = np.var(np.array([each_lc.flux[index_dic_sorted[0][0]].value, each_lc.flux[index_dic_sorted[1][0]].value]))
+                each_lc.flux[index] = replace_flux + np.random.normal(loc=replace_flux, scale=replace_flux_var)
+                replace_flux_err = (each_lc.flux_err[index_dic_sorted[0][0]] + each_lc.flux_err[index_dic_sorted[1][0]]) / 2
+                replace_flux_err_var = np.var(np.array([each_lc.flux_err[index_dic_sorted[0][0]].value, each_lc.flux_err[index_dic_sorted[1][0]].value]))
+                each_lc.flux_err[index] = replace_flux_err + np.random.normal(loc=replace_flux, scale=replace_flux_err_var)
+                """
+            #nanをカットする
+            not_nan_index = np.where(~np.isnan(each_lc.flux.value))[0].tolist()
+            each_lc = each_lc[not_nan_index]
+
+
+            noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
+            #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
+            if np.isnan(rp/rs):
+                values = [mid_transit+period*i, period, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
+            else:
+                values = [mid_transit+period*i, period, rp/rs, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
+
+            mins = [-0.5, 4.0, 0.03, 4, 80, 0, 90, 0.0, 0.0]
+            maxes = [0.5, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
+            #vary_flags = [True, False, True, True, True, False, False, True, True]
+            vary_flags = [False, False, True, True, True, False, False, True, True]
+            no_ring_params = set_params_lm(noringnames, values, mins, maxes, vary_flags)
+
+
+            while True:
+                try:
+                    out = lmfit.minimize(no_ring_residual_transitfit,no_ring_params,args=(each_lc.time.value, each_lc.flux.value, each_lc.flux_err.value, noringnames),max_nfev=1000)
+                except ValueError:
+                    print('cant fiting')
+                    import pdb; pdb.set_trace()
+                flux_model = no_ring_model_transitfit_from_lmparams(out.params, each_lc.time.value, noringnames)
+                clip_lc = each_lc.normalize().copy()
+                clip_lc.flux = np.sqrt(np.square(flux_model - clip_lc.flux))
+                _, mask = clip_lc.remove_outliers(return_mask=True)
+                inverse_mask = np.logical_not(mask)
+                if np.all(inverse_mask) == True:
+                    print('after clip length: ', len(each_lc.flux))
+                    each_lc.errorbar()
+                    plt.plot(each_lc.time.value, flux_model, label='fit_model', color='black')
+                    plt.axvline(x=mid_transit, color='blue')
+                    plt.legend()
+                    #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}_{chi_square:.3f}.png', header=False, index=False)
+                    plt.show()
+                    import pdb; pdb.set_trace()
+                    plt.close()
+                    #each_lc = clip_lc
+                    break
+                else:
+                    print('cliped:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
+                    each_lc = clip_lc[~mask]
+            '''
 
         ###curve fiting
         #out_transit = each_lc[(each_lc['time'].value < (transit_time+period*i)-(duration/2)) | (each_lc['time'].value > (transit_time+period*i)+(duration/2))]
@@ -503,13 +573,12 @@ for TIC in TIClist:
                 if np.any(np.isnan([other_period, other_duration, other_transit_time])):
                     continue
                 else:
-                    cliped_lc, _, _ = clip_transit_hoge(lc, other_duration, other_period, other_transit_time, clip_transit=True)
-                    
+                    lc, _, _ = clip_transit_hoge(lc, other_duration, other_period, other_transit_time, clip_transit=True)
+
         #トランジットがデータに何個あるか判断しその周りのライトカーブデータを作成、カーブフィッティングでノーマライズ
-        continue
         print('preprocessing...')
         time.sleep(1)
-        lc_list = preprocess_each_lc(cliped_lclc, duration, period, transit_time_list, TOInumber)
+        lc_list = preprocess_each_lc(lc, duration, period, transit_time, TOInumber)
         try:
             print('folding...')
             time.sleep(1)
