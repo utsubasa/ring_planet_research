@@ -242,15 +242,13 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
     #binned_lc.scatter()
     #plt.show()
 
-    epoch_all_time = ( (folded_lc.time_original.value - transit_time) + 0.5 *period) /period
+    epoch_all_time = ( (folded_lc.time_original.value - transit_time) + 0.5*period ) / period
     epoch_all= np.array(epoch_all_time, dtype = int)
     epoch_all_list = list(set(epoch_all))
     folded_lc.epoch_all = epoch_all
-    #transit_time_list = np.array(transit_time_list)
     if len(np.unique(epoch_all)) != len(epoch_all_list):
+        print('check: len(np.unique(epoch_all)) != len(epoch_all_list).')
         import pdb; pdb.set_trace()
-    #n_transit = len(transit_time_list)
-    #print('n_transit: ', n_transit)
     print(f'n_transit: {len(np.unique(epoch_all))}')
     names = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
     if np.isnan(rp/rs):
@@ -272,6 +270,7 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
 
         if len(each_lc[(each_lc.time < 0.01) & (each_lc.time > -0.01)]) == 0:
             each_lc.errorbar()
+            plt.title('no data in mid transit')
             plt.savefig(f'{homedir}/fitting_result/figure/error_lc/{TOInumber}_{str(i)}.png', header=False, index=False)
             plt.close()
             continue
@@ -288,8 +287,8 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
         while True:
             ### transit fitting
             try:
-                flag_time = np.abs(each_lc.time.value)<1.0
-                each_lc = each_lc[flag_time]
+                #flag_time = np.abs(each_lc.time.value)<1.0
+                #each_lc = each_lc[flag_time]
                 time = each_lc.time.value
                 flux = each_lc.flux.value
                 flux_err = each_lc.flux_err.value
@@ -329,7 +328,7 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
                         #each_lc = clip_lc
                         break
                     else:
-                        print('cliped:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
+                        print('removed bins:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
                         each_lc[mask].errorbar(ax=ax, color='red', label='outliers')
                         each_lc = each_lc[~mask]
             except TypeError:
@@ -361,8 +360,8 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
         #normalization
         each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
         each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
-        each_lc_df = each_lc.to_pandas()
-        lc_list.append(each_lc_df)
+        
+        folded_lc[flag] = each_lc
     return lc_list
 
 def folding_each_lc(lc_list, period, transit_time):
