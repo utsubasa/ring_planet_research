@@ -360,8 +360,15 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
         #normalization
         each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
         each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
-        
+
         folded_lc[flag] = each_lc
+
+    ax = folded_lc.scatter(color='blue')
+
+    dummy_lc = lc.fold(period=period , epoch_time=transit_time)
+    dummy_lc = dummy_lc[not_nan_index]
+    dummy_lc.scatter(ax=ax, color='red', label='before preprocess')
+    plt.show()
     return lc_list
 
 def folding_each_lc(lc_list, period, transit_time):
