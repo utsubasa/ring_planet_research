@@ -261,90 +261,87 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
     maxes = [0.5, period, 0.2, 100, 110, 0, 90, 1.0, 1.0]
     vary_flags = [True, False, True, True, True, False, False,False , False]
     params = set_params_lm(names, values, mins, maxes, vary_flags)
-    t0arr = []
-    t0arr_err = []
+    t0dict = {}
+    t0err_dict = {}
 
 
     time_now_arr = []
     for i, epoch_now in enumerate(epoch_all_list):
         flag = folded_lc.epoch_all == epoch_now
-        if len(folded_lc[flag][(folded_lc[flag].time < 0.01) & (folded_lc[flag].time > -0.01)]) == 0:
-            folded_lc[flag].errorbar()
+        each_lc = folded_lc[flag]
+
+        if len(each_lc[(each_lc.time < 0.01) & (each_lc.time > -0.01)]) == 0:
+            each_lc.errorbar()
             plt.savefig(f'{homedir}/fitting_result/figure/error_lc/{TOInumber}_{str(i)}.png', header=False, index=False)
             plt.close()
             continue
-        print(np.min(folded_lc[flag].time_original.value), np.max(folded_lc[flag].time_original.value))
-        #folded_lc[flag].plot()
-        #plt.xlim(-0.3, 0.3)
+
+        print(np.min(each_lc.time_original.value), np.max(each_lc.time_original.value))
         '''
-        if np.min(folded_lc[flag].time_original.value) < 2000:
+        if np.min(each_lc.time_original.value) < 2000:
             values = [0.0, period, 0.1, 10, 87, 0, 90, 0.3, 0.2]
         else:
             values = [0.0, period, 0.1, 10, 87, 0, 90, 0.3, 0.2]
         '''
         params = set_params_lm(names, values, mins, maxes, vary_flags)
-        time = folded_lc[flag].time.value
-        flux = folded_lc[flag].flux.value
-        flux_err = folded_lc[flag].flux_err.value
-        flag_time = np.abs(time)<1.0
-        try:
-            out = lmfit.minimize(no_ring_residual_transitfit, params, args=(time[flag_time],flux[flag_time], flux_err[flag_time], names))
-        except TypeError:
-            continue
-        try:
-            if np.isfinite(out.params["t0"].stderr):
-                print(out.params.pretty_print())
-                t0arr.append(out.params["t0"].value)
-                t0arr_err.append(out.params["t0"].stderr)
 
-                time_now_arr.append(0.5 * np.min(folded_lc[flag].time_original.value) + 0.5* np.max(folded_lc[flag].time_original.value))
-                flux_model = no_ring_model_transitfit_from_lmparams(out.params, time[flag_time], names)
-                folded_lc[flag].errorbar()
-                plt.plot(time[flag_time],flux_model, label='fit_model')
-                plt.legend()
-                #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}_{int(chi_square)}.png', header=False, index=False)
-                plt.show()
+        while True:
+            ### transit fitting
+            try:
+                flag_time = np.abs(each_lc.time.value)<1.0
+                each_lc = each_lc[flag_time]
+                time = each_lc.time.value
+                flux = each_lc.flux.value
+                flux_err = each_lc.flux_err.value
+                out = lmfit.minimize(no_ring_residual_transitfit, params, args=(time, flux, flux_err, names))
+            except TypeError:
+                print('TypeError: out')
+                import pdb; pdb.set_trace()
+                continue
+            except ValueError:
+                print('cant fiting')
+                import pdb; pdb.set_trace()
+
+            ### remove outliers
+            try:
+                if np.isfinite(out.params["t0"].stderr):
+                    #print(out.params.pretty_print())
+                    time_now_arr.append(0.5 * np.min(each_lc.time_original.value) + 0.5* np.max(each_lc.time_original.value))
+                    flux_model = no_ring_model_transitfit_from_lmparams(out.params, time, names)
+
+                    clip_lc = each_lc.copy()
+                    clip_lc.flux = np.sqrt(np.square(flux_model - clip_lc.flux))
+                    _, mask = clip_lc.remove_outliers(return_mask=True)
+                    inverse_mask = np.logical_not(mask)
+                    ax = plt.subplot(1,1,1)
+
+                    if np.all(inverse_mask) == True:
+                        #print(f'after clip length: {len(each_lc.flux)}')
+                        each_lc.errorbar(ax=ax, color='black')
+                        ax.plot(time,flux_model, label='fit_model', color='blue')
+                        ax.legend()
+                        ax.set_xlim(-1, 1)
+                        #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}_{int(chi_square)}.png', header=False, index=False)
+                        plt.show()
+                        plt.close()
+                        t0dict[i] = out.params["t0"].value
+                        t0err_dict[i] = out.params["t0"].stderr
+                        #each_lc = clip_lc
+                        break
+                    else:
+                        print('cliped:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
+                        each_lc[mask].errorbar(ax=ax, color='red', label='outliers')
+                        each_lc = each_lc[~mask]
+            except TypeError:
+                each_lc.errorbar()
+                plt.xlim(-1, 1)
+                plt.savefig(f'{homedir}/fitting_result/figure/error_lc/{TOInumber}_{str(i)}.png', header=False, index=False)
                 plt.close()
-        except TypeError:
-            folded_lc[flag].errorbar()
-            plt.savefig(f'{homedir}/fitting_result/figure/error_lc/{TOInumber}_{str(i)}.png', header=False, index=False)
-            plt.close()
-            pass
-
-
-        continue
-        '''
-            while True:
-                try:
-                    out = lmfit.minimize(no_ring_residual_transitfit,no_ring_params,args=(each_lc.time.value, each_lc.flux.value, each_lc.flux_err.value, noringnames),max_nfev=1000)
-                except ValueError:
-                    print('cant fiting')
-                    import pdb; pdb.set_trace()
-                flux_model = no_ring_model_transitfit_from_lmparams(out.params, each_lc.time.value, noringnames)
-                clip_lc = each_lc.normalize().copy()
-                clip_lc.flux = np.sqrt(np.square(flux_model - clip_lc.flux))
-                _, mask = clip_lc.remove_outliers(return_mask=True)
-                inverse_mask = np.logical_not(mask)
-                if np.all(inverse_mask) == True:
-                    print('after clip length: ', len(each_lc.flux))
-                    each_lc.errorbar()
-                    plt.plot(each_lc.time.value, flux_model, label='fit_model', color='black')
-                    plt.axvline(x=mid_transit, color='blue')
-                    plt.legend()
-                    #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}_{chi_square:.3f}.png', header=False, index=False)
-                    plt.show()
-                    import pdb; pdb.set_trace()
-                    plt.close()
-                    #each_lc = clip_lc
-                    break
-                else:
-                    print('cliped:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
-                    each_lc = clip_lc[~mask]
-            '''
+                break
 
         ###curve fiting
         #out_transit = each_lc[(each_lc['time'].value < (transit_time+period*i)-(duration/2)) | (each_lc['time'].value > (transit_time+period*i)+(duration/2))]
-        out_transit = each_lc[(each_lc['time'].value < mid_transit-(duration/2)) | (each_lc['time'].value > mid_transit+(duration/2))]
+        out_transit = each_lc[(each_lc['time'].value < out.params["t0"].value - (duration/2)) | (each_lc['time'].value > out.params["t0"].value + (duration/2))]
         model = lmfit.models.PolynomialModel()
         poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
         result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
@@ -364,22 +361,6 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
         #normalization
         each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
         each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
-        print('before clip length: ', len(each_lc.flux))
-        while True:
-            _, mask = each_lc.remove_outliers(return_mask=True)
-            inverse_mask = np.logical_not(mask)
-            if np.all(inverse_mask) == True:
-                print('after clip length: ', len(each_lc.flux))
-                #each_lc.errorbar()
-                #plt.errorbar(each_lc.time.value, each_lc.flux.value, yerr=each_lc.flux_err.value, label='fit_model')
-                #plt.legend()
-                #plt.savefig(f'{homedir}/fitting_result/figure//{TOInumber}_{str(i)}_{datetime.datetime.now().strftime("%y%m%d")}.png', header=False, index=False)
-                #plt.show()
-                #plt.close()
-                break
-            else:
-                print('cliped:', len(each_lc.flux.value)-len(each_lc[~mask].flux.value))
-                each_lc = each_lc[~mask]
         each_lc_df = each_lc.to_pandas()
         lc_list.append(each_lc_df)
     return lc_list
