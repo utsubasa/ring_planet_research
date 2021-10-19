@@ -367,13 +367,8 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
         each_lc_list.append(each_lc)
     cleaned_lc = vstack(each_lc_list)
     outliers = vstack(outliers_list)
-    ax = cleaned_lc.scatter(color='black')
-    outliers.scatter(ax=ax, color='red', label='outliers')
 
-    plt.show()
-
-    import pdb; pdb.set_trace()
-    return cleaned_lc
+    return cleaned_lc, outliers
 
 def folding_each_lc(lc_list, period, transit_time):
     lc = pd.concat(lc_list)
