@@ -233,41 +233,43 @@ def remove_transit_signal(case, lc, transit_start, transit_end):
 
 
 def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
-
     folded_lc = lc.fold(period=period , epoch_time=transit_time)
     ###nanをカットする
     not_nan_index = np.where(~np.isnan(folded_lc.flux.value))[0].tolist()
     folded_lc = folded_lc[not_nan_index]
 
-    #binned_lc = folded_lc.bin(time_bin_size=duration/20)
-    #binned_lc.scatter()
-    #plt.show()
-
+    ###トランジットエポックの検出
     epoch_all_time = ( (folded_lc.time_original.value - transit_time) + 0.5*period ) / period
     epoch_all= np.array(epoch_all_time, dtype = int)
     epoch_all_list = list(set(epoch_all))
+    epoch_all_list = np.sort(epoch_all_list)
     folded_lc.epoch_all = epoch_all
     if len(np.unique(epoch_all)) != len(epoch_all_list):
         print('check: len(np.unique(epoch_all)) != len(epoch_all_list).')
         import pdb; pdb.set_trace()
     print(f'n_transit: {len(np.unique(epoch_all))}')
+
+    ###トランジットフィッティングパラメータの設定
     names = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
     if np.isnan(rp/rs):
         values = [0, period, 0.02, 10, 87, 0, 90, 0.3, 0.2]
     else:
         values = [0, period, rp/rs, 10, 87, 0, 90, 0.3, 0.2]
-    mins = [-0.5, period, 0.001, 1, 70, 0, 90, 0.0, 0.0]
-    maxes = [0.5, period, 0.2, 100, 110, 0, 90, 1.0, 1.0]
-    vary_flags = [True, False, True, True, True, False, False,False , False]
+    mins = [-0.5, period*0.99, 0.001, 1, 70, 0, 90, 0.0, 0.0]
+    maxes = [0.5, period*1.01, 0.2, 100, 110, 0, 90, 1.0, 1.0]
+    vary_flags = [True, True, True, True, True, False, False,False , False]
     params = set_params_lm(names, values, mins, maxes, vary_flags)
 
+    ###値を格納するリスト
     t0dict = {}
-    t0err_dict = {}
+    perioddict = {}
     time_now_arr = []
     each_lc_list = []
     outliers_list = []
 
+    ###それぞれのトランジットエポックごとにトランジットフィッティングと外れ値除去、カーブフィッティング
     for i, epoch_now in enumerate(epoch_all_list):
+        print(epoch_now)
         flag = folded_lc.epoch_all == epoch_now
         each_lc = folded_lc[flag]
 
@@ -322,12 +324,13 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
                         each_lc.errorbar(ax=ax, color='black')
                         ax.plot(time,flux_model, label='fit_model', color='blue')
                         ax.legend()
-                        ax.set_xlim(-1, 1)
-                        plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}_{int(chi_square)}.png', header=False, index=False)
+                        #ax.set_xlim(-1, 1)
+                        #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}_{int(chi_square)}.png', header=False, index=False)
                         #plt.show()
                         plt.close()
-                        t0dict[i] = out.params["t0"].value
-                        t0err_dict[i] = out.params["t0"].stderr
+                        t0dict[epoch_now] = [transit_time+(period*i)+out.params["t0"].value, out.params["t0"].stderr]
+                        #t0dict[i] = [out.params["t0"].value, out.params["t0"].stderr]
+                        perioddict[i] = [out.params["per"].value, out.params["per"].stderr]
                         #each_lc = clip_lc
                         break
                     else:
@@ -349,7 +352,7 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
         poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
         result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
         result.plot()
-        plt.savefig(f'{homedir}/fitting_result/curvefit_figure/{TOInumber}_{i}.png')
+        #plt.savefig(f'{homedir}/fitting_result/curvefit_figure/{TOInumber}_{i}.png')
         #plt.show()
         plt.close()
         poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
@@ -365,18 +368,30 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
         each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
         each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
         each_lc_list.append(each_lc)
+
     cleaned_lc = vstack(each_lc_list)
     outliers = vstack(outliers_list)
 
+
+    t0df = pd.DataFrame.from_dict(t0dict, orient='index', columns=['t0', 't0err'])
+    import pdb; pdb.set_trace()
+    plt.errorbar(x=t0df.index.values, y=t0df['t0'],yerr=t0df['t0err'], fmt='.k')
+    res = np.polyfit(t0df.index.values, t0df['t0'],1)
+    plt.plot(t0df.index.values, np.poly1d(res)(t0df.index.values))
+    plt.show()
+    '''
+    perioddf = pd.DataFrame.from_dict(perioddict, orient='index', columns=['period', 'perioderr'])
+    plt.scatter(x=perioddf.index.values, y=perioddf['period'])
+    plt.show()
+    '''
+
+    import pdb; pdb.set_trace()
     return cleaned_lc, outliers
 
 def folding_each_lc(lc_list, period, transit_time):
-    lc = pd.concat(lc_list)
-    lc = lc.reset_index()
-    lc = Table.from_pandas(lc)
-    lc = lk.LightCurve(data=lc)
-    lc = lk.LightCurve(time=lc['time'], flux=lc['flux'], flux_err=lc['flux_err'])
-    lc = lc.normalize()
+    #binned_lc = folded_lc.bin(time_bin_size=duration/20)
+    #binned_lc.scatter()
+    #plt.show()
     print('total length: ', len(lc))
     return lc.fold(period=period, epoch_time=transit_time)
 
@@ -414,6 +429,7 @@ for TIC in TIClist:
 
     for index, item in param_df.iterrows():
         lc = lc_collection.stitch().flatten() #initialize lc
+        lc = lc[lc.time.value < 2000]
 
         duration = item['Planet Transit Duration Value [hours]'] / 24
         period = item['Planet Orbital Period Value [days]']
