@@ -374,19 +374,22 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
 
 
     t0df = pd.DataFrame.from_dict(t0dict, orient='index', columns=['t0', 't0err'])
-    import pdb; pdb.set_trace()
+
     plt.errorbar(x=t0df.index.values, y=t0df['t0'],yerr=t0df['t0err'], fmt='.k')
-    res = np.polyfit(t0df.index.values, t0df['t0'],1)
+    res = np.polyfit(t0df.index.values, t0df['t0'], 1)
+    esitimated_period = res[0]
     plt.plot(t0df.index.values, np.poly1d(res)(t0df.index.values))
-    plt.show()
+    plt.text(0.5, 0, f'period: {res[0]}', transform=ax.transAxes)
+    #plt.show()
+    plt.savefig(f'{homedir}/fitting_result/figure/esitimate_period/{TOInumber}.png')
+    plt.close()
     '''
     perioddf = pd.DataFrame.from_dict(perioddict, orient='index', columns=['period', 'perioderr'])
     plt.scatter(x=perioddf.index.values, y=perioddf['period'])
     plt.show()
     '''
-
     import pdb; pdb.set_trace()
-    return cleaned_lc, outliers
+    return esitimated_period, cleaned_lc, outliers
 
 def folding_each_lc(lc_list, period, transit_time):
     #binned_lc = folded_lc.bin(time_bin_size=duration/20)
