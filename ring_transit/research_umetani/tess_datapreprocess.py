@@ -328,7 +328,7 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
                         #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}_{int(chi_square)}.png', header=False, index=False)
                         #plt.show()
                         plt.close()
-                        t0dict[epoch_now] = [transit_time+(period*i)+out.params["t0"].value, out.params["t0"].stderr]
+                        t0dict[epoch_now] = [transit_time+(period*epoch_now)+out.params["t0"].value, out.params["t0"].stderr]
                         #t0dict[i] = [out.params["t0"].value, out.params["t0"].stderr]
                         perioddict[i] = [out.params["per"].value, out.params["per"].stderr]
                         #each_lc = clip_lc
@@ -429,7 +429,6 @@ for TIC in TIClist:
 
     for index, item in param_df.iterrows():
         lc = lc_collection.stitch().flatten() #initialize lc
-        lc = lc[lc.time.value < 2000]
 
         duration = item['Planet Transit Duration Value [hours]'] / 24
         period = item['Planet Orbital Period Value [days]']
