@@ -16,7 +16,7 @@ import emcee
 import corner
 from multiprocessing import Pool
 #from lightkurve import search_targetpixelfile
-from scipy import signal
+from scipy.stats import t, linregress
 from astropy.table import Table, vstack
 import astropy.units as u
 
@@ -375,19 +375,22 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
 
     t0df = pd.DataFrame.from_dict(t0dict, orient='index', columns=['t0', 't0err'])
 
-    plt.errorbar(x=t0df.index.values, y=t0df['t0'],yerr=t0df['t0err'], fmt='.k')
-    res = np.polyfit(t0df.index.values, t0df['t0'], 1)
-    esitimated_period = res[0]
-    plt.plot(t0df.index.values, np.poly1d(res)(t0df.index.values))
-    plt.text(0.5, 0, f'period: {res[0]}', transform=ax.transAxes)
+    x = t0df.index.values
+    y = t0df['t0']
+    yerr = t0df['t0err']
+    res = linregress(x, y)
+    esitimated_period = res.slope
+    tinv = lambda p, df: abs(t.ppf(p/2, df))
+    ts = tinv(0.05, len(x)-2)
+    print(f"slope (95%): {res.slope:.6f} +/- {ts*res.stderr:.6f}")
+
+    plt.errorbar(x=x, y=y,yerr=yerr, fmt='.k')
+    plt.plot(x, res.intercept + res.slope*x, label='fitted line')
+    plt.text(0.9, 0.3, f'period: {res.slope:.6f} +/- {ts*res.stderr:.6f}', transform=ax.transAxes)
     #plt.show()
     plt.savefig(f'{homedir}/fitting_result/figure/esitimate_period/{TOInumber}.png')
     plt.close()
-    '''
-    perioddf = pd.DataFrame.from_dict(perioddict, orient='index', columns=['period', 'perioderr'])
-    plt.scatter(x=perioddf.index.values, y=perioddf['period'])
-    plt.show()
-    '''
+
     import pdb; pdb.set_trace()
     return esitimated_period, cleaned_lc, outliers
 
