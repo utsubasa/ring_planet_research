@@ -232,7 +232,7 @@ def remove_transit_signal(case, lc, transit_start, transit_end):
     return lc
 
 
-def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
+def preprocess_each_lc(lc, duration, period, transit_time, TOInumber, estimate_period=True):
     folded_lc = lc.fold(period=period , epoch_time=transit_time)
     ###nanをカットする
     not_nan_index = np.where(~np.isnan(folded_lc.flux.value))[0].tolist()
@@ -262,7 +262,6 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
 
     ###値を格納するリスト
     t0dict = {}
-    perioddict = {}
     time_now_arr = []
     each_lc_list = []
     outliers_list = []
@@ -321,16 +320,17 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
 
                     if np.all(inverse_mask) == True:
                         #print(f'after clip length: {len(each_lc.flux)}')
-                        each_lc.errorbar(ax=ax, color='black')
-                        ax.plot(time,flux_model, label='fit_model', color='blue')
-                        ax.legend()
-                        #ax.set_xlim(-1, 1)
-                        #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}_{int(chi_square)}.png', header=False, index=False)
-                        #plt.show()
-                        plt.close()
+                        if estimate_period == False:
+                            each_lc.errorbar(ax=ax, color='black')
+                            ax.plot(time,flux_model, label='fit_model', color='blue')
+                            ax.legend()
+                            #ax.set_xlim(-1, 1)
+                            ax.set_title(f'chi square: {int(chi_square)}')
+                            plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}.png', header=False, index=False)
+                            #plt.show()
+                            plt.close()
                         t0dict[epoch_now] = [transit_time+(period*epoch_now)+out.params["t0"].value, out.params["t0"].stderr]
                         #t0dict[i] = [out.params["t0"].value, out.params["t0"].stderr]
-                        perioddict[i] = [out.params["per"].value, out.params["per"].stderr]
                         #each_lc = clip_lc
                         break
                     else:
@@ -345,54 +345,54 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber):
                 plt.close()
                 break
 
-        ###curve fiting
-        #out_transit = each_lc[(each_lc['time'].value < (transit_time+period*i)-(duration/2)) | (each_lc['time'].value > (transit_time+period*i)+(duration/2))]
-        out_transit = each_lc[(each_lc['time'].value < out.params["t0"].value - (duration/2)) | (each_lc['time'].value > out.params["t0"].value + (duration/2))]
-        model = lmfit.models.PolynomialModel()
-        poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
-        result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
-        result.plot()
-        #plt.savefig(f'{homedir}/fitting_result/curvefit_figure/{TOInumber}_{i}.png')
+        if estimate_period == False:
+            ###curve fiting
+            #out_transit = each_lc[(each_lc['time'].value < (transit_time+period*i)-(duration/2)) | (each_lc['time'].value > (transit_time+period*i)+(duration/2))]
+            out_transit = each_lc[(each_lc['time'].value < out.params["t0"].value - (duration/2)) | (each_lc['time'].value > out.params["t0"].value + (duration/2))]
+            model = lmfit.models.PolynomialModel()
+            poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
+            result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
+            result.plot()
+            plt.savefig(f'{homedir}/fitting_result/curvefit_figure/{TOInumber}_{str(i)}.png')
+            #plt.show()
+            plt.close()
+            poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
+                            result.params.valuesdict()['c1'],\
+                            result.params.valuesdict()['c2'],\
+                            result.params.valuesdict()['c3'],\
+                            result.params.valuesdict()['c4'],\
+                            result.params.valuesdict()['c5'],\
+                            result.params.valuesdict()['c6'],\
+                            result.params.valuesdict()['c7']])
+
+            #normalization
+            each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
+            each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
+            each_lc_list.append(each_lc)
+
+    if estimate_period == True:
+        t0df = pd.DataFrame.from_dict(t0dict, orient='index', columns=['t0', 't0err'])
+
+        x = t0df.index.values
+        y = t0df['t0']
+        yerr = t0df['t0err']
+        res = linregress(x, y)
+        estimated_period = res.slope
+        tinv = lambda p, df: abs(t.ppf(p/2, df))
+        ts = tinv(0.05, len(x)-2)
+        print(f"slope (95%): {res.slope:.6f} +/- {ts*res.stderr:.6f}")
+
+        plt.errorbar(x=x, y=y,yerr=yerr, fmt='.k')
+        plt.plot(x, res.intercept + res.slope*x, label='fitted line')
+        plt.text(0.9, 0.3, f'period: {res.slope:.6f} +/- {ts*res.stderr:.6f}', transform=ax.transAxes)
         #plt.show()
+        plt.savefig(f'{homedir}/fitting_result/figure/esitimate_period/{TOInumber}.png')
         plt.close()
-        poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
-                        result.params.valuesdict()['c1'],\
-                        result.params.valuesdict()['c2'],\
-                        result.params.valuesdict()['c3'],\
-                        result.params.valuesdict()['c4'],\
-                        result.params.valuesdict()['c5'],\
-                        result.params.valuesdict()['c6'],\
-                        result.params.valuesdict()['c7']])
-
-        #normalization
-        each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
-        each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
-        each_lc_list.append(each_lc)
-
-    cleaned_lc = vstack(each_lc_list)
-    outliers = vstack(outliers_list)
-
-
-    t0df = pd.DataFrame.from_dict(t0dict, orient='index', columns=['t0', 't0err'])
-
-    x = t0df.index.values
-    y = t0df['t0']
-    yerr = t0df['t0err']
-    res = linregress(x, y)
-    esitimated_period = res.slope
-    tinv = lambda p, df: abs(t.ppf(p/2, df))
-    ts = tinv(0.05, len(x)-2)
-    print(f"slope (95%): {res.slope:.6f} +/- {ts*res.stderr:.6f}")
-
-    plt.errorbar(x=x, y=y,yerr=yerr, fmt='.k')
-    plt.plot(x, res.intercept + res.slope*x, label='fitted line')
-    plt.text(0.9, 0.3, f'period: {res.slope:.6f} +/- {ts*res.stderr:.6f}', transform=ax.transAxes)
-    #plt.show()
-    plt.savefig(f'{homedir}/fitting_result/figure/esitimate_period/{TOInumber}.png')
-    plt.close()
-
-    import pdb; pdb.set_trace()
-    return esitimated_period, cleaned_lc, outliers
+        return estimated_period
+    else:
+        cleaned_lc = vstack(each_lc_list)
+        outliers = vstack(outliers_list)
+        return cleaned_lc, outliers
 
 def folding_each_lc(lc_list, period, transit_time):
     #binned_lc = folded_lc.bin(time_bin_size=duration/20)
@@ -510,21 +510,24 @@ for TIC in TIClist:
         #トランジットがデータに何個あるか判断しその周りのライトカーブデータを作成、カーブフィッティングでノーマライズ
         print('preprocessing...')
         time.sleep(1)
-        lc_list = preprocess_each_lc(lc, duration, period, transit_time, TOInumber)
+        estimated_period = preprocess_each_lc(lc, duration, period, transit_time, TOInumber, estimate_period=True)
+
         try:
             print('folding...')
             time.sleep(1)
-            folded_lc = folding_each_lc(lc_list, period, transit_time)
+            cleaned_lc, outliers = preprocess_each_lc(lc, duration, estimated_period, transit_time, TOInumber, estimate_period=False)
+            ax = cleaned_lc.errorbar()
+            outliers.errorbar(ax=ax, label='outliers', color='red')
+            plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
+            #plt.show()
+            plt.close()
+            cleaned_lc.write(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/data/{TOInumber}.csv')
+            import pdb; pdb.set_trace()
         except ValueError:
             print('no transit!')
             with open('error_tic.dat', 'a') as f:
                 f.write('no transit!: ' + 'str(TIC)' + '\n')
             continue
-        folded_lc.scatter()
-        #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
-        plt.show()
-        plt.close()
-        #folded_lc.write(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/data/{TOInumber}.csv')
     #import pdb; pdb.set_trace()
 
     """
