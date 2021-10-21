@@ -341,6 +341,7 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber, estimate_p
             except TypeError:
                 each_lc.errorbar()
                 plt.xlim(-1, 1)
+                plt.title('np.isfinite(out.params["t0"].stderr)==False')
                 plt.savefig(f'{homedir}/fitting_result/figure/error_lc/{TOInumber}_{str(i)}.png', header=False, index=False)
                 plt.close()
                 break
@@ -416,7 +417,7 @@ for TIC in TIClist:
         try:
             search_result = lk.search_lightcurve(f'TIC {TIC}', mission='TESS', cadence="short", author='SPOC')
         except HTTPError:
-            priont('HTTPError, retry.')
+            print('HTTPError, retry.')
         else:
             break
 
@@ -522,7 +523,6 @@ for TIC in TIClist:
             #plt.show()
             plt.close()
             cleaned_lc.write(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/data/{TOInumber}.csv')
-            import pdb; pdb.set_trace()
         except ValueError:
             print('no transit!')
             with open('error_tic.dat', 'a') as f:
