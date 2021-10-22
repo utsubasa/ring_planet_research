@@ -377,7 +377,11 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber, estimate_p
         x = t0df.index.values
         y = t0df['t0']
         yerr = t0df['t0err']
-        res = linregress(x, y)
+        try:
+            res = linregress(x, y)
+        except ValueError:
+            print('ValueError: Inputs must not be empty.')
+            import pdb; pdb.set_trace()
         estimated_period = res.slope
         tinv = lambda p, df: abs(t.ppf(p/2, df))
         ts = tinv(0.05, len(x)-2)
