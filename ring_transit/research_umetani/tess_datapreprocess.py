@@ -321,37 +321,36 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber, estimate_p
                 break
                 """
                 pass
-            if np.isfinite(out.params["t0"].stderr):
-                #print(out.params.pretty_print())
-                time_now_arr.append(0.5 * np.min(each_lc.time_original.value) + 0.5* np.max(each_lc.time_original.value))
-                flux_model = no_ring_model_transitfit_from_lmparams(out.params, time, names)
+            #print(out.params.pretty_print())
+            time_now_arr.append(0.5 * np.min(each_lc.time_original.value) + 0.5* np.max(each_lc.time_original.value))
+            flux_model = no_ring_model_transitfit_from_lmparams(out.params, time, names)
 
-                clip_lc = each_lc.copy()
-                clip_lc.flux = np.sqrt(np.square(flux_model - clip_lc.flux))
-                _, mask = clip_lc.remove_outliers(return_mask=True)
-                inverse_mask = np.logical_not(mask)
-                ax = plt.subplot(1,1,1)
+            clip_lc = each_lc.copy()
+            clip_lc.flux = np.sqrt(np.square(flux_model - clip_lc.flux))
+            _, mask = clip_lc.remove_outliers(return_mask=True)
+            inverse_mask = np.logical_not(mask)
+            ax = plt.subplot(1,1,1)
 
-                if np.all(inverse_mask) == True:
-                    #print(f'after clip length: {len(each_lc.flux)}')
-                    if estimate_period == False:
-                        each_lc.errorbar(ax=ax, color='black')
-                        ax.plot(time,flux_model, label='fit_model', color='blue')
-                        ax.legend()
-                        #ax.set_xlim(-1, 1)
-                        ax.set_title(f'chi square: {int(chi_square)}')
-                        plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}.png', header=False, index=False)
-                        #plt.show()
-                        plt.close()
-                    t0dict[epoch_now] = [transit_time+(period*epoch_now)+out.params["t0"].value, out.params["t0"].stderr]
-                    #t0dict[i] = [out.params["t0"].value, out.params["t0"].stderr]
-                    #each_lc = clip_lc
-                    break
-                else:
-                    #print('removed bins:', len(each_lc[mask]))
-                    outliers_list.append(each_lc[mask])
-                    each_lc[mask].errorbar(ax=ax, color='red', label='outliers')
-                    each_lc = each_lc[~mask]
+            if np.all(inverse_mask) == True:
+                #print(f'after clip length: {len(each_lc.flux)}')
+                if estimate_period == False:
+                    each_lc.errorbar(ax=ax, color='black')
+                    ax.plot(time,flux_model, label='fit_model', color='blue')
+                    ax.legend()
+                    #ax.set_xlim(-1, 1)
+                    ax.set_title(f'chi square: {int(chi_square)}')
+                    plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}.png', header=False, index=False)
+                    #plt.show()
+                    plt.close()
+                t0dict[epoch_now] = [transit_time+(period*epoch_now)+out.params["t0"].value, out.params["t0"].stderr]
+                #t0dict[i] = [out.params["t0"].value, out.params["t0"].stderr]
+                #each_lc = clip_lc
+                break
+            else:
+                #print('removed bins:', len(each_lc[mask]))
+                outliers_list.append(each_lc[mask])
+                each_lc[mask].errorbar(ax=ax, color='red', label='outliers')
+                each_lc = each_lc[~mask]
 
 
         if estimate_period == False:
