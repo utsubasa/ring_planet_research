@@ -232,6 +232,22 @@ def remove_transit_signal(case, lc, transit_start, transit_end):
 
     return lc
 
+def np_judge_outliers(array):
+    # 2. Determine mean and standard deviation
+    mean = np.mean(array)
+    std_dev = np.std(array)
+    # 3. Normalize array around 0
+    zero_based = abs(array - mean)
+    # 4. Define maximum number of standard deviations
+    max_deviations = 2
+    # 5. Access only non-outliers using Boolean Indexing
+    outliers = array[~(zero_based < max_deviations * std_dev)]
+    import pdb; pdb.set_trace()
+    print(outliers)
+    if len(outliers) !=0:
+        return True
+    else:
+        return False
 
 def preprocess_each_lc(lc, duration, period, transit_time, TOInumber, estimate_period=True):
     folded_lc = lc.fold(period=period , epoch_time=transit_time)
@@ -274,26 +290,43 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber, estimate_p
         flag = folded_lc.epoch_all == epoch_now
         each_lc = folded_lc[flag]
 
-        """period推定時で、トランジットがデータに収まっていない場合は解析中断"""
-        if estimate_period == True and judge_transit_contain(each_lc, transit_start, transit_end) != 3:
-            continue
-        else:
+        """（period推定時で、）トランジットの時間帯丸々がデータに収まっていない場合は解析中断"""
+        transit_start = -duration/period
+        transit_end = duration/period
+        #if estimate_period == True and judge_transit_contain(each_lc, transit_start, transit_end) != 4:
+        if judge_transit_contain(each_lc, transit_start, transit_end) == 4:
             pass
+        else:
+            continue
 
         """midtransitのデータ点がlightcurveにない場合は解析中断"""
-        if len(each_lc[(each_lc.time < 0.1) & (each_lc.time > -0.1)]) == 0:
+        if len(each_lc[(each_lc.time < 0.01) & (each_lc.time > -0.01)]) == 0:
             each_lc.errorbar()
             plt.title('no data in mid transit')
             plt.savefig(f'{homedir}/fitting_result/figure/error_lc/{TOInumber}_{str(i)}.png', header=False, index=False)
             plt.close()
             continue
 
+        """トランジット中に空白の期間があったら解析しない"""
+        delta = each_lc.time.value[:-1]-each_lc.time.value[1:]
+        duration_flag = ((each_lc.time > transit_start*1.1) & (each_lc.time < transit_end*1.1))[:-1]
+        delta = delta[duration_flag]
+        ###外れ値を検出したら解析中断。
+        if np.all(delta) ==True:
+            pass
+        elif np_judge_outliers(delta) ==True:
+            #plt.scatter()
+            import pdb; pdb.set_trace()
+            continue
+        else:
+            pass
+
         #print(np.min(each_lc.time_original.value), np.max(each_lc.time_original.value))
         while True:
             """transit fitting"""
             try:
-                #flag_time = np.abs(each_lc.time.value)<1.0
-                #each_lc = each_lc[flag_time]
+                flag_time = np.abs(each_lc.time.value)<1.0
+                each_lc = each_lc[flag_time]
                 time = each_lc.time.value
                 flux = each_lc.flux.value
                 flux_err = each_lc.flux_err.value
@@ -326,11 +359,8 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber, estimate_p
                         if estimate_period == False:
                             each_lc.errorbar(ax=ax, color='black')
                             ax.plot(time,flux_model, label='fit_model', color='blue')
-                            try:
-                                outliers = vstack(outliers_list)
-                                outliers.errorbar(ax=ax, color='red', label='outliers')
-                            except:
-                                pass
+                            outliers = vstack(outliers_list)
+                            outliers.errorbar(ax=ax, color='red', label='outliers')
                             ax.legend()
                             #ax.set_xlim(-1, 1)
                             ax.set_title(f'chi square: {int(chi_square)}')
@@ -352,7 +382,7 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber, estimate_p
                 plt.savefig(f'{homedir}/fitting_result/figure/error_lc/{TOInumber}_{str(i)}.png', header=False, index=False)
                 plt.close()
                 print(lmfit.fit_report(out))
-                import pdb; pdb.set_trace()
+                #import pdb; pdb.set_trace()
                 break
 
 
@@ -529,7 +559,7 @@ for TIC in TIClist:
             plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
             #plt.show()
             plt.close()
-            cleaned_lc.write(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/data/{TOInumber}.csv')
+            cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/{TOInumber}.csv')
         except ValueError:
             print('no transit!')
             with open('error_tic.dat', 'a') as f:
