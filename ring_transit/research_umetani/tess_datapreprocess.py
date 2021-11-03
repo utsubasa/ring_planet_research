@@ -232,7 +232,7 @@ def remove_transit_signal(case, lc, transit_start, transit_end):
 
     return lc
 
-def np_judge_outliers(array):
+def judge_outliers(array):
     # 2. Determine mean and standard deviation
     mean = np.mean(array)
     std_dev = np.std(array)
@@ -314,7 +314,7 @@ def preprocess_each_lc(lc, duration, period, transit_time, TOInumber, estimate_p
         ###外れ値を検出したら解析中断。
         if np.all(delta) ==True:
             pass
-        elif np_judge_outliers(delta) ==True:
+        elif judge_outliers(delta) ==True:
             #plt.scatter()
             import pdb; pdb.set_trace()
             continue
@@ -554,8 +554,15 @@ for TIC in TIClist:
             print('folding...')
             time.sleep(1)
             cleaned_lc, outliers = preprocess_each_lc(lc, duration, estimated_period, transit_time, TOInumber, estimate_period=False)
+            time = cleaned_lc.time.value
+            flux = cleaned_lc.flux.value
+            flux_err = cleaned_lc.flux_err.value
+            out = lmfit.minimize(no_ring_residual_transitfit, params, args=(time, flux, flux_err, names), max_nfev=10000)
+            flux_model = no_ring_model_transitfit_from_lmparams(out.params, time, names)
             ax = cleaned_lc.errorbar()
+            ax.plot(time,flux_model, label='fit_model', color='blue')
             outliers.errorbar(ax=ax, label='outliers', color='red')
+
             plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
             #plt.show()
             plt.close()
