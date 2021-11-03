@@ -250,10 +250,6 @@ def judge_outliers(array):
         return False
 
 def preprocess_each_lc(lc, duration, period, transit_time, TOInumber, estimate_period=True):
-    folded_lc = lc.fold(period=period , epoch_time=transit_time)
-    """nanをカットする"""
-    not_nan_index = np.where(~np.isnan(folded_lc.flux.value))[0].tolist()
-    folded_lc = folded_lc[not_nan_index]
 
     """トランジットエポックの検出"""
     epoch_all_time = ( (folded_lc.time_original.value - transit_time) + 0.5*period ) / period
@@ -548,6 +544,12 @@ for TIC in TIClist:
         #トランジットがデータに何個あるか判断しその周りのライトカーブデータを作成、カーブフィッティングでノーマライズ
         print('preprocessing...')
         time.sleep(1)
+        #fitting using the values of catalog
+        folded_lc = lc.fold(period=period , epoch_time=transit_time)
+        """nanをカットする"""
+        not_nan_index = np.where(~np.isnan(folded_lc.flux.value))[0].tolist()
+        folded_lc = folded_lc[not_nan_index]
+
         estimated_period = preprocess_each_lc(lc, duration, period, transit_time, TOInumber, estimate_period=True)
 
         try:
