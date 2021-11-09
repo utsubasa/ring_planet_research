@@ -242,7 +242,6 @@ def judge_outliers(array):
     max_deviations = 2
     # 5. Access only non-outliers using Boolean Indexing
     outliers = array[~(zero_based < max_deviations * std_dev)]
-    import pdb; pdb.set_trace()
     print(outliers)
     if len(outliers) !=0:
         return True
@@ -251,9 +250,12 @@ def judge_outliers(array):
 
 def detect_transit_epoch(folded_lc, transit_time, period):
     """トランジットエポックの検出"""
-    epoch_all_time = ( (folded_lc.time_original.value - transit_time) + 0.5*period ) / period
-    epoch_all= np.array(epoch_all_time, dtype = int)
-    epoch_all_list = list(set(epoch_all))
+    #epoch_all_time = ( (folded_lc.time_original.value - transit_time) + 0.5*period ) / period
+    epoch_all_time = ( (folded_lc.time_original.value - transit_time)) / period
+    #epoch_all= np.array(epoch_all_time, dtype = int)
+    epoch_all = np.round(np.array(epoch_all_time))
+    epoch_all = np.where(epoch_all == -0, 0, epoch_all).astype('int16')
+    epoch_all_list = np.unique(epoch_all)
     epoch_all_list = np.sort(epoch_all_list)
     folded_lc.epoch_all = epoch_all
     if len(np.unique(epoch_all)) != len(epoch_all_list):
@@ -271,8 +273,8 @@ def transit_params_setting(rp_rs, period):
         values = [0, period, 0.02, 10, 87, 0, 90, 0.3, 0.2]
     else:
         values = [0, period, rp_rs, 10, 87, 0, 90, 0.3, 0.2]
-    mins = [-0.5, period*0.6, 0.001, 0.1, 70, 0, 90, 0.0, 0.0]
-    maxes = [0.5, period*1.9, 1.0, 100, 110, 0, 90, 1.0, 1.0]
+    mins = [-0.9, period*0.6, 0.001, 0.1, 70, 0, 90, 0.0, 0.0]
+    maxes = [0.9, period*1.9, 1.0, 100, 110, 0, 90, 1.0, 1.0]
     vary_flags = [True, False, True, True, False, False, False, False, False]
     return set_params_lm(names, values, mins, maxes, vary_flags)
 
@@ -315,6 +317,8 @@ def space_in_transit(each_lc, transit_start, transit_end, flag=False):
     return flag
 
 def transit_fit_and_remove_outliers(lc, t0dict, outliers, estimate_period=False, lc_type=None):
+    #不具合の出るlcはcurvefittingでも弾けるようにno_use_lcを定義
+    no_use_lc = False
     while True:
         """transit fitting"""
         try:
@@ -352,16 +356,17 @@ def transit_fit_and_remove_outliers(lc, t0dict, outliers, estimate_period=False,
                         ax.plot(time,flux_model, label='fit_model', color='blue')
                         try:
                             outliers = vstack(outliers)
-                            outliers.errorbar(ax=ax, color='red', label='outliers')
+                            outliers.errorbar(ax=ax, color='orange', label='outliers(each_lc)')
                         except ValueError:
                             pass
                         ax.legend()
                         ax.set_title(f'chi square/dof: {int(chi_square)}/{len(lc)} ')
-                        plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}.png', header=False, index=False)
+                        plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}.png', header=False, index=False)
                         #ax.set_xlim(-1, 1)
                         #plt.show()
                         plt.close()
                     else:
+
                         t0dict[epoch_now] = [transit_time+(period*epoch_now)+out.params["t0"].value, out.params["t0"].stderr]
                         #t0dict[i] = [out.params["t0"].value, out.params["t0"].stderr]
                         #each_lc = clip_lc
@@ -377,9 +382,10 @@ def transit_fit_and_remove_outliers(lc, t0dict, outliers, estimate_period=False,
             plt.savefig(f'{homedir}/fitting_result/figure/error_lc/{TOInumber}_{str(i)}.png', header=False, index=False)
             plt.close()
             print(lmfit.fit_report(out))
+            no_use_lc = True
             #import pdb; pdb.set_trace()
             break
-    return lc, outliers, out, t0dict
+    return lc, outliers, out, t0dict, no_use_lc
 
 def estimate_period(t0dict):
     """return estimated period or cleaned light curve"""
@@ -411,7 +417,7 @@ def curve_fitting(each_lc, duration, out, each_lc_list):
     poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
     result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
     result.plot()
-    plt.savefig(f'{homedir}/fitting_result/curvefit_figure/{TOInumber}_{str(i)}.png')
+    plt.savefig(f'{homedir}/fitting_result/figure/curvefit/{TOInumber}_{str(i)}.png')
     #plt.show()
     plt.close()
     poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
@@ -463,6 +469,7 @@ for TIC in TIClist:
     for index, item in param_df.iterrows():
         lc = lc_collection.stitch().flatten() #initialize lc
 
+
         duration = item['Planet Transit Duration Value [hours]'] / 24
         period = item['Planet Orbital Period Value [days]']
         transit_time = item['Planet Transit Midpoint Value [BJD]'] - 2457000.0 #translate BTJD
@@ -504,7 +511,7 @@ for TIC in TIClist:
         """ターゲットの惑星の信号がデータに影響を与えていないなら処理を中断する"""
         if contain_transit == 1:
             '''
-            #lc.scatter()
+            lc.scatter()
             fig, ax = plt.subplots(figsize =(18, 9))
             for transit in transit_time_list:
                 #plt.axvline(x=transit, ymax=np.max(lc.flux.value), ymin=np.min(lc.flux.value), color='red')
@@ -556,19 +563,23 @@ for TIC in TIClist:
 
         """estimate period"""
         for i, epoch_now in enumerate(epoch_all_list):
-            #print(f'epoch: {epoch_now}')
+            print(f'epoch: {epoch_now}')
             flag = folded_lc.epoch_all == epoch_now
             each_lc = folded_lc[flag]
+            #import pdb; pdb.set_trace()
             #解析中断条件を満たさないかチェック
             abort_list = np.array([transit_case_is4(duration, period), aroud_midtransitdata_isnull(each_lc), space_in_transit(each_lc, transit_start, transit_end)])
             if np.any(abort_list) == False:
                 pass
             else:
                 continue
-            _, _, _,t0dict = transit_fit_and_remove_outliers(each_lc, t0dict, outliers, estimate_period=True, lc_type='each')
+            _, _, _,t0dict, _ = transit_fit_and_remove_outliers(each_lc, t0dict, outliers, estimate_period=True, lc_type='each')
 
         #estimated_periodで再refolding
-        estimated_period = estimate_period(t0dict)
+        if len(t0dict) != 1:
+            estimated_period = estimate_period(t0dict)
+        else:
+            estimated_period = period
         folded_lc = lc.fold(period=estimated_period , epoch_time=transit_time)
         not_nan_index = np.where(~np.isnan(folded_lc.flux.value))[0].tolist()
         folded_lc = folded_lc[not_nan_index]
@@ -592,15 +603,23 @@ for TIC in TIClist:
                 pass
             else:
                 continue
-            each_lc, _, out, _ = transit_fit_and_remove_outliers(each_lc, t0dict, outliers, estimate_period=False, lc_type='each')
-            each_lc_list = curve_fitting(each_lc, duration, out, each_lc_list)
+            each_lc, _, out, _, no_use_lc = transit_fit_and_remove_outliers(each_lc, t0dict, outliers, estimate_period=False, lc_type='each')
+            if no_use_lc == True:
+                continue
+            else:
+                each_lc_list = curve_fitting(each_lc, duration, out, each_lc_list)
 
         """改めてtransitfit & remove outliers. folded_lcを描画する"""
-        outliers = []
-        cleaned_lc = vstack(each_lc_list)
+        print('refolding...')
+        time.sleep(1)
+        #outliers = []
+        try:
+            cleaned_lc = vstack(each_lc_list)
+        except ValueError:
+            pass
         cleaned_lc.sort('time')
         try:
-            cleaned_lc, outliers, out, _ = transit_fit_and_remove_outliers(cleaned_lc, t0dict, outliers, estimate_period=False)
+            cleaned_lc, outliers_fold, out, _, _ = transit_fit_and_remove_outliers(cleaned_lc, t0dict, outliers, estimate_period=False)
             flux_model = no_ring_model_transitfit_from_lmparams(out.params, cleaned_lc.time.value, names)
         except ValueError:
             print('no transit!')
@@ -610,10 +629,14 @@ for TIC in TIClist:
         ax = plt.subplot(1,1,1)
         cleaned_lc.errorbar(ax=ax, color='black')
         ax.plot(cleaned_lc.time.value,flux_model, label='fit_model', color='blue')
+        ax.set_title(TOInumber)
         try:
-            outliers = vstack(outliers)
-            outliers.errorbar(ax=ax, label='outliers', color='red')
+            outliers_fold = vstack(outliers_fold)
+            outliers_fold.errorbar(ax=ax, label='outliers(folded_lc)', color='red')
         except AttributeError:
+            pass
+        except ValueError:
+            print('no outliers')
             pass
         ax.legend()
         plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
@@ -621,227 +644,3 @@ for TIC in TIClist:
         plt.close()
         cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/{TOInumber}.csv')
     print(f'Analysis completed: {TOInumber}')
-    import pdb; pdb.set_trace()
-
-    """
-    try:
-        print('folding...')
-        time.sleep(1)
-        cleaned_lc, outliers = preprocess_each_lc(lc, duration, estimated_period, transit_time, TOInumber, estimate_period=False)
-        time = cleaned_lc.time.value
-        flux = cleaned_lc.flux.value
-        flux_err = cleaned_lc.flux_err.value
-        out = lmfit.minimize(no_ring_residual_transitfit, params, args=(time, flux, flux_err, names), max_nfev=10000)
-        flux_model = no_ring_model_transitfit_from_lmparams(out.params, time, names)
-        ax = cleaned_lc.errorbar()
-        ax.plot(time,flux_model, label='fit_model', color='blue')
-        outliers.errorbar(ax=ax, label='outliers', color='red')
-
-        plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
-        #plt.show()
-        plt.close()
-        cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/{TOInumber}.csv')
-    except ValueError:
-        print('no transit!')
-        with open('error_tic.dat', 'a') as f:
-            f.write('no transit!: ' + 'str(TIC)' + '\n')
-        continue
-    print(f'Analysis completed: {TOInumber}')
-    """
-
-    """
-    lc_list = preprocess_each_lc(lc, duration, period, transit_time)
-    folded_lc = folding_each_lc(lc_list)
-    folded_lc.errorbar()
-    plt.show()
-    """
-
-
-'''
-def preprocess_each_lc(lc, duration, period, transit_time, TOInumber, estimate_period=True):
-
-    """トランジットエポックの検出"""
-    epoch_all_time = ( (folded_lc.time_original.value - transit_time) + 0.5*period ) / period
-    epoch_all= np.array(epoch_all_time, dtype = int)
-    epoch_all_list = list(set(epoch_all))
-    epoch_all_list = np.sort(epoch_all_list)
-    folded_lc.epoch_all = epoch_all
-    if len(np.unique(epoch_all)) != len(epoch_all_list):
-        print('check: len(np.unique(epoch_all)) != len(epoch_all_list).')
-        import pdb; pdb.set_trace()
-    #print(f'n_transit: {len(np.unique(epoch_all))}')
-
-    """トランジットフィッティングパラメータの設定"""
-    names = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
-    if np.isnan(rp_rs):
-        values = [0, period, 0.02, 10, 87, 0, 90, 0.3, 0.2]
-    else:
-        values = [0, period, rp_rs, 10, 87, 0, 90, 0.3, 0.2]
-    mins = [-0.5, period*0.6, 0.001, 0.1, 70, 0, 90, 0.0, 0.0]
-    maxes = [0.5, period*1.9, 1.0, 100, 110, 0, 90, 1.0, 1.0]
-    vary_flags = [True, False, True, True, False, False, False, False, False]
-    params = set_params_lm(names, values, mins, maxes, vary_flags)
-
-    """値を格納するリストの定義"""
-    t0dict = {}
-    time_now_arr = []
-    each_lc_list = []
-    outliers_list = []
-
-
-    """それぞれのトランジットエポックごとにトランジットフィッティングと外れ値除去、カーブフィッティング"""
-    for i, epoch_now in enumerate(epoch_all_list):
-        print(epoch_now)
-        flag = folded_lc.epoch_all == epoch_now
-        each_lc = folded_lc[flag]
-
-        """（period推定時で、）トランジットの時間帯丸々がデータに収まっていない場合は解析中断"""
-        transit_start = -duration/period
-        transit_end = duration/period
-        #if estimate_period == True and judge_transit_contain(each_lc, transit_start, transit_end) != 4:
-        if judge_transit_contain(each_lc, transit_start, transit_end) == 4:
-            pass
-        else:
-            continue
-
-        """midtransitのデータ点がlightcurveにない場合は解析中断"""
-        if len(each_lc[(each_lc.time < 0.01) & (each_lc.time > -0.01)]) == 0:
-            each_lc.errorbar()
-            plt.title('no data in mid transit')
-            plt.savefig(f'{homedir}/fitting_result/figure/error_lc/{TOInumber}_{str(i)}.png', header=False, index=False)
-            plt.close()
-            continue
-
-        """トランジット中に空白の期間があったら解析しない"""
-        delta = each_lc.time.value[:-1]-each_lc.time.value[1:]
-        duration_flag = ((each_lc.time > transit_start*1.1) & (each_lc.time < transit_end*1.1))[:-1]
-        delta = delta[duration_flag]
-        ###外れ値を検出したら解析中断。
-        if np.all(delta) ==True:
-            pass
-        elif judge_outliers(delta) ==True:
-            #plt.scatter()
-            import pdb; pdb.set_trace()
-            continue
-        else:
-            pass
-
-        #print(np.min(each_lc.time_original.value), np.max(each_lc.time_original.value))
-        while True:
-            """transit fitting"""
-            try:
-                flag_time = np.abs(each_lc.time.value)<1.0
-                each_lc = each_lc[flag_time]
-                time = each_lc.time.value
-                flux = each_lc.flux.value
-                flux_err = each_lc.flux_err.value
-                out = lmfit.minimize(no_ring_residual_transitfit, params, args=(time, flux, flux_err, names), max_nfev=10000)
-                #print(lmfit.fit_report(out))
-
-            except TypeError:
-                print('TypeError: out')
-                import pdb; pdb.set_trace()
-                continue
-            except ValueError:
-                print('cant fiting')
-                import pdb; pdb.set_trace()
-
-            """remove outliers"""
-            try:
-                if np.isfinite(out.params["t0"].stderr):
-                    #print(out.params.pretty_print())
-                    time_now_arr.append(0.5 * np.min(each_lc.time_original.value) + 0.5* np.max(each_lc.time_original.value))
-                    flux_model = no_ring_model_transitfit_from_lmparams(out.params, time, names)
-
-                    clip_lc = each_lc.copy()
-                    clip_lc.flux = np.sqrt(np.square(flux_model - clip_lc.flux))
-                    _, mask = clip_lc.remove_outliers(return_mask=True)
-                    inverse_mask = np.logical_not(mask)
-                    ax = plt.subplot(1,1,1)
-
-                    if np.all(inverse_mask) == True:
-                        #print(f'after clip length: {len(each_lc.flux)}')
-                        if estimate_period == False:
-                            each_lc.errorbar(ax=ax, color='black')
-                            ax.plot(time,flux_model, label='fit_model', color='blue')
-                            outliers = vstack(outliers_list)
-                            outliers.errorbar(ax=ax, color='red', label='outliers')
-                            ax.legend()
-                            #ax.set_xlim(-1, 1)
-                            ax.set_title(f'chi square: {int(chi_square)}')
-                            plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}.png', header=False, index=False)
-                            #plt.show()
-                            plt.close()
-                        t0dict[epoch_now] = [transit_time+(period*epoch_now)+out.params["t0"].value, out.params["t0"].stderr]
-                        #t0dict[i] = [out.params["t0"].value, out.params["t0"].stderr]
-                        #each_lc = clip_lc
-                        break
-                    else:
-                        #print('removed bins:', len(each_lc[mask]))
-                        outliers_list.append(each_lc[mask])
-                        each_lc = each_lc[~mask]
-            except TypeError:
-                each_lc.errorbar()
-                plt.xlim(-1, 1)
-                plt.title('np.isfinite(out.params["t0"].stderr)==False')
-                plt.savefig(f'{homedir}/fitting_result/figure/error_lc/{TOInumber}_{str(i)}.png', header=False, index=False)
-                plt.close()
-                print(lmfit.fit_report(out))
-                #import pdb; pdb.set_trace()
-                break
-
-
-
-        if estimate_period == False:
-            """curve fiting"""
-            #out_transit = each_lc[(each_lc['time'].value < (transit_time+period*i)-(duration/2)) | (each_lc['time'].value > (transit_time+period*i)+(duration/2))]
-            out_transit = each_lc[(each_lc['time'].value < out.params["t0"].value - (duration/1.5)) | (each_lc['time'].value > out.params["t0"].value + (duration/1.5))]
-            model = lmfit.models.PolynomialModel()
-            poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
-            result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
-            result.plot()
-            plt.savefig(f'{homedir}/fitting_result/curvefit_figure/{TOInumber}_{str(i)}.png')
-            #plt.show()
-            plt.close()
-            poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
-                            result.params.valuesdict()['c1'],\
-                            result.params.valuesdict()['c2'],\
-                            result.params.valuesdict()['c3'],\
-                            result.params.valuesdict()['c4'],\
-                            result.params.valuesdict()['c5'],\
-                            result.params.valuesdict()['c6'],\
-                            result.params.valuesdict()['c7']])
-
-            #normalization
-            each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
-            each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
-            each_lc_list.append(each_lc)
-
-    """return estimated period or cleaned light curve"""
-    if estimate_period == True:
-        t0df = pd.DataFrame.from_dict(t0dict, orient='index', columns=['t0', 't0err'])
-
-        x = t0df.index.values
-        y = t0df['t0']
-        yerr = t0df['t0err']
-        try:
-            res = linregress(x, y)
-        except ValueError:
-            print('ValueError: Inputs must not be empty.')
-            import pdb; pdb.set_trace()
-        estimated_period = res.slope
-        tinv = lambda p, df: abs(t.ppf(p/2, df))
-        ts = tinv(0.05, len(x)-2)
-        #print(f"slope (95%): {res.slope:.6f} +/- {ts*res.stderr:.6f}")
-
-        plt.errorbar(x=x, y=y,yerr=yerr, fmt='.k')
-        plt.plot(x, res.intercept + res.slope*x, label='fitted line')
-        plt.text(0.9, 0.3, f'period: {res.slope:.6f} +/- {ts*res.stderr:.6f}', transform=ax.transAxes)
-        #plt.show()
-        plt.savefig(f'{homedir}/fitting_result/figure/esitimate_period/{TOInumber}.png')
-        plt.close()
-        return estimated_period
-    else:
-        cleaned_lc = vstack(each_lc_list)
-        return cleaned_lc, outliers
-'''
