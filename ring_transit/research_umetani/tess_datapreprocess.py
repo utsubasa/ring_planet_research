@@ -12,13 +12,11 @@ import batman
 import datetime
 from decimal import *
 import time
-import emcee
-import corner
-from multiprocessing import Pool
 #from lightkurve import search_targetpixelfile
 from scipy.stats import t, linregress
 from astropy.table import Table, vstack
 import astropy.units as u
+from decimal import Decimal, ROUND_HALF_UP
 
 warnings.filterwarnings('ignore')
 
@@ -253,7 +251,7 @@ def detect_transit_epoch(folded_lc, transit_time, period):
     #epoch_all_time = ( (folded_lc.time_original.value - transit_time) + 0.5*period ) / period
     epoch_all_time = ( (folded_lc.time_original.value - transit_time)) / period
     #epoch_all= np.array(epoch_all_time, dtype = int)
-    epoch_all = np.round(np.array(epoch_all_time))
+    epoch_all = [Decimal(str(x)).quantize(Decimal('0'), rounding=ROUND_HALF_UP).to_eng_string() for x in epoch_all_time]
     epoch_all = np.where(epoch_all == -0, 0, epoch_all).astype('int16')
     epoch_all_list = np.unique(epoch_all)
     epoch_all_list = np.sort(epoch_all_list)
@@ -273,47 +271,48 @@ def transit_params_setting(rp_rs, period):
         values = [0, period, 0.02, 10, 87, 0, 90, 0.3, 0.2]
     else:
         values = [0, period, rp_rs, 10, 87, 0, 90, 0.3, 0.2]
-    mins = [-0.9, period*0.6, 0.001, 0.1, 70, 0, 90, 0.0, 0.0]
-    maxes = [0.9, period*1.9, 1.0, 100, 110, 0, 90, 1.0, 1.0]
+    mins = [-0.7, period*0.6, 0.001, 0.1, 70, 0, 90, 0.0, 0.0]
+    maxes = [0.7, period*1.9, 1.0, 100, 110, 0, 90, 1.0, 1.0]
     vary_flags = [True, False, True, True, False, False, False, False, False]
     return set_params_lm(names, values, mins, maxes, vary_flags)
 
-def transit_case_is4(duration, period, flag=False):
+def transit_case_is4(each_lc, duration, period, flag=False):
     """（period推定時で、）トランジットの時間帯丸々がデータに収まっていない場合は解析中断"""
     transit_start = -duration/period
     transit_end = duration/period
     #if estimate_period == True and judge_transit_contain(each_lc, transit_start, transit_end) != 4:
-    if judge_transit_contain(each_lc, transit_start, transit_end) != 4:
+    if judge_transit_contain(each_lc, transit_start, transit_end) == 4:
         flag = True
     else:
         flag = False
     return flag
 
-def aroud_midtransitdata_isnull(each_lc, flag=False):
+def aroud_midtransitdata_isexist(each_lc, flag=False):
     """midtransitのデータ点がlightcurveにない場合は解析中断"""
     if len(each_lc[(each_lc.time < 0.01) & (each_lc.time > -0.01)]) == 0:
         each_lc.errorbar()
         plt.title('no data in mid transit')
         plt.savefig(f'{homedir}/fitting_result/figure/error_lc/{TOInumber}_{str(i)}.png', header=False, index=False)
         plt.close()
-        flag = True
-    else:
         flag = False
+    else:
+        flag = True
     return flag
 
-def space_in_transit(each_lc, transit_start, transit_end, flag=False):
-    """トランジット中に空白の期間があったら解析中断"""
+def nospace_in_transit(each_lc, transit_start, transit_end, flag=False):
+    """トランジット中に空白の期間があったら解析中断するための関数"""
     delta = each_lc.time.value[:-1]-each_lc.time.value[1:]
     duration_flag = ((each_lc.time > transit_start*1.1) & (each_lc.time < transit_end*1.1))[:-1]
     delta = delta[duration_flag]
-    ###外れ値を検出したら解析中断。
+    ###deltaの全ての要素が同じ→空白がない
     if np.all(delta) == True:
-        flag = False
+        flag = True
+    ###2シグマ以上の外れ値がある→データの空白がある
     elif judge_outliers(delta) == True:
         #plt.scatter()
-        flag = True
-    else:
         flag = False
+    else:
+        flag = True
     return flag
 
 def transit_fit_and_remove_outliers(lc, t0dict, outliers, estimate_period=False, lc_type=None):
@@ -361,10 +360,11 @@ def transit_fit_and_remove_outliers(lc, t0dict, outliers, estimate_period=False,
                             pass
                         ax.legend()
                         ax.set_title(f'chi square/dof: {int(chi_square)}/{len(lc)} ')
-                        plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}.png', header=False, index=False)
+                        #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}.png', header=False, index=False)
                         #ax.set_xlim(-1, 1)
-                        #plt.show()
+                        plt.show()
                         plt.close()
+                        import pdb; pdb.set_trace()
                     else:
 
                         t0dict[epoch_now] = [transit_time+(period*epoch_now)+out.params["t0"].value, out.params["t0"].stderr]
@@ -387,7 +387,7 @@ def transit_fit_and_remove_outliers(lc, t0dict, outliers, estimate_period=False,
             break
     return lc, outliers, out, t0dict, no_use_lc
 
-def estimate_period(t0dict):
+def estimate_period(t0dict, period):
     """return estimated period or cleaned light curve"""
     t0df = pd.DataFrame.from_dict(t0dict, orient='index', columns=['t0', 't0err'])
     x = t0df.index.values
@@ -401,16 +401,19 @@ def estimate_period(t0dict):
     estimated_period = res.slope
     tinv = lambda p, df: abs(t.ppf(p/2, df))
     ts = tinv(0.05, len(x)-2)
-    #print(f"slope (95%): {res.slope:.6f} +/- {ts*res.stderr:.6f}")
-    ax = plt.subplot(1,1,1)
-    ax.errorbar(x=x, y=y,yerr=yerr, fmt='.k')
-    ax.plot(x, res.intercept + res.slope*x, label='fitted line')
-    ax.text(0.5, 0.2, f'period: {res.slope:.6f} +/- {ts*res.stderr:.6f}', transform=ax.transAxes)
-    #plt.show()
-    plt.savefig(f'{homedir}/fitting_result/figure/esitimate_period/{TOInumber}.png')
-    plt.close()
-    return estimated_period
-
+    if np.isnan(ts*res.stderr) == False:
+        #print(f"slope (95%): {res.slope:.6f} +/- {ts*res.stderr:.6f}")
+        ax = plt.subplot(1,1,1)
+        ax.errorbar(x=x, y=y,yerr=yerr, fmt='.k')
+        ax.plot(x, res.intercept + res.slope*x, label='fitted line')
+        ax.text(0.5, 0.2, f'period: {res.slope:.6f} +/- {ts*res.stderr:.6f}', transform=ax.transAxes)
+        #plt.show()
+        plt.savefig(f'{homedir}/fitting_result/figure/esitimate_period/{TOInumber}.png')
+        plt.close()
+        return estimated_period
+    else:
+        estimated_period = period
+        return estimated_period
 def curve_fitting(each_lc, duration, out, each_lc_list):
     out_transit = each_lc[(each_lc['time'].value < out.params["t0"].value - (duration/1.5)) | (each_lc['time'].value > out.params["t0"].value + (duration/1.5))]
     model = lmfit.models.PolynomialModel()
@@ -566,18 +569,20 @@ for TIC in TIClist:
             print(f'epoch: {epoch_now}')
             flag = folded_lc.epoch_all == epoch_now
             each_lc = folded_lc[flag]
-            #import pdb; pdb.set_trace()
-            #解析中断条件を満たさないかチェック
-            abort_list = np.array([transit_case_is4(duration, period), aroud_midtransitdata_isnull(each_lc), space_in_transit(each_lc, transit_start, transit_end)])
-            if np.any(abort_list) == False:
+            each_lc.scatter()
+            plt.show()
+            #解析中断条件を満たさないかチェック。トランジットがライトカーブに収まっていて、トランジット中にデータの欠損がない場合のみ解析する
+            abort_list = np.array([transit_case_is4(each_lc, duration, period), aroud_midtransitdata_isexist(each_lc), nospace_in_transit(each_lc, transit_start, transit_end)])
+            if np.all(abort_list) == True:
                 pass
             else:
+                print('解析中断条件を満たす')
                 continue
             _, _, _,t0dict, _ = transit_fit_and_remove_outliers(each_lc, t0dict, outliers, estimate_period=True, lc_type='each')
 
         #estimated_periodで再refolding
         if len(t0dict) != 1:
-            estimated_period = estimate_period(t0dict)
+            estimated_period = estimate_period(t0dict, period)
         else:
             estimated_period = period
         folded_lc = lc.fold(period=estimated_period , epoch_time=transit_time)
@@ -598,11 +603,13 @@ for TIC in TIClist:
             flag = folded_lc.epoch_all == epoch_now
             each_lc = folded_lc[flag]
             #解析中断条件を満たさないかチェック
-            abort_list = np.array([transit_case_is4(duration, estimated_period), aroud_midtransitdata_isnull(each_lc), space_in_transit(each_lc, transit_start, transit_end)])
-            if np.any(abort_list) == False:
+            abort_list = np.array([transit_case_is4(each_lc, duration, estimated_period), aroud_midtransitdata_isexist(each_lc), nospace_in_transit(each_lc, transit_start, transit_end)])
+            if np.all(abort_list) == True:
                 pass
             else:
+                print('解析中断条件を満たす')
                 continue
+            import pdb; pdb.set_trace()
             each_lc, _, out, _, no_use_lc = transit_fit_and_remove_outliers(each_lc, t0dict, outliers, estimate_period=False, lc_type='each')
             if no_use_lc == True:
                 continue
@@ -613,6 +620,7 @@ for TIC in TIClist:
         print('refolding...')
         time.sleep(1)
         #outliers = []
+        import pdb; pdb.set_trace()
         try:
             cleaned_lc = vstack(each_lc_list)
         except ValueError:
@@ -644,3 +652,4 @@ for TIC in TIClist:
         plt.close()
         cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/{TOInumber}.csv')
     print(f'Analysis completed: {TOInumber}')
+    import pdb; pdb.set_trace()
