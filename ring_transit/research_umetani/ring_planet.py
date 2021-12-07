@@ -314,6 +314,7 @@ a=0.0376 #Orbit Semi-Major Axis [au]
 a=562487835826.56 #cm
 rstar=1.952 * 6.9634 * 10**10 #Rstar cm
 
+csvfile = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/TOI185.01.csv'
 csvfile = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/TOI2403.01.csv'
 files = glob.glob("/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/*.csv")
 
@@ -321,9 +322,11 @@ folded_df = pd.read_csv(csvfile, sep=',')
 folded_table = Table.from_pandas(folded_df)
 folded_lc = lk.LightCurve(data=folded_table)
 import astropy.units as u
+import pdb; pdb.set_trace()
 binned_lc = folded_lc.bin(time_bin_size=5*u.minute)
 binned_lc.errorbar()
 plt.show()
+import pdb; pdb.set_trace()
 for file in files:
     try:
         print(file)

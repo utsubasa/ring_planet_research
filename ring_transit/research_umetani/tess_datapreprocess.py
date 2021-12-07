@@ -17,6 +17,7 @@ from scipy.stats import t, linregress
 from astropy.table import Table, vstack
 import astropy.units as u
 from decimal import Decimal, ROUND_HALF_UP
+import os
 
 warnings.filterwarnings('ignore')
 
@@ -363,13 +364,15 @@ def transit_fit_and_remove_outliers(lc, t0dict, outliers, estimate_period=False,
                             pass
                         ax.legend()
                         ax.set_title(f'chi square/dof: {int(chi_square)}/{len(lc)} ')
-                        plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}_{str(i)}.png', header=False, index=False)
+                        os.makedirs(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}', exist_ok=True)
+                        plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
                         #ax.set_xlim(-1, 1)
                         #plt.show()
                         plt.close()
                     else:
+                        pass
 
-                        t0dict[epoch_now] = [transit_time+(period*epoch_now)+out.params["t0"].value, out.params["t0"].stderr]
+                        #t0dict[epoch_now] = [transit_time+(period*epoch_now)+out.params["t0"].value, out.params["t0"].stderr]
                         #t0dict[i] = [out.params["t0"].value, out.params["t0"].stderr]
                         #each_lc = clip_lc
                     break
@@ -418,12 +421,13 @@ def estimate_period(t0dict, period):
         return estimated_period
 
 def curve_fitting(each_lc, duration, out, each_lc_list):
-    out_transit = each_lc[(each_lc['time'].value < out.params["t0"].value - (duration)) | (each_lc['time'].value > out.params["t0"].value + (duration))]
+    out_transit = each_lc[(each_lc['time'].value < out.params["t0"].value - (duration*0.6)) | (each_lc['time'].value > out.params["t0"].value + (duration*0.6))]
     model = lmfit.models.PolynomialModel()
     poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
     result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
     result.plot()
-    plt.savefig(f'{homedir}/fitting_result/figure/curvefit/{TOInumber}_{str(i)}.png')
+    os.makedirs(f'{homedir}/fitting_result/figure/curvefit/{TOInumber}', exist_ok=True)
+    plt.savefig(f'{homedir}/fitting_result/figure/curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
     #plt.show()
     plt.close()
     poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
@@ -456,24 +460,26 @@ for TIC in TIClist:
     while True:
         try:
             search_result = lk.search_lightcurve(f'TIC {TIC}', mission='TESS', cadence="short", author='SPOC')
+            #tpf_file = lk.search_targetpixelfile(f'TIC {TIC}', mission='TESS', cadence="short", author='SPOC').download_all(quality_bitmask='default')
+            #tpf_file.plot()
+            #plt.show()
 
         except HTTPError:
             print('HTTPError, retry.')
         else:
             break
-
     lc_collection = search_result.download_all()
-    for i, lc_now in enumerate(lc_collection):
-        mask = lc_now.quality ==0
-        lc_now.flux = lc_now.sap_flux
-        lc_now = lc_now[mask]
-        lc_collection[i] = lc_now
-
     try:
         lc_collection.plot()
         #plt.savefig(f'{homedir}/lc_collection/TIC{TIC}.png')
         plt.close()
-
+        '''
+        for i, lc_now in enumerate(lc_collection):
+            mask = lc_now.quality ==0
+            lc_now.flux = lc_now.sap_flux
+            lc_now = lc_now[mask]
+            lc_collection[i] = lc_now
+            '''
     except AttributeError:
         #with open('error_tic.dat', 'a') as f:
             #f.write(str(TIC) + '\n')
@@ -481,7 +487,7 @@ for TIC in TIClist:
 
     #各惑星系の惑星ごとに処理
     for index, item in param_df.iterrows():
-        lc = lc_collection.stitch().flatten() #initialize lc
+        lc = lc_collection.stitch() #initialize lc
 
         duration = item['Planet Transit Duration Value [hours]'] / 24
         period = item['Planet Orbital Period Value [days]']
@@ -525,13 +531,19 @@ for TIC in TIClist:
 
             ax = lc.scatter()
             for transit in transit_time_list:
+
+                #ax = lc.scatter()
                 #plt.axvline(x=transit, ymax=np.max(lc.flux.value), ymin=np.min(lc.flux.value), color='red')
                 ax.axvline(x=transit, color='blue',alpha=0.7)
-            #plt.show()
+                #ax.axvspan(transit-(duration/2), transit+(duration/2), color = "gray", alpha=0.3, hatch="////")
+                #ax.set_xlim(transit-duration, transit+duration)
+                #plt.show()
+
             #import pdb; pdb.set_trace()
             #plt.savefig(f'{homedir}/check_transit_timing/TIC{TIC}.png')
             #plt.show()
             plt.close()
+
 
             pass
 
@@ -604,15 +616,19 @@ for TIC in TIClist:
         t0list =[]
         print('preprocessing...')
         time.sleep(1)
-        ax = lc.scatter()
-        for i, epoch_now in enumerate(epoch_all_list):
-            print(f'epoch: {epoch_now}')
-            flag = folded_lc.epoch_all == epoch_now
-            each_lc = folded_lc[flag]
-            ax.axvspan(each_lc.time_original.value[0], each_lc.time_original.value[-1], color = "gray", alpha=0.3, hatch="////")
-            ax.axvline(x=np.median(each_lc.time_original.value), color='blue',alpha=0.7)
-            continue
+        #ax = lc.scatter()
+
+        for i, mid_transit_time in enumerate(transit_time_list):
+            print(f'epoch: {i}')
+            epoch_start = mid_transit_time - (duration*2.5)
+            epoch_end = mid_transit_time + (duration*2.5)
+            tmp = folded_lc[folded_lc.time_original.value > epoch_start]
+            each_lc = tmp[tmp.time_original.value < epoch_end]
+
             #解析中断条件を満たさないかチェック
+            if len(each_lc) == 0:
+                print('no data in this epoch')
+                continue
             abort_list = np.array([transit_case_is4(each_lc, duration, period), aroud_midtransitdata_isexist(each_lc), nospace_in_transit(each_lc, transit_start, transit_end)])
             if np.all(abort_list) == True:
                 pass
@@ -624,8 +640,6 @@ for TIC in TIClist:
                 continue
             else:
                 each_lc_list = curve_fitting(each_lc, duration, out, each_lc_list)
-        print('aaa')
-        plt.show()
         '''
         ax = lc.scatter()
         for t0 in t0list:
@@ -635,7 +649,6 @@ for TIC in TIClist:
         plt.show()
         import pdb; pdb.set_trace()
         '''
-        continue
         """folded_lcに対してtransitfit & remove outliers. folded_lcを描画する"""
         print('refolding...')
         time.sleep(1)
@@ -670,5 +683,49 @@ for TIC in TIClist:
         #plt.show()
         plt.close()
         cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/{TOInumber}.csv')
+        binned_lc = cleaned_lc.bin(time_bin_size=3*u.minute)
+        ax = plt.subplot(1,1,1)
+        binned_lc.errorbar(ax=ax, color='black')
+        ax.set_title(TOInumber)
+        plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/binned_lc/figure/{TOInumber}.png')
+        #plt.show()
+        plt.close()
+        binned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/binned_lc_data/{TOInumber}.csv')
     print(f'Analysis completed: {TOInumber}')
-    import pdb; pdb.set_trace()
+    """
+    for i, epoch_now in enumerate(epoch_all_list):
+        print(f'epoch: {epoch_now}')
+        flag = folded_lc.epoch_all == epoch_now
+        each_lc = folded_lc[flag]
+        #ax = each_lc.scatter()
+        ax = plt.subplot(1,1,1)
+        ax.scatter(each_lc.time_original.value, each_lc.flux.value)
+        ax.set_title('epoch based')
+        #ax.axvspan(each_lc.time_original.value[0], each_lc.time_original.value[-1], color = "gray", alpha=0.3, hatch="////")
+        #ax.axvline(x=np.median(each_lc.time_original.value), color='blue',alpha=0.7)
+        os.makedirs(f'{homedir}/fitting_result/figure/each_lc/before_preprocess/epoch_based/{TOInumber}', exist_ok=True)
+        #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/before_preprocess/epoch_based/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
+        plt.show()
+        plt.close()
+        continue
+
+    continue
+    """
+    '''
+    for i, epoch_now in enumerate(epoch_all_list):
+        print(f'epoch: {epoch_now}')
+        flag = folded_lc.epoch_all == epoch_now
+        each_lc = folded_lc[flag]
+        if epoch_now == 178 and TOInumber == 'TOI187.01':
+            continue
+        if i == 11:
+            ax = plt.subplot(1,1,1)
+            ax.scatter(each_lc.time_original.value, each_lc.flux.value)
+            ax.set_title('mid t based')
+            #ax.axvline(x=np.median(each_lc.time_original.value), color='blue',alpha=0.7)
+            #os.makedirs(f'{homedir}/fitting_result/figure/each_lc/before_preprocess/ori_t_based/{TOInumber}', exist_ok=True)
+            #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/before_preprocess/ori_t_based/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
+            plt.show()
+            #plt.close()
+            import pdb; pdb.set_trace()
+    '''
