@@ -683,6 +683,7 @@ for TIC in TIClist:
         #plt.show()
         plt.close()
         cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/{TOInumber}.csv')
+        import pdb; pdb.set_trace()
         binned_lc = cleaned_lc.bin(time_bin_size=3*u.minute)
         ax = plt.subplot(1,1,1)
         binned_lc.errorbar(ax=ax, color='black')
