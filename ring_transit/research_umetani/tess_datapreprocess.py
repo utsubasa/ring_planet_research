@@ -464,14 +464,12 @@ def curve_fitting(each_lc, duration, out, each_lc_list):
 #if __name__ ==  '__main__':
 homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
 
-sn_df = pd.read_csv(f'{homedir}/toi_overSN100.csv')
+df = pd.read_csv(f'{homedir}/exofop_tess_tois.csv')
+df = df[df['Planet SNR']>100]
 #import pdb; pdb.set_trace()
-TIClist = sn_df['TIC']
-params_df = pd.read_excel(f'{homedir}/TOI_parameters.xlsx')
-
-
+TIClist = df['TIC ID']
 for TIC in TIClist:
-    param_df = params_df[params_df['TESS Input Catalog ID'] == TIC]
+    param_df = df[df['TIC ID'] == TIC]
     #tpf = lk.search_targetpixelfile('TIC {}'.format(TIC), mission='TESS', cadence="short").download()
     while True:
         try:
@@ -497,30 +495,23 @@ for TIC in TIClist:
             lc_collection[i] = lc_now
             '''
     except AttributeError:
-        #with open('error_tic.dat', 'a') as f:
-            #f.write(str(TIC) + '\n')
+        with open('error_tic.dat', 'a') as f:
+            f.write(str(TIC) + '\n')
         continue
 
     #各惑星系の惑星ごとに処理
     for index, item in param_df.iterrows():
         lc = lc_collection.stitch() #initialize lc
-        Tobs = (lc.time[-1]-lc.time[0]).value
 
-        duration = item['Planet Transit Duration Value [hours]'] / 24
-        period = item['Planet Orbital Period Value [days]']
-        transit_time = item['Planet Transit Midpoint Value [BJD]'] - 2457000.0 #translate BTJD
+        duration = item['Duration (hours)'] / 24
+        period = item['Period (days)']
+        transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD
         transit_start = transit_time - (duration/2)
         transit_end = transit_time + (duration/2)
-        TOInumber = 'TOI' + str(item["TESS Object of Interest"])
-        rp = item['Planet Radius Value [R_Earth]'] * 0.00916794 #translate to Rsun
-        rs = item['Stellar Radius Value [R_Sun]']
-        rp_rs = rp/rs
-        transit_depth_val = item['Planet Transit Depth Value [ppm]']
-        transit_depth_upper_unc = item['Planet Transit Depth Upper Unc [ppm]']
-        transit_depth_lower_unc = item['Planet Transit Depth Lower Unc [ppm]']
-
-
-        SN = np.sqrt((Tobs/period)*(transit_depth_val/transit_depth_unc))
+        TOInumber = 'TOI' + str(item['TOI'])
+        rp = item['Planet Radius (R_Earth)'] * 0.00916794 #translate to Rsun
+        rs = item['Stellar Radius (R_Sun)']
+        rp_rs = (rp**2)/(rs**2)
         '''
         bls_period = np.linspace(period*0.6, period*1.5, 10000)
         bls = lc.to_periodogram(method='bls',period=bls_period)#oversample_factor=1)\
@@ -552,11 +543,11 @@ for TIC in TIClist:
         if contain_transit == 1:
 
             ax = lc.scatter()
-            for transit in transit_time_list:
+            #for transit in transit_time_list:
 
                 #ax = lc.scatter()
                 #plt.axvline(x=transit, ymax=np.max(lc.flux.value), ymin=np.min(lc.flux.value), color='red')
-                ax.axvline(x=transit, color='blue',alpha=0.7)
+                #ax.axvline(x=transit, color='blue',alpha=0.7)
                 #ax.axvspan(transit-(duration/2), transit+(duration/2), color = "gray", alpha=0.3, hatch="////")
                 #ax.set_xlim(transit-duration, transit+duration)
                 #plt.show()
@@ -693,7 +684,6 @@ for TIC in TIClist:
             with open('error_tic.dat', 'a') as f:
                 f.write('no transit!: ' + 'str(TIC)' + '\n')
             continue
-        import pdb; pdb.set_trace()
         fig = plt.figure()
         ax1 = fig.add_subplot(2,1,1) #for plotting transit model and data
         ax2 = fig.add_subplot(2,1,2) #for plotting residuals
@@ -728,7 +718,8 @@ for TIC in TIClist:
         #plt.show()
         plt.close()
         binned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/binned_lc_data/{TOInumber}.csv')
-    print(f'Analysis completed: {TOInumber}')
+
+        print(f'Analysis completed: {TOInumber}')
     """
     for i, epoch_now in enumerate(epoch_all_list):
         print(f'epoch: {epoch_now}')
