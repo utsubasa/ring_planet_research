@@ -386,7 +386,9 @@ def transit_fit_and_remove_outliers(lc, t0dict, outliers, estimate_period=False,
                 else:
                     #print('removed bins:', len(each_lc[mask]))
                     outliers.append(lc[mask])
-                    lc = lc[~mask]
+                    if lc_type == 'each':
+                        lc = lc[~mask]
+
         except TypeError:
             each_lc.errorbar()
             plt.xlim(-1, 1)
@@ -687,8 +689,9 @@ for TIC in TIClist:
         fig = plt.figure()
         ax1 = fig.add_subplot(2,1,1) #for plotting transit model and data
         ax2 = fig.add_subplot(2,1,2) #for plotting residuals
-        cleaned_lc.errorbar(ax=ax1, color='black', marker='.', zorder=1)
+        cleaned_lc.errorbar(ax=ax1, color='black', marker='.', zorder=1, label='data')
         ax1.plot(cleaned_lc.time.value, flux_model, label='fitting model', color='red', zorder=2)
+        '''
         try:
             outliers_fold = vstack(outliers_fold)
             outliers_fold.errorbar(ax=ax1, label='outliers(folded_lc)', color='blue', marker='.')
@@ -697,6 +700,7 @@ for TIC in TIClist:
         except ValueError:
             print('no outliers in folded_lc')
             pass
+        '''
         ax1.legend()
         ax1.set_title(TOInumber)
         residuals = cleaned_lc - flux_model
