@@ -341,63 +341,65 @@ def transit_fit_and_remove_outliers(lc, t0dict, outliers, estimate_period=False,
             continue
 
         """remove outliers"""
-        try:
-            if np.isfinite(out.params["t0"].stderr):
-                #print(out.params.pretty_print())
-                #time_now_arr.append(0.5 * np.min(each_lc.time_original.value) + 0.5* np.max(each_lc.time_original.value))
-                flux_model = no_ring_model_transitfit_from_lmparams(out.params, time, names)
-                clip_lc = lc.copy()
-                clip_lc.flux = np.sqrt(np.square(flux_model - clip_lc.flux))
-                _, mask = clip_lc.remove_outliers(return_mask=True)
-                inverse_mask = np.logical_not(mask)
+        if lc_type == 'each':
+            try:
+                if np.isfinite(out.params["t0"].stderr):
+                    #print(out.params.pretty_print())
+                    #time_now_arr.append(0.5 * np.min(each_lc.time_original.value) + 0.5* np.max(each_lc.time_original.value))
+                    flux_model = no_ring_model_transitfit_from_lmparams(out.params, time, names)
+                    clip_lc = lc.copy()
+                    clip_lc.flux = np.sqrt(np.square(flux_model - clip_lc.flux))
+                    _, mask = clip_lc.remove_outliers(return_mask=True)
+                    inverse_mask = np.logical_not(mask)
 
-                if np.all(inverse_mask) == True:
-                    #print(f'after clip length: {len(each_lc.flux)}')
-                    if estimate_period == False and lc_type == 'each':
-                        fig = plt.figure()
-                        ax1 = fig.add_subplot(2,1,1) #for plotting transit model and data
-                        ax2 = fig.add_subplot(2,1,2) #for plotting residuals
-                        lc.errorbar(ax=ax1, color='black', marker='.')
-                        ax1.plot(time,flux_model, label='fit_model', color='red')
-                        try:
-                            outliers = vstack(outliers)
-                            outliers.errorbar(ax=ax1, color='cyan', label='outliers(each_lc)', marker='.')
-                        except ValueError:
-                            pass
-                        ax1.legend()
-                        ax1.set_title(f'chi square/dof: {int(chi_square)}/{len(lc)} ')
-                        residuals = lc - flux_model
-                        residuals.errorbar(ax=ax2, color='black', marker='.')
-                        ax2.plot(time,np.zeros(len(time)), label='fitting model', color='red')
-                        ax2.set_ylabel('residuals')
-                        os.makedirs(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}', exist_ok=True)
-                        plt.tight_layout()
-                        plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
-                        #ax.set_xlim(-1, 1)
-                        #plt.show()
-                        plt.close()
+                    if np.all(inverse_mask) == True:
+                        #print(f'after clip length: {len(each_lc.flux)}')
+                        if estimate_period == False:
+                            fig = plt.figure()
+                            ax1 = fig.add_subplot(2,1,1) #for plotting transit model and data
+                            ax2 = fig.add_subplot(2,1,2) #for plotting residuals
+                            lc.errorbar(ax=ax1, color='black', marker='.')
+                            ax1.plot(time,flux_model, label='fit_model', color='red')
+                            try:
+                                outliers = vstack(outliers)
+                                outliers.errorbar(ax=ax1, color='cyan', label='outliers(each_lc)', marker='.')
+                            except ValueError:
+                                pass
+                            ax1.legend()
+                            ax1.set_title(f'chi square/dof: {int(chi_square)}/{len(lc)} ')
+                            residuals = lc - flux_model
+                            residuals.errorbar(ax=ax2, color='black', marker='.')
+                            ax2.plot(time,np.zeros(len(time)), label='fitting model', color='red')
+                            ax2.set_ylabel('residuals')
+                            os.makedirs(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}', exist_ok=True)
+                            plt.tight_layout()
+                            plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
+                            #ax.set_xlim(-1, 1)
+                            #plt.show()
+                            plt.close()
+                        else:
+                            #pass
+
+                            t0dict[i] = [transit_time+(period*i)+out.params["t0"].value, out.params["t0"].stderr]
+                            #t0dict[i] = [out.params["t0"].value, out.params["t0"].stderr]
+                            #each_lc = clip_lc
+                        break
                     else:
-                        #pass
-
-                        t0dict[i] = [transit_time+(period*i)+out.params["t0"].value, out.params["t0"].stderr]
-                        #t0dict[i] = [out.params["t0"].value, out.params["t0"].stderr]
-                        #each_lc = clip_lc
-                    break
-                else:
-                    #print('removed bins:', len(each_lc[mask]))
-                    outliers.append(lc[mask])
-                    if lc_type == 'each':
+                        #print('removed bins:', len(each_lc[mask]))
+                        outliers.append(lc[mask])
                         lc = lc[~mask]
 
-        except TypeError:
-            each_lc.errorbar()
-            plt.xlim(-1, 1)
-            plt.title('np.isfinite(out.params["t0"].stderr)==False')
-            plt.savefig(f'{homedir}/fitting_result/figure/error_lc/{TOInumber}_{str(i)}.png', header=False, index=False)
-            plt.close()
-            print(lmfit.fit_report(out))
-            no_use_lc = True
-            #import pdb; pdb.set_trace()
+            except TypeError:
+                each_lc.errorbar()
+                plt.xlim(-1, 1)
+                plt.title('np.isfinite(out.params["t0"].stderr)==False')
+                plt.savefig(f'{homedir}/fitting_result/figure/error_lc/{TOInumber}_{str(i)}.png', header=False, index=False)
+                plt.close()
+                print(lmfit.fit_report(out))
+                no_use_lc = True
+                #import pdb; pdb.set_trace()
+                break
+        else:
             break
     return lc, outliers, out, t0dict, no_use_lc
 
