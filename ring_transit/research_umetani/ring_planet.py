@@ -10,7 +10,6 @@ import warnings
 import c_compile_ring
 import batman
 import datetime
-from decimal import *
 import time
 import emcee
 import corner
@@ -110,25 +109,26 @@ def ring_model(t, pdic, mcmc_pvalues=None):
 
 #リングありモデルをfitting
 def ring_residual_transitfit(params, x, data, eps_data, names):
+    global chi_square
     start =time.time()
     model = ring_model(x, params.valuesdict())
     chi_square = np.sum(((data-model)/eps_data)**2)
     #print(params)
-    print(chi_square)
+    #print(chi_square)
     #print(np.max(((data-model)/eps_data)**2))
 
     return (data-model) / eps_data
 
 #リングなしモデルをfitting
 def no_ring_residual_transitfit(params, x, data, eps_data, names):
-    global chi_square
+    #global chi_square
     params_batman = set_params_batman(params, names)
     m = batman.TransitModel(params_batman, x)    #initializes model
     model = m.light_curve(params_batman)         #calculates light curve
     chi_square = np.sum(((data-model)/eps_data)**2)
     #print(params)
     print(chi_square)
-    return (data-model) / eps_data
+    return (model-data) / eps_data
 
 def ring_model_transitfit_from_lmparams(params, x):
     model = ring_model(x, params.valuesdict())         #calculates light curve
@@ -185,60 +185,38 @@ def make_rowlist(n_transit, lc, transit_time, period):
         list.append(mid_transit_row)
     return list
 
-
-###use lightkurve(diffrent method from Aizawa+2018)###
-'''
-kic = "KIC10666592"
-tpf = lk.search_targetpixelfile(kic, author="Kepler", cadence="short").download()
-#tpf.plot(frame=100, scale='log', show_colorbar=True)
-lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
-#lc.plot()
-period = np.linspace(1, 3, 10000)
-bls = lc.to_periodogram(method='bls', period=period, frequency_factor=500);
-
-period=2.20473541 #day
-transit_time=121.3585417
-duration=0.162026
-a_rs=4.602
-b=0.224
-rp_rs=0.075522
-i=87.21 * 0.0175 #radian
-a=0.0376 #Orbit Semi-Major Axis [au]
-a=562487835826.56 #cm
-rstar=1.952 * 6.9634 * 10**10 #Rstar cm
-#lc_list = preprocess_each_lc(lc, duration, period, transit_time)
-#transit_time_per_exposure = (duration * len(lc_list) / (lc.time[-1].value - lc.time[0].value))
-#lc = lc.bin(bins=int(300 // transit_time_per_exposure))
-tot = (rstar/a)* (np.sqrt(np.square(1+rp_rs)-np.square(b)) / np.sin(i))
-Ttot = (period/np.pi) * np.arcsin(tot)
-full = (rstar/a)* (np.sqrt(np.square(1-rp_rs)-np.square(b)) / np.sin(i))
-Tfull = (period/np.pi) * np.arcsin(full)
-ingress = (Ttot-Tfull) / 2 #day
-_ = ingress/period
-lc_list = preprocess_each_lc(lc, duration, period, transit_time)
-folded_lc = folding_each_lc(lc_list)
-folded_lc = folded_lc[folded_lc.time > -0.1]
-folded_lc = folded_lc[folded_lc.time < 0.1]
-import pdb; pdb.set_trace()
-folded_lc.errorbar()
-#folded_lc.write('folded_lc.csv', overwrite=True)
-plt.savefig('folded_lc.png')
-#plt.show()
-plt.close()
-'''
-csvfile = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/TOI185.01.csv'
-csvfile = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/TOI4470.01.csv'
-files = glob.glob("/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/*.csv")
-homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
-df = pd.read_csv(f'{homedir}/exofop_tess_tois.csv')
+#csvfile = './folded_lc_data/TOI185.01.csv'
+csvfile = './folded_lc_data/TOI4470.01.csv'
+#files = glob.glob("/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/*.csv")
+#homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
+df = pd.read_csv('./exofop_tess_tois.csv')
 param_df = df[df['TOI'] == 4470.01]
+
+#lm.minimizeのためのparamsのセッティング。これはリングありモデル
+###parameters setting###
+for index, item in param_df.iterrows():
+    TOInumber = 'TOI' + str(item['TOI'])
+
+    duration = item['Duration (hours)'] / 24
+    period = item['Period (days)']
+    transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD
+    a_rs=4.602
+    b=0.5
+    rp = item['Planet Radius (R_Earth)'] * 0.00916794 #translate to Rsun
+    rs = item['Stellar Radius (R_Sun)']
+    rp_rs = rp/rs
+    i=87.21 * 0.0175 #radian
+    au=0.0376 #Orbit Semi-Major Axis [au]
+    au=au*1.496e+13 #cm
+    rstar=rs * 6.9634 * 10**10 #Rstar cm
+    a_rs=au/rstar
 
 folded_table = ascii.read(csvfile)
 folded_lc = lk.LightCurve(data=folded_table)
+folded_lc = folded_lc[(folded_lc.time.value < duration*0.7) & (folded_lc.time.value > -duration*0.7)]
 import astropy.units as u
 binned_lc = folded_lc.bin(time_bin_size=1*u.minute).remove_nans()
-#binned_lc.errorbar()
-#plt.show()
+
 '''
 for file in files:
     try:
@@ -256,24 +234,6 @@ for file in files:
 import pdb; pdb.set_trace()
 '''
 
-#lm.minimizeのためのparamsのセッティング。これはリングありモデル
-###parameters setting###
-for index, item in param_df.iterrows():
-    duration = item['Duration (hours)'] / 24
-    period = item['Period (days)']
-    transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD
-    a_rs=4.602
-    b=0.5
-    rp = item['Planet Radius (R_Earth)'] * 0.00916794 #translate to Rsun
-    rs = item['Stellar Radius (R_Sun)']
-    rp_rs = rp/rs
-    i=87.21 * 0.0175 #radian
-    a=0.0376 #Orbit Semi-Major Axis [au]
-    a=562487835826.56 #cm
-    rstar=rs * 6.9634 * 10**10 #Rstar cm
-
-
-
 t = binned_lc.time.value
 flux_data = binned_lc.flux.value
 flux_err_data = binned_lc.flux_err.value
@@ -285,7 +245,8 @@ flux_err_data = binned_lc.flux_err.value
 
 noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
 #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
-noringvalues = [0, period, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
+#noringvalues = [0, period, rp_rs, a_rs, 83.0, 0.0, 90.0, 0.2, 0.2]
+noringvalues = [0, period, 0.08, 8.0, 83.0, 0.0, 90.0, 0.5, 0.5]
 noringmins = [-0.1, 4.0, 0.03, 4, 80, 0, 90, 0.0, 0.0]
 noringmaxes = [0.1, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
 #vary_flags = [True, False, True, True, True, False, False, True, True]
@@ -295,7 +256,7 @@ no_ring_params = set_params_lm(noringnames, noringvalues, noringmins, noringmaxe
 
 
 no_ring_res = lmfit.minimize(no_ring_residual_transitfit, no_ring_params, args=(t, flux_data, flux_err_data.mean(), noringnames), max_nfev=10000)
-
+import pdb; pdb.set_trace()
 names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
          "b", "norm", "theta", "phi", "tau", "r_in",
          "r_out", "norm2", "norm3", "ecosw", "esinw"]
@@ -318,7 +279,7 @@ maxes = [1.0, 1.0, 0.0001, 100.0, 1.0, 100.0,
          1.0, 1.1, np.pi/2, np.pi/2, 1.0, 7.0,
          10.0, 0.1, 0.1, 0.0, 0.0]
 
-vary_flags = [False, False, False, False, True, True,
+vary_flags = [True, True, False, False, True, True,
               True, False, True, True, False, True,
               True, False, False, False, False]
 
@@ -343,18 +304,27 @@ error_scale = 0.0001
 eps_data = np.random.normal(size=t.size, scale=error_scale)
 flux = ymodel + eps_data
 '''
+fig = plt.figure()
+ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
+ax_re = fig.add_subplot(2,1,2) #for plotting residuals
 ring_res = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux_data, flux_err_data.mean(), names), max_nfev=1000)
 #elapsed_time = time.time() - start
 #print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
 flux_model = ring_model_transitfit_from_lmparams(ring_res.params, t)
 flux_model2 = no_ring_model_transitfit_from_lmparams(no_ring_res.params, t, noringnames)
-binned_lc.errorbar()
-plt.plot(t, flux_model, label='fit_model')
-plt.plot(t, flux_model2, label='fit_model_noring')
-plt.legend()
-#plt.savefig('fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
+binned_lc.errorbar(ax=ax_lc)
+ax_lc.plot(t, flux_model, label='Model w/ ring', color='blue')
+ax_lc.plot(t, flux_model2, label='Model w/o ring', color='red')
+residuals_ring = binned_lc - flux_model
+residuals_no_ring = binned_lc - flux_model2
+residuals_ring.plot(ax=ax_re, color='blue', ecolor='gray', alpha=0.3,  marker='.', zorder=1)
+residuals_no_ring.plot(ax=ax_re, color='red', ecolor='gray', alpha=0.3,  marker='.', zorder=1)
+ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
+ax_lc.legend()
+#plt.savefig(f'fitting_result_{TOInumber}_{chi_square:.0f}.png', header=False, index=False)
 #plt.savefig('fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square))
-#plt.show()
+plt.show()
+import pdb; pdb.set_trace()
 plt.close()
 ring_res_pdict = ring_res.params.valuesdict()
 #import pdb; pdb.set_trace()
@@ -379,7 +349,7 @@ for try_n in range(5):
     #filename = "emcee_{0}.h5".format(datetime.datetime.now().strftime('%y%m%d%H%M'))
     #backend = emcee.backends.HDFBackend(filename)
     #backend.reset(nwalkers, ndim)
-    max_n = 3000
+    max_n = 10000
     index = 0
     autocorr = np.empty(max_n)
     old_tau = np.inf
@@ -423,8 +393,8 @@ for try_n in range(5):
         plt.ylim(0, y.max() + 0.1 * (y.max() - y.min()))
         plt.xlabel("number of steps")
         plt.ylabel(r"mean $\hat{\tau}$")
-        #plt.savefig(f'tau_{try_n}.png')\
-        plt.show()
+        plt.savefig(f'tau_{try_n}.png')\
+        #plt.show()
         plt.close()
         print(tau)
 
@@ -442,14 +412,14 @@ for try_n in range(5):
             ax.set_ylabel(labels[i])
             ax.yaxis.set_label_coords(-0.1, 0.5)
         axes[-1].set_xlabel("step number");
-        #plt.savefig(f'step_{try_n}.png')
-        plt.show()
+        plt.savefig(f'step_{try_n}.png')
+        #plt.show()
         plt.close()
         #plt.show()
 
         ###corner visualization###
         samples = sampler.flatchain
-        flat_samples = sampler.get_chain(discard=1000, thin=15, flat=True)
+        flat_samples = sampler.get_chain(discard=10000, thin=15, flat=True)
         print(flat_samples.shape)
         """
         truths = []
@@ -458,8 +428,8 @@ for try_n in range(5):
         fig = corner.corner(flat_samples, labels=labels, truths=truths);
         """
         fig = corner.corner(flat_samples, labels=labels);
-        #plt.savefig(f'corner_{try_n}.png')
-        plt.show()
+        plt.savefig(f'corner_{try_n}.png')
+        #plt.show()
         plt.close()
 
         """
@@ -481,14 +451,15 @@ for try_n in range(5):
         plt.errorbar(t, flux_data, yerr=flux_err_data, fmt=".k", capsize=0, alpha=0.1)
         for ind in inds:
             sample = flat_samples[ind]
-            plt.plot(t, ring_model(t, pdic, sample), "C1", alpha=0.5)
+            model = ring_model(t, pdic, sample)
+            plt.plot(t, model, "C1", alpha=0.5)
         #plt.plot(t, ymodel, "k", label="truth")
         plt.legend(fontsize=14)
         #plt.xlim(0, 10)
-        plt.xlabel("t")
+        plt.xlabel("orbital phase")
         plt.ylabel("flux");
         plt.savefig(f"mcmc_result_{try_n}.png")
-        plt.show()
+        #plt.show()
         plt.close()
 
 
@@ -506,19 +477,58 @@ for try_n in range(5):
         ###csvに書き出し###
         #input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
         input_df = pd.DataFrame.from_dict(saturnlike_params.valuesdict(), orient="index",columns=["input_value"])
-        output_df = pd.DataFrame.from_dict(out.params.valuesdict(), orient="index",columns=["output_value"])
+        output_df = pd.DataFrame.from_dict(ring_res.params.valuesdict(), orient="index",columns=["output_value"])
         input_df=input_df.applymap(lambda x: '{:.6f}'.format(x))
         output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
         #df = input_df.join((output_df, pd.Series(vary_flags, index=noringnames, name='vary_flags')))
         df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
         #df.to_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/fitting_result_{}_{:.0f}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=True, index=False)
-        df.to_csv(f'./fitting_result_{datetime.datetime.now().strftime("%y%m%d")}_{chi_square:.0f}_{try_n}.csv', header=True, index=False)
-        fit_report = lmfit.fit_report(out)
-        print(fit_report)
+        df.to_csv(f'./fitting_result_{TOInumber}_{try_n}.csv', header=True, index=False)
+        #fit_report = lmfit.fit_report(ring_res)
+        #print(fit_report)
 
 
         #import pdb; pdb.set_trace()
+        ###use lightkurve(diffrent method from Aizawa+2018)###
+        '''
+        kic = "KIC10666592"
+        tpf = lk.search_targetpixelfile(kic, author="Kepler", cadence="short").download()
+        #tpf.plot(frame=100, scale='log', show_colorbar=True)
+        lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
+        #lc.plot()
+        period = np.linspace(1, 3, 10000)
+        bls = lc.to_periodogram(method='bls', period=period, frequency_factor=500);
 
+        period=2.20473541 #day
+        transit_time=121.3585417
+        duration=0.162026
+        a_rs=4.602
+        b=0.224
+        rp_rs=0.075522
+        i=87.21 * 0.0175 #radian
+        a=0.0376 #Orbit Semi-Major Axis [au]
+        a=562487835826.56 #cm
+        rstar=1.952 * 6.9634 * 10**10 #Rstar cm
+        #lc_list = preprocess_each_lc(lc, duration, period, transit_time)
+        #transit_time_per_exposure = (duration * len(lc_list) / (lc.time[-1].value - lc.time[0].value))
+        #lc = lc.bin(bins=int(300 // transit_time_per_exposure))
+        tot = (rstar/a)* (np.sqrt(np.square(1+rp_rs)-np.square(b)) / np.sin(i))
+        Ttot = (period/np.pi) * np.arcsin(tot)
+        full = (rstar/a)* (np.sqrt(np.square(1-rp_rs)-np.square(b)) / np.sin(i))
+        Tfull = (period/np.pi) * np.arcsin(full)
+        ingress = (Ttot-Tfull) / 2 #day
+        _ = ingress/period
+        lc_list = preprocess_each_lc(lc, duration, period, transit_time)
+        folded_lc = folding_each_lc(lc_list)
+        folded_lc = folded_lc[folded_lc.time > -0.1]
+        folded_lc = folded_lc[folded_lc.time < 0.1]
+        import pdb; pdb.set_trace()
+        folded_lc.errorbar()
+        #folded_lc.write('folded_lc.csv', overwrite=True)
+        plt.savefig('folded_lc.png')
+        #plt.show()
+        plt.close()
+        '''
         """for TESS data
         #使う行のみ抽出
         df=pd.read_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/toi-catalog.csv', encoding='shift_jis')
