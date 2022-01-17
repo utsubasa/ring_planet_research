@@ -126,9 +126,11 @@ def no_ring_residual_transitfit(params, x, data, eps_data, names):
     m = batman.TransitModel(params_batman, x)    #initializes model
     model = m.light_curve(params_batman)         #calculates light curve
     chi_square = np.sum(((data-model)/eps_data)**2)
+    #if chi_square < 290:
+        #import pdb; pdb.set_trace()
     #print(params)
     print(chi_square)
-    return (model-data) / eps_data
+    return (data-model)/eps_data
 
 def ring_model_transitfit_from_lmparams(params, x):
     model = ring_model(x, params.valuesdict())         #calculates light curve
@@ -237,6 +239,7 @@ import pdb; pdb.set_trace()
 t = binned_lc.time.value
 flux_data = binned_lc.flux.value
 flux_err_data = binned_lc.flux_err.value
+import pdb; pdb.set_trace()
 #t = np.linspace(-0.2, 0.2, 300)
 
 
@@ -246,17 +249,18 @@ flux_err_data = binned_lc.flux_err.value
 noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
 #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
 #noringvalues = [0, period, rp_rs, a_rs, 83.0, 0.0, 90.0, 0.2, 0.2]
-noringvalues = [0, period, 0.08, 8.0, 83.0, 0.0, 90.0, 0.5, 0.5]
-noringmins = [-0.1, 4.0, 0.03, 4, 80, 0, 90, 0.0, 0.0]
-noringmaxes = [0.1, 4.0, 0.2, 20, 110, 0, 90, 1.0, 1.0]
+noringvalues = [0, period, 0.08, 8.0, 83.0, 0.5, 90.0, 0.5, 0.5]
+noringmins = [-0.1, 4.0, 0.03, 4, 80, 0.0, 90, 0.0, 0.0]
+noringmaxes = [0.1, 4.0, 0.2, 20, 110, 1.0, 90, 1.0, 1.0]
 #vary_flags = [True, False, True, True, True, False, False, True, True]
 noringvary_flags = [False, False, True, True, True, False, False, True, True]
 no_ring_params = set_params_lm(noringnames, noringvalues, noringmins, noringmaxes, noringvary_flags)
 #start = time.time()
 
 
-no_ring_res = lmfit.minimize(no_ring_residual_transitfit, no_ring_params, args=(t, flux_data, flux_err_data.mean(), noringnames), max_nfev=10000)
-import pdb; pdb.set_trace()
+
+no_ring_res = lmfit.minimize(no_ring_residual_transitfit, no_ring_params, args=(t, flux_data, flux_err_data, noringnames), max_nfev=10000)
+print(lmfit.fit_report(no_ring_res))
 names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
          "b", "norm", "theta", "phi", "tau", "r_in",
          "r_out", "norm2", "norm3", "ecosw", "esinw"]
@@ -317,8 +321,8 @@ ax_lc.plot(t, flux_model, label='Model w/ ring', color='blue')
 ax_lc.plot(t, flux_model2, label='Model w/o ring', color='red')
 residuals_ring = binned_lc - flux_model
 residuals_no_ring = binned_lc - flux_model2
-residuals_ring.plot(ax=ax_re, color='blue', ecolor='gray', alpha=0.3,  marker='.', zorder=1)
-residuals_no_ring.plot(ax=ax_re, color='red', ecolor='gray', alpha=0.3,  marker='.', zorder=1)
+residuals_ring.plot(ax=ax_re, color='blue', alpha=0.3,  marker='.', zorder=1)
+residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
 ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
 ax_lc.legend()
 #plt.savefig(f'fitting_result_{TOInumber}_{chi_square:.0f}.png', header=False, index=False)
