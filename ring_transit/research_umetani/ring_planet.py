@@ -2,6 +2,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import seaborn as sns
 import lmfit
 import lightkurve as lk
@@ -73,7 +74,9 @@ def set_params_lm(names, values, mins, maxes, vary_flags):
 # Input "x" (1d array), "pdic" (dic)
 # Ouput flux (1d array)
 def ring_model(t, pdic, mcmc_pvalues=None):
-    if mcmc_pvalues is not None:
+    if mcmc_pvalues is None:
+        pass
+    else:
         ##import pdb; pdb.set_trace()
         for i, param in enumerate(mcmc_params):
             #print(i, v[i])
@@ -114,7 +117,7 @@ def ring_residual_transitfit(params, x, data, eps_data, names):
     model = ring_model(x, params.valuesdict())
     chi_square = np.sum(((data-model)/eps_data)**2)
     #print(params)
-    #print(chi_square)
+    print(chi_square)
     #print(np.max(((data-model)/eps_data)**2))
 
     return (data-model) / eps_data
@@ -153,6 +156,10 @@ def log_prior(mcmc_pvalues, mcmc_params):
             pass
         else:
             return -np.inf
+        if param =='r_out' and mcmc_pvalues[i] > 3.0:
+            return -np.inf
+        else:
+            pass
     #if 0.0 < theta < np.pi/2 and 0.0 < phi < np.pi/2 and 0.0 < rp_rs < 1 and 1.0 < r_in < 7.0:
     #    return 0.0
     return 0.0
@@ -163,6 +170,7 @@ def lnprob(mcmc_pvalues, t, y, yerr, mcmc_params):
         return -np.inf
     chi_square = np.sum(((y-ring_model(t, pdic, mcmc_pvalues))/yerr)**2)
     print(chi_square)
+
     return lp + lnlike(mcmc_pvalues, t, y, yerr)
 
 def folding_each_lc(lc_list):
@@ -186,6 +194,15 @@ def make_rowlist(n_transit, lc, transit_time, period):
         mid_transit_row = getNearestRow(lc.time.value, target_val)
         list.append(mid_transit_row)
     return list
+
+'''
+def draw_ringplanet(pdic, mcmc_pvalues):
+    for i, param in enumerate(mcmc_params):
+        pdic[param] = mcmc_pvalues[i]
+    fig = plt.figure()
+    ax = plt.axes()
+    c = patches.Circle(xy=(0, 0), radius=0.5)
+'''
 
 #csvfile = './folded_lc_data/TOI185.01.csv'
 csvfile = './folded_lc_data/TOI4470.01.csv'
@@ -218,7 +235,6 @@ folded_lc = lk.LightCurve(data=folded_table)
 folded_lc = folded_lc[(folded_lc.time.value < duration*0.7) & (folded_lc.time.value > -duration*0.7)]
 import astropy.units as u
 binned_lc = folded_lc.bin(time_bin_size=1*u.minute).remove_nans()
-
 '''
 for file in files:
     try:
@@ -229,7 +245,7 @@ for file in files:
         import astropy.units as u
         binned_lc = folded_lc.bin(time_bin_size=5*u.minute)
         binned_lc.errorbar()
-        plt.show()
+        #plt.show()
     except:
         pass
 #folded_lc = folded_lc.bin(bins=300)
@@ -239,28 +255,26 @@ import pdb; pdb.set_trace()
 t = binned_lc.time.value
 flux_data = binned_lc.flux.value
 flux_err_data = binned_lc.flux_err.value
-import pdb; pdb.set_trace()
+
 #t = np.linspace(-0.2, 0.2, 300)
-
-
 
 ###ring model fitting by minimizing chi_square###
 
 noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
 #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
 #noringvalues = [0, period, rp_rs, a_rs, 83.0, 0.0, 90.0, 0.2, 0.2]
-noringvalues = [0, period, 0.08, 8.0, 83.0, 0.5, 90.0, 0.5, 0.5]
-noringmins = [-0.1, 4.0, 0.03, 4, 80, 0.0, 90, 0.0, 0.0]
+noringvalues = [0, period, 0.15, 5.0, 80.0, 0.5, 90.0, 0.5, 0.5]
+noringmins = [-0.1, 4.0, 0.03, 1, 70, 0.0, 90, 0.0, 0.0]
 noringmaxes = [0.1, 4.0, 0.2, 20, 110, 1.0, 90, 1.0, 1.0]
 #vary_flags = [True, False, True, True, True, False, False, True, True]
 noringvary_flags = [False, False, True, True, True, False, False, True, True]
 no_ring_params = set_params_lm(noringnames, noringvalues, noringmins, noringmaxes, noringvary_flags)
 #start = time.time()
 
-
-
 no_ring_res = lmfit.minimize(no_ring_residual_transitfit, no_ring_params, args=(t, flux_data, flux_err_data, noringnames), max_nfev=10000)
 print(lmfit.fit_report(no_ring_res))
+
+
 names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
          "b", "norm", "theta", "phi", "tau", "r_in",
          "r_out", "norm2", "norm3", "ecosw", "esinw"]
@@ -281,7 +295,7 @@ mins = [0.0, 0.0, -0.0001, 0.0, 0.0, 1.0,
 
 maxes = [1.0, 1.0, 0.0001, 100.0, 1.0, 100.0,
          1.0, 1.1, np.pi/2, np.pi/2, 1.0, 7.0,
-         10.0, 0.1, 0.1, 0.0, 0.0]
+         3.0, 0.1, 0.1, 0.0, 0.0]
 
 vary_flags = [True, True, False, False, True, True,
               True, False, True, True, False, True,
@@ -325,10 +339,8 @@ residuals_ring.plot(ax=ax_re, color='blue', alpha=0.3,  marker='.', zorder=1)
 residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
 ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
 ax_lc.legend()
-#plt.savefig(f'fitting_result_{TOInumber}_{chi_square:.0f}.png', header=False, index=False)
-#plt.savefig('fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square))
-plt.show()
-import pdb; pdb.set_trace()
+plt.savefig(f'fitting_result_{TOInumber}_{chi_square:.0f}.png', header=False, index=False)
+#plt.show()
 plt.close()
 ring_res_pdict = ring_res.params.valuesdict()
 #import pdb; pdb.set_trace()
@@ -398,7 +410,7 @@ for try_n in range(5):
         plt.xlabel("number of steps")
         plt.ylabel(r"mean $\hat{\tau}$")
         plt.savefig(f'tau_{try_n}.png')\
-        #plt.show()
+        ##plt.show()
         plt.close()
         print(tau)
 
@@ -417,13 +429,13 @@ for try_n in range(5):
             ax.yaxis.set_label_coords(-0.1, 0.5)
         axes[-1].set_xlabel("step number");
         plt.savefig(f'step_{try_n}.png')
-        #plt.show()
+        ##plt.show()
         plt.close()
-        #plt.show()
+        ##plt.show()
 
         ###corner visualization###
         samples = sampler.flatchain
-        flat_samples = sampler.get_chain(discard=10000, thin=15, flat=True)
+        flat_samples = sampler.get_chain(discard=1500, thin=15, flat=True)
         print(flat_samples.shape)
         """
         truths = []
@@ -433,7 +445,7 @@ for try_n in range(5):
         """
         fig = corner.corner(flat_samples, labels=labels);
         plt.savefig(f'corner_{try_n}.png')
-        #plt.show()
+        ##plt.show()
         plt.close()
 
         """
@@ -463,7 +475,7 @@ for try_n in range(5):
         plt.xlabel("orbital phase")
         plt.ylabel("flux");
         plt.savefig(f"mcmc_result_{try_n}.png")
-        #plt.show()
+        ##plt.show()
         plt.close()
 
 
@@ -476,7 +488,7 @@ for try_n in range(5):
         #plt.plot(t, ymodel, label='model')
         #plt.legend()
         #plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
-        #plt.show()
+        ##plt.show()
 
         ###csvに書き出し###
         #input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
@@ -530,7 +542,7 @@ for try_n in range(5):
         folded_lc.errorbar()
         #folded_lc.write('folded_lc.csv', overwrite=True)
         plt.savefig('folded_lc.png')
-        #plt.show()
+        ##plt.show()
         plt.close()
         '''
         """for TESS data
@@ -569,7 +581,7 @@ for try_n in range(5):
             #tpf.plot(frame=100, scale='log', show_colorbar=True)
             lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
             lc.plot()
-            plt.show()
+            #plt.show()
             import pdb; pdb.set_trace()
 
         #get transit paramter from TESS database
@@ -580,11 +592,11 @@ for try_n in range(5):
         lc_list = preprocess_each_lc(lc, duration, period, transit_time)
         folded_lc = folding_each_lc(lc_list)
         folded_lc.errorbar()
-        plt.show()
+        #plt.show()
         #すべてのlightcurveの可視化
         lc_collection = search_result.download_all()
         lc_collection.plot();
-        plt.show()
+        #plt.show()
         import pdb; pdb.set_trace()
 
         #tpf.plot(frame=100, scale='log', show_colorbar=True)
@@ -600,7 +612,7 @@ for try_n in range(5):
         lc_list = preprocess_each_lc(lc, duration, period, transit_time)
         folded_lc = folding_each_lc(lc_list)
         folded_lc.errorbar()
-        #plt.show()
+        ##plt.show()
         plt.close()
         # foldingを任せた場合 すべての観測を平坦化しノーマライズする。これは"a stitched light curve"で表される。詳しくは Kepler data with Lightkurve.
         #lc = lc_collection.stitch().flatten(window_length=901).remove_outliers()
@@ -653,7 +665,7 @@ for try_n in range(5):
         planet_b_model.fold(planet_b_period, planet_b_t0).plot(ax=ax, c='r', lw=2)
         #ax.set_xlim(-0.5, 0.5);
         #ax.set_xlim(-5, 5);
-        #plt.show()
+        ##plt.show()
         plt.cla()
         plt.clf()
         # read the data file (xdata, ydata, yerr)
