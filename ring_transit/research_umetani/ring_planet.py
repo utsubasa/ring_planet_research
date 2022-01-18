@@ -195,22 +195,74 @@ def make_rowlist(n_transit, lc, transit_time, period):
         list.append(mid_transit_row)
     return list
 
-'''
 def draw_ringplanet(pdic, mcmc_pvalues):
     for i, param in enumerate(mcmc_params):
         pdic[param] = mcmc_pvalues[i]
-    fig = plt.figure()
-    ax = plt.axes()
-    c = patches.Circle(xy=(0, 0), radius=0.5)
-'''
+    phi = pdic['phi']
+    theta = pdic['theta']
+    Rphi = np.array([[np.cos(phi), -np.sin(phi), 0.], [np.sin(phi), np.cos(phi), 0.], [0.,0.,1.]])
+    Rtheta = np.array([[1.,0.,0.], [0., np.cos(theta), -np.sin(theta)], [0., np.sin(theta), np.cos(theta)]])
+    R = np.dot(Rphi, Rtheta)
+    Router = 0.06
+    Rinner = 0.04
+    Rsaturn = 0.018
 
-#csvfile = './folded_lc_data/TOI185.01.csv'
+    #rs0 = np.array([[np.cos(phi), np.sin(phi), 0.] for phi in np.linspace(0., 2*np.pi, 100)])
+    phivec1 = np.linspace(0., np.pi, 50)
+    phivec2 = np.linspace(np.pi,2*np.pi, 50)
+    rs1 = np.array([np.cos(phivec1), np.sin(phivec1), np.zeros_like(phivec1)]).T  # first half arc
+    rs2 = np.array([np.cos(phivec2), np.sin(phivec2), np.zeros_like(phivec2)]).T  # second half arc
+    rs0 = np.concatenate((rs1,rs2),axis=0)  # full arc for Saturn
+    rs1 = np.dot(rs1, R.T)  # rotate
+    rs2 = np.dot(rs2, R.T)  # rotate
+
+    # draw foreground
+    semiring1 = np.concatenate((Router*rs1[:,:2],Rinner*rs1[::-1,:2]),axis=0)
+    plt.fill(semiring1[:,0], semiring1[:,1],'blue',edgecolor='none')
+    # draw Saturn
+    plt.fill(Rsaturn*rs0[:,0], Rsaturn*rs0[:,1],'yellow')
+    # draw foreground
+    semiring2 = np.concatenate((Router*rs2[:,:2],Rinner*rs2[::-1,:2]),axis=0)
+    plt.fill(semiring2[:,0], semiring2[:,1],'blue',edgecolor='none')
+    plt.axis('equal')
+    plt.show()
+
+
 csvfile = './folded_lc_data/TOI4470.01.csv'
 #files = glob.glob("/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/*.csv")
 #homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
 df = pd.read_csv('./exofop_tess_tois.csv')
-param_df = df[df['TOI'] == 4470.01]
+param_df = df[df['TOI'] == 102.01]
 
+phi = 0.5
+theta = 1.2
+Rphi = np.array([[np.cos(phi), -np.sin(phi), 0.], [np.sin(phi), np.cos(phi), 0.], [0.,0.,1.]])
+Rtheta = np.array([[1.,0.,0.], [0., np.cos(theta), -np.sin(theta)], [0., np.sin(theta), np.cos(theta)]])
+R = np.dot(Rphi, Rtheta)
+Router = 0.06
+Rinner = 0.04
+Rsaturn = 0.018
+
+#rs0 = np.array([[np.cos(phi), np.sin(phi), 0.] for phi in np.linspace(0., 2*np.pi, 100)])
+phivec1 = np.linspace(0., np.pi, 50)
+phivec2 = np.linspace(np.pi,2*np.pi, 50)
+rs1 = np.array([np.cos(phivec1), np.sin(phivec1), np.zeros_like(phivec1)]).T  # first half arc
+rs2 = np.array([np.cos(phivec2), np.sin(phivec2), np.zeros_like(phivec2)]).T  # second half arc
+rs0 = np.concatenate((rs1,rs2),axis=0)  # full arc for Saturn
+rs1 = np.dot(rs1, R.T)  # rotate
+rs2 = np.dot(rs2, R.T)  # rotate
+
+# draw foreground
+semiring1 = np.concatenate((Router*rs1[:,:2],Rinner*rs1[::-1,:2]),axis=0)
+plt.fill(semiring1[:,0], semiring1[:,1],'blue',edgecolor='none')
+# draw Saturn
+plt.fill(Rsaturn*rs0[:,0], Rsaturn*rs0[:,1],'yellow')
+# draw foreground
+semiring2 = np.concatenate((Router*rs2[:,:2],Rinner*rs2[::-1,:2]),axis=0)
+plt.fill(semiring2[:,0], semiring2[:,1],'blue',edgecolor='none')
+plt.axis('equal')
+plt.show()
+import pdb; pdb.set_trace()
 #lm.minimizeのためのparamsのセッティング。これはリングありモデル
 ###parameters setting###
 for index, item in param_df.iterrows():
@@ -435,7 +487,7 @@ for try_n in range(5):
 
         ###corner visualization###
         samples = sampler.flatchain
-        flat_samples = sampler.get_chain(discard=1500, thin=15, flat=True)
+        flat_samples = sampler.get_chain(discard=2500, thin=15, flat=True)
         print(flat_samples.shape)
         """
         truths = []
