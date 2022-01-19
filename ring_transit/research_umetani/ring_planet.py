@@ -228,7 +228,7 @@ def draw_ringplanet(pdic, mcmc_pvalues):
     plt.show()
 
 
-csvfile = './folded_lc_data/TOI4470.01.csv'
+csvfile = './folded_lc_data/TOI102.01.csv'
 #files = glob.glob("/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/*.csv")
 #homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
 df = pd.read_csv('./exofop_tess_tois.csv')
