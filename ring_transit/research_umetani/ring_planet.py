@@ -19,6 +19,7 @@ from multiprocessing import Pool
 from scipy import signal
 from astropy.io import ascii
 import glob
+import os
 warnings.filterwarnings('ignore')
 
 
@@ -227,12 +228,43 @@ def draw_ringplanet(pdic, mcmc_pvalues):
     plt.axis('equal')
     plt.show()
 
+"""
+phi = 0
+theta = 0.01
+Rphi = np.array([[np.sin(phi), -np.cos(phi), 0.], [np.cos(phi), np.sin(phi), 0.], [0.,0.,1.]])
+Rtheta = np.array([[1.,0.,0.], [0., np.sin(theta), -np.cos(theta)], [0., np.cos(theta), np.sin(theta)]])
+R = np.dot(Rphi, Rtheta)
+Router = 0.06
+Rinner = 0.04
+Rsaturn = 0.018
 
-csvfile = './folded_lc_data/TOI102.01.csv'
+#rs0 = np.array([[np.cos(phi), np.sin(phi), 0.] for phi in np.linspace(0., 2*np.pi, 100)])
+phivec1 = np.linspace(0., np.pi, 50)
+phivec2 = np.linspace(np.pi,2*np.pi, 50)
+rs1 = np.array([np.sin(phivec1), np.cos(phivec1), np.zeros_like(phivec1)]).T  # first half arc
+rs2 = np.array([np.sin(phivec2), np.cos(phivec2), np.zeros_like(phivec2)]).T  # second half arc
+rs0 = np.concatenate((rs1,rs2),axis=0)  # full arc for Saturn
+rs1 = np.dot(rs1, R.T)  # rotate
+rs2 = np.dot(rs2, R.T)  # rotate
+
+# draw foreground
+semiring1 = np.concatenate((Router*rs1[:,:2],Rinner*rs1[::-1,:2]),axis=0)
+plt.fill(semiring1[:,0], semiring1[:,1],'blue',edgecolor='none')
+# draw Saturn
+plt.fill(Rsaturn*rs0[:,0], Rsaturn*rs0[:,1],'yellow')
+# draw foreground
+semiring2 = np.concatenate((Router*rs2[:,:2],Rinner*rs2[::-1,:2]),axis=0)
+plt.fill(semiring2[:,0], semiring2[:,1],'blue',edgecolor='none')
+plt.axis('equal')
+plt.show()
+import pdb; pdb.set_trace()
+"""
+
+csvfile = './folded_lc_data/TOI2403.01.csv'
 #files = glob.glob("/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/*.csv")
 #homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
 df = pd.read_csv('./exofop_tess_tois.csv')
-param_df = df[df['TOI'] == 102.01]
+param_df = df[df['TOI'] == 2403.01]
 
 #lm.minimizeのためのparamsのセッティング。これはリングありモデル
 ###parameters setting###
