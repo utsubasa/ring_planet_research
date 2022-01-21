@@ -389,9 +389,9 @@ binned_lc.errorbar(ax=ax_lc)
 ax_lc.plot(t, flux_model, label='Model w/ ring', color='blue')
 ax_lc.plot(t, flux_model2, label='Model w/o ring', color='red')
 residuals_ring = binned_lc - flux_model
-chisq_ring = np.sum((residuals_ring/flux_err_data)**2)
+chisq_ring = np.sum((residuals_ring.flux.value/flux_err_data)**2)
 residuals_no_ring = binned_lc - flux_model2
-chisq_noring = np.sum((residuals_ring/flux_err_data)**2)
+chisq_noring = np.sum((residuals_ring.flux.value/flux_err_data)**2)
 residuals_ring.plot(ax=ax_re, color='blue', alpha=0.3,  marker='.', zorder=1)
 residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
 ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
