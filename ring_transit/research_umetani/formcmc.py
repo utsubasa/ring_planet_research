@@ -5,7 +5,7 @@ def _star_limb(double I_0, double u_1, double u_2, double mu):
 
 def ring(double R_in, double R_out, double theta, double phi, double tau, double x,double z, double x_p, double z_p, double R_p, double I_0, double R_s, double u_1, double u_2):
     beta = jnp.abs(jnp.sin(theta) * jnp.cos(phi))
-    if( jnp.power(x,2.0) + jnp.power(z,2.0) >=jnp.power(R_s,2.0) ):
+    if jnp.power(x,2.0) + jnp.power(z,2.0) >=jnp.power(R_s,2.0):
         return 0;
     mu = jnp.sqrt( 1 - ((jnp.power(x,2.0) + jnp.power(z,2.0))/jnp.power(R_s, 2.0)))
     if jnp.power(x-x_p,2.0) + jnp.power(z-z_p,2.0) <= jnp.power(R_p,2.0)):

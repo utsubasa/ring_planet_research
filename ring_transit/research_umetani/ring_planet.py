@@ -260,11 +260,11 @@ plt.show()
 import pdb; pdb.set_trace()
 """
 
-csvfile = './folded_lc_data/TOI1151.01.csv'
+csvfile = './folded_lc_data/TOI1725.01.csv'
 #files = glob.glob("/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/*.csv")
 #homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
 df = pd.read_csv('./exofop_tess_tois.csv')
-param_df = df[df['TOI'] == 1151.01]
+param_df = df[df['TOI'] == 1725.01]
 
 #lm.minimizeのためのparamsのセッティング。これはリングありモデル
 ###parameters setting###
@@ -396,7 +396,7 @@ residuals_ring.plot(ax=ax_re, color='blue', alpha=0.3,  marker='.', zorder=1)
 residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
 ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
 ax_lc.legend()
-plt.title(f'w/ chisq:{chisq_ring:0f} w/o chisq:{chisq_noring:0f} dof:{len(binned_lc)}')
+ax_lc.set_title(f'w/ chisq:{chisq_ring:0f} w/o chisq:{chisq_noring:0f} dof:{len(binned_lc)}')
 plt.savefig(f'fitting_result_{TOInumber}.png', header=False, index=False)
 #plt.show()
 plt.close()
