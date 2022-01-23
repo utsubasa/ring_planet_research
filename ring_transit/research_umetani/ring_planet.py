@@ -322,7 +322,7 @@ noringvalues = [0, period, 0.15, 5.0, 80.0, 0.5, 90.0, 0.5, 0.5]
 noringmins = [-0.1, 4.0, 0.03, 1, 70, 0.0, 90, 0.0, 0.0]
 noringmaxes = [0.1, 4.0, 0.2, 20, 110, 1.0, 90, 1.0, 1.0]
 #vary_flags = [True, False, True, True, True, False, False, True, True]
-noringvary_flags = [False, False, True, True, True, False, False, True, True]
+noringvary_flags = [True, False, True, True, True, False, False, True, True]
 no_ring_params = set_params_lm(noringnames, noringvalues, noringmins, noringmaxes, noringvary_flags)
 #start = time.time()
 
@@ -336,7 +336,7 @@ names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
 #values = [0.2, 0.2, 0.0, 4.0, (float(df2[df2['TIC']=='142087638']['Planet Radius Value'].values[0])*0.0091577) / float(df2[df2['TIC']=='142087638']['Star Radius Value'].values[0]), 40.0,
 #          0.5, 1.0, 45.0, 45.0, 0.5, 1.5,
 #          2.0/1.5, 0.0, 0.0, 0.0, 0.0]
-values = [0.3, 0.3, 0.0, period, rp_rs, a_rs,
+values = [0.3, 0.3, no_ring_res.params.valuesdict()['t0'], period, rp_rs, a_rs,
           b, 1, np.pi/6.0, np.pi/9.0, 1, 1.13,
           2.95, 0.0, 0.0, 0.0, 0.0]
 
@@ -344,11 +344,11 @@ saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
           1, 1, np.pi/6.74, 0, 1, 1.53,
           1.95, 0.0, 0.0, 0.0, 0.0]
 
-mins = [0.0, 0.0, -0.0001, 0.0, 0.0, 1.0,
+mins = [0.0, 0.0, -0.1, 0.0, 0.0, 1.0,
         0.0, 0.9, 0.0, 0.0, 0.0, 1.0,
         1.1, -0.1, -0.1, 0.0, 0.0]
 
-maxes = [1.0, 1.0, 0.0001, 100.0, 1.0, 100.0,
+maxes = [1.0, 1.0, 0.1, 100.0, 1.0, 100.0,
          1.0, 1.1, np.pi/2, np.pi/2, 1.0, 7.0,
          3.0, 0.1, 0.1, 0.0, 0.0]
 
