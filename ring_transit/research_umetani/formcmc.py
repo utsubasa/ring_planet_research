@@ -22,6 +22,7 @@ def ring_int(R_in, R_out, theta, phi, tau, x_p, z_p, R_p, I_0, R_s, u_1, u_2, n_
     d_width = 2*R_out/n_int
     subtra = 0
     beta = jnp.abs(jnp.sin(theta) * jnp.cos(phi))
+    j_max = int((R_s**2 / d_width) -0.5) )
     i_max = int((R_s**2 / d_width) -0.5) )
     for i in range(i_max+1):
         for j in n_int:

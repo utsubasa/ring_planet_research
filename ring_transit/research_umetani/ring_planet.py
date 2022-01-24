@@ -260,11 +260,11 @@ plt.show()
 import pdb; pdb.set_trace()
 """
 
-csvfile = './folded_lc_data/TOI1725.01.csv'
+csvfile = './folded_lc_data/TOI2403.01.csv'
 #files = glob.glob("/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/*.csv")
 #homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
 df = pd.read_csv('./exofop_tess_tois.csv')
-param_df = df[df['TOI'] == 1725.01]
+param_df = df[df['TOI'] == 2403.01]
 
 #lm.minimizeのためのparamsのセッティング。これはリングありモデル
 ###parameters setting###
@@ -391,7 +391,7 @@ ax_lc.plot(t, flux_model2, label='Model w/o ring', color='red')
 residuals_ring = binned_lc - flux_model
 chisq_ring = np.sum((residuals_ring.flux.value/flux_err_data)**2)
 residuals_no_ring = binned_lc - flux_model2
-chisq_noring = np.sum((residuals_ring.flux.value/flux_err_data)**2)
+chisq_noring = np.sum((residuals_no_ring.flux.value/flux_err_data)**2)
 residuals_ring.plot(ax=ax_re, color='blue', alpha=0.3,  marker='.', zorder=1)
 residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
 ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
