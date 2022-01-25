@@ -1,19 +1,19 @@
-import jaxnumpy as jnp
+import jax.numpy as jnp
 #MONTE CARLO INTEGRATION FOR COMPARING THE TWO METHODS
-def _star_limb(double I_0, double u_1, double u_2, double mu):
+def _star_limb(I_0, u_1, u_2, mu):
    return I_0* ( 1- u_1*(1-mu) - u_2 * jnp.power( 1-mu ,2.0) )
 
-def ring(double R_in, double R_out, double theta, double phi, double tau, double x,double z, double x_p, double z_p, double R_p, double I_0, double R_s, double u_1, double u_2):
+def ring(R_in, R_out, theta, phi, tau, x, z, x_p, z_p, R_p, I_0, R_s, u_1, u_2):
     beta = jnp.abs(jnp.sin(theta) * jnp.cos(phi))
     if jnp.power(x,2.0) + jnp.power(z,2.0) >=jnp.power(R_s,2.0):
         return 0;
     mu = jnp.sqrt( 1 - ((jnp.power(x,2.0) + jnp.power(z,2.0))/jnp.power(R_s, 2.0)))
-    if jnp.power(x-x_p,2.0) + jnp.power(z-z_p,2.0) <= jnp.power(R_p,2.0)):
+    if jnp.power(x-x_p,2.0) + jnp.power(z-z_p,2.0) <= jnp.power(R_p,2.0):
         return 0
     if jnp.power(R_in,2.0) < jnp.power( (x-x_p-(z-z_p)*jnp.sin(phi)*(1/jnp.tan(theta)))/jnp.cos(phi), 2.0)+jnp.power((z-z_p)/jnp.sin(theta),2.0) and \
         jnp.power( (x - x_p - (z-z_p) * jnp.sin(phi) * (1/jnp.tan(theta)))/jnp.cos(phi), 2.0) + jnp.power((z-z_p)/sin(theta),2.0) < jnp.power( R_out,2.0 ) and \
         jnp.power(x,2.0) + jnp.power(z, 2.0) < jnp.power(R_s ,2.0)  and\
-        jnp.power(x-x_p,2.0) + jnp.power(z-z_p,2.0) > jnp.power(R_p, 2.0) ):
+        jnp.power(x-x_p,2.0) + jnp.power(z-z_p,2.0) > jnp.power(R_p, 2.0):
         return jnp.exp(-tau/beta)* _star_limb(I_0, u_1, u_2, mu)
     else:
         return  _star_limb(I_0, u_1, u_2, mu)
@@ -22,18 +22,20 @@ def ring_int(R_in, R_out, theta, phi, tau, x_p, z_p, R_p, I_0, R_s, u_1, u_2, n_
     d_width = 2*R_out/n_int
     subtra = 0
     beta = jnp.abs(jnp.sin(theta) * jnp.cos(phi))
-    j_max = int((R_s**2 / d_width) -0.5) )
-    i_max = int((R_s**2 / d_width) -0.5) )
+    x0 = x_p - R_out + d_width * 0.5
+    j_max = int( ((jnp.sqrt(jnp.square(R_s)-jnp.sqrt(x0))-x_p+R_out) / d_width) - 0.5)
+    j_list = list(range(j_max))
+    i_max = int((R_s**2 / d_width) -0.5)
     for i in range(i_max+1):
         for j in n_int:
             x = x_p - R_out + d_width * (i+0.5)
             z = z_p - R_out + d_width *  (j +0.5)
-            mu = jnp.sqrt( 1 - ((jnp.power(x,2.0) + jnp.power(z,2.0))/jnp.power(R_s, 2.0)))
+            mu = jnp.sqrt( 1 - ((jnp.square(x) + jnp.square(z))/jnp.square(R_s)))
             subtra +=( _star_limb(I_0,u_1,u_2,mu) - ring(R_in, R_out, theta,  phi,  tau,  x, z,  x_p,  z_p,  R_p,  I_0,  R_s,  u_1,  u_2)) * d_width*d_width
     ring_flux = subtra
     flux_star = M_PI * jnp.power(R_s,2.0) * ( 1- (u_1/3.0) - ( u_2/6.0))
     return I_0 * (flux_star - ring_flux)/flux_star
-
+import pdb; pdb.set_trace()
 '''
 ////~~~~~~~~~~  MONTE CARLO INTEGRATION FOR COMPARING THE TWO METHODS
 double _star_limb(double I_0, double u_1, double u_2, double mu){
