@@ -278,12 +278,16 @@ for index, item in param_df.iterrows():
     b=0.5
     rp = item['Planet Radius (R_Earth)'] * 0.00916794 #translate to Rsun
     rs = item['Stellar Radius (R_Sun)']
+    #Mp = ?
     rp_rs = rp/rs
     i=87.21 * 0.0175 #radian
     au=0.0376 #Orbit Semi-Major Axis [au]
     au=au*1.496e+13 #cm
     rstar=rs * 6.9634 * 10**10 #Rstar cm
     a_rs=au/rstar
+    rplanet = rp * 6.9634 * 10**10
+    rmin = np.pow(Mp/(4*np.pi/3)*8.87, 1/3)
+    rp_rs_min = rmin/rs
 
 folded_table = ascii.read(csvfile)
 folded_lc = lk.LightCurve(data=folded_table)
@@ -344,7 +348,7 @@ saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
           1, 1, np.pi/6.74, 0, 1, 1.53,
           1.95, 0.0, 0.0, 0.0, 0.0]
 
-mins = [0.0, 0.0, -0.1, 0.0, 0.0, 1.0,
+mins = [0.0, 0.0, -0.1, 0.0, rp_rs_min, 1.0,
         0.0, 0.9, 0.0, 0.0, 0.0, 1.0,
         1.1, -0.1, -0.1, 0.0, 0.0]
 
