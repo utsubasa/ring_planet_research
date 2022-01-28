@@ -12,7 +12,7 @@ import c_compile_ring
 import batman
 import datetime
 import time
-import emcee
+#import emcee
 import corner
 from multiprocessing import Pool
 #from lightkurve import search_targetpixelfile
@@ -20,6 +20,7 @@ from scipy import signal
 from astropy.io import ascii
 import glob
 import os
+import sys
 warnings.filterwarnings('ignore')
 
 
@@ -265,7 +266,6 @@ csvfile = './folded_lc_data/TOI2403.01.csv'
 #homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
 df = pd.read_csv('./exofop_tess_tois.csv')
 param_df = df[df['TOI'] == 2403.01]
-import pdb; pdb.set_trace()
 #lm.minimizeのためのparamsのセッティング。これはリングありモデル
 ###parameters setting###
 for index, item in param_df.iterrows():
@@ -333,79 +333,88 @@ no_ring_params = set_params_lm(noringnames, noringvalues, noringmins, noringmaxe
 no_ring_res = lmfit.minimize(no_ring_residual_transitfit, no_ring_params, args=(t, flux_data, flux_err_data, noringnames), max_nfev=10000)
 print(lmfit.fit_report(no_ring_res))
 
+nlist = [3, 5, 10, 20, 30, 40, 50]
+min_ring_chisqlist = []
+for n in nlist:
+    ring_chisqlist = []
+    for m in range(n-1):
+        names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
+                 "b", "norm", "theta", "phi", "tau", "r_in",
+                 "r_out", "norm2", "norm3", "ecosw", "esinw"]
+        #values = [0.2, 0.2, 0.0, 4.0, (float(df2[df2['TIC']=='142087638']['Planet Radius Value'].values[0])*0.0091577) / float(df2[df2['TIC']=='142087638']['Star Radius Value'].values[0]), 40.0,
+        #          0.5, 1.0, 45.0, 45.0, 0.5, 1.5,
+        #          2.0/1.5, 0.0, 0.0, 0.0, 0.0]
+        values = [0.3, 0.3, no_ring_res.params.valuesdict()['t0'], no_ring_res.params.valuesdict()['per'], no_ring_res.params.valuesdict()['rp'], no_ring_res.params.valuesdict()['a'],
+                  b, 1, np.random.uniform(0,np.pi), np.random.uniform(0,np.pi), 1, np.random.uniform(1,3),
+                  np.random.uniform(1.1,3), 0.0, 0.0, 0.0, 0.0]
 
-names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
-         "b", "norm", "theta", "phi", "tau", "r_in",
-         "r_out", "norm2", "norm3", "ecosw", "esinw"]
-#values = [0.2, 0.2, 0.0, 4.0, (float(df2[df2['TIC']=='142087638']['Planet Radius Value'].values[0])*0.0091577) / float(df2[df2['TIC']=='142087638']['Star Radius Value'].values[0]), 40.0,
-#          0.5, 1.0, 45.0, 45.0, 0.5, 1.5,
-#          2.0/1.5, 0.0, 0.0, 0.0, 0.0]
-values = [0.3, 0.3, no_ring_res.params.valuesdict()['t0'], no_ring_res.params.valuesdict()['per'], no_ring_res.params.valuesdict()['rp'], no_ring_res.params.valuesdict()['a'],
-          b, 1, np.random.uniform(0,np.pi), np.random.uniform(0,np.pi), 1, np.random.uniform(1,3),
-          np.random.uniform(1.1,3), 0.0, 0.0, 0.0, 0.0]
+        saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
+                  1, 1, np.pi/6.74, 0, 1, 1.53,
+                  1.95, 0.0, 0.0, 0.0, 0.0]
 
-saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
-          1, 1, np.pi/6.74, 0, 1, 1.53,
-          1.95, 0.0, 0.0, 0.0, 0.0]
+        mins = [0.0, 0.0, -0.1, 0.0, 0.0, 1.0,
+                0.0, 0.9, 0.0, 0.0, 0.0, 1.0,
+                1.1, -0.1, -0.1, 0.0, 0.0]
 
-mins = [0.0, 0.0, -0.1, 0.0, 0.0, 1.0,
-        0.0, 0.9, 0.0, 0.0, 0.0, 1.0,
-        1.1, -0.1, -0.1, 0.0, 0.0]
+        maxes = [1.0, 1.0, 0.1, 100.0, 1.0, 100.0,
+                 1.0, 1.1, np.pi, np.pi, 1.0, 3.0,
+                 3.0, 0.1, 0.1, 0.0, 0.0]
 
-maxes = [1.0, 1.0, 0.1, 100.0, 1.0, 100.0,
-         1.0, 1.1, np.pi, np.pi, 1.0, 3.0,
-         3.0, 0.1, 0.1, 0.0, 0.0]
-
-vary_flags = [True, True, False, False, True, True,
-              True, False, True, True, False, True,
-              True, False, False, False, False]
+        vary_flags = [True, True, False, False, True, True,
+                      True, False, True, True, False, True,
+                      True, False, False, False, False]
 
 
-params = set_params_lm(names, values, mins, maxes, vary_flags)
-params_df = pd.DataFrame(list(zip(values, saturnlike_values, mins, maxes)), columns=['values', 'saturnlike_values', 'mins', 'maxes'], index=names)
-vary_dic = dict(zip(names, vary_flags))
-params_df = params_df.join(pd.DataFrame.from_dict(vary_dic, orient='index', columns=['vary_flags']))
-df_for_mcmc = params_df[params_df['vary_flags']==True]
+        params = set_params_lm(names, values, mins, maxes, vary_flags)
+        params_df = pd.DataFrame(list(zip(values, saturnlike_values, mins, maxes)), columns=['values', 'saturnlike_values', 'mins', 'maxes'], index=names)
+        vary_dic = dict(zip(names, vary_flags))
+        params_df = params_df.join(pd.DataFrame.from_dict(vary_dic, orient='index', columns=['vary_flags']))
+        df_for_mcmc = params_df[params_df['vary_flags']==True]
 
-###土星likeな惑星のパラメータで作成したモデル###
-saturnlike_params = set_params_lm(names, saturnlike_values, mins, maxes, vary_flags)
-#pdic_saturnlike = make_dic(names, saturnlike_values)
-pdic_saturnlike = params_df['saturnlike_values'].to_dict()
-#pdic = make_dic(names, values)
-pdic = params_df['values'].to_dict()
-ymodel = ring_model(t, pdic_saturnlike)
-
-'''
-###土星likeな惑星のパラメータで作成したlight curve###
-error_scale = 0.0001
-eps_data = np.random.normal(size=t.size, scale=error_scale)
-flux = ymodel + eps_data
-'''
-fig = plt.figure()
-ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
-ax_re = fig.add_subplot(2,1,2) #for plotting residuals
-ring_res = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux_data, flux_err_data.mean(), names), max_nfev=1000)
-#elapsed_time = time.time() - start
-#print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
-flux_model = ring_model_transitfit_from_lmparams(ring_res.params, t)
-flux_model2 = no_ring_model_transitfit_from_lmparams(no_ring_res.params, t, noringnames)
-binned_lc.errorbar(ax=ax_lc)
-ax_lc.plot(t, flux_model, label='Model w/ ring', color='blue')
-ax_lc.plot(t, flux_model2, label='Model w/o ring', color='red')
-residuals_ring = binned_lc - flux_model
-chisq_ring = np.sum((residuals_ring.flux.value/flux_err_data)**2)
-residuals_no_ring = binned_lc - flux_model2
-chisq_noring = np.sum((residuals_no_ring.flux.value/flux_err_data)**2)
-residuals_ring.plot(ax=ax_re, color='blue', alpha=0.3,  marker='.', zorder=1)
-residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
-ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
-ax_lc.legend()
-ax_lc.set_title(f'w/ chisq:{chisq_ring:0f} w/o chisq:{chisq_noring:0f} dof:{len(binned_lc)}')
-plt.savefig(f'fitting_result_{TOInumber}.png', header=False, index=False)
-#plt.show()
+        ###土星likeな惑星のパラメータで作成したモデル###
+        saturnlike_params = set_params_lm(names, saturnlike_values, mins, maxes, vary_flags)
+        #pdic_saturnlike = make_dic(names, saturnlike_values)
+        pdic_saturnlike = params_df['saturnlike_values'].to_dict()
+        #pdic = make_dic(names, values)
+        pdic = params_df['values'].to_dict()
+        ymodel = ring_model(t, pdic_saturnlike)
+        ring_res = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux_data, flux_err_data.mean(), names), max_nfev=1000)
+        ring_chisqlist.append(ring_res.chisqr)
+        """
+        fig = plt.figure()
+        ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
+        ax_re = fig.add_subplot(2,1,2) #for plotting residuals
+        ring_res = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux_data, flux_err_data.mean(), names), max_nfev=1000)
+        #elapsed_time = time.time() - start
+        #print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+        flux_model = ring_model_transitfit_from_lmparams(ring_res.params, t)
+        flux_model2 = no_ring_model_transitfit_from_lmparams(no_ring_res.params, t, noringnames)
+        binned_lc.errorbar(ax=ax_lc)
+        ax_lc.plot(t, flux_model, label='Model w/ ring', color='blue')
+        ax_lc.plot(t, flux_model2, label='Model w/o ring', color='red')
+        residuals_ring = binned_lc - flux_model
+        chisq_ring = np.sum((residuals_ring.flux.value/flux_err_data)**2)
+        residuals_no_ring = binned_lc - flux_model2
+        chisq_noring = np.sum((residuals_no_ring.flux.value/flux_err_data)**2)
+        residuals_ring.plot(ax=ax_re, color='blue', alpha=0.3,  marker='.', zorder=1)
+        residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
+        ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
+        ax_lc.legend()
+        ax_lc.set_title(f'w/ chisq:{chisq_ring:0f} w/o chisq:{chisq_noring:0f} dof:{len(binned_lc)}')
+        plt.tight_layout()
+        plt.savefig(f'fitting_result_{TOInumber}.png', header=False, index=False)
+        #plt.show()
+        plt.close()
+        ring_res_pdict = ring_res.params.valuesdict()
+        """
+    min_ring_chisqlist.append(min(ring_chisqlist))
+ax = plt.subplot(1,1,1)
+ax.plot(nlist, min_ring_chisqlist)
+ax.text(0.55, 0.95, f'no ring chisq:{no_ring_res.chisqr:0f} ', transform=ax.transAxes)
+ax.set_title(f'dof:{len(binned_lc)}')
+plt.savefig('best_n.png')
 plt.close()
-ring_res_pdict = ring_res.params.valuesdict()
-#import pdb; pdb.set_trace()
+sys.exit()
 
 
 ###mcmc setting###
@@ -735,3 +744,9 @@ for try_n in range(5):
         ydata = lc.fold(planet_b_period, planet_b_t0).flux.value
         yerr  = lc.fold(planet_b_period, planet_b_t0).flux_err.value
         """
+        '''
+        ###土星likeな惑星のパラメータで作成したlight curve###
+        error_scale = 0.0001
+        eps_data = np.random.normal(size=t.size, scale=error_scale)
+        flux = ymodel + eps_data
+        '''
