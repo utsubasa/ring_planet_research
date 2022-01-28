@@ -260,12 +260,12 @@ plt.show()
 import pdb; pdb.set_trace()
 """
 
-csvfile = './folded_lc_data/TOI1725.01.csv'
+csvfile = './folded_lc_data/TOI2403.01.csv'
 #files = glob.glob("/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/*.csv")
 #homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
 df = pd.read_csv('./exofop_tess_tois.csv')
-param_df = df[df['TOI'] == 1725.01]
-
+param_df = df[df['TOI'] == 2403.01]
+import pdb; pdb.set_trace()
 #lm.minimizeのためのparamsのセッティング。これはリングありモデル
 ###parameters setting###
 for index, item in param_df.iterrows():
@@ -285,9 +285,9 @@ for index, item in param_df.iterrows():
     au=au*1.496e+13 #cm
     rstar=rs * 6.9634 * 10**10 #Rstar cm
     a_rs=au/rstar
-    rplanet = rp * 6.9634 * 10**10
-    rmin = np.pow(Mp/(4*np.pi/3)*8.87, 1/3)
-    rp_rs_min = rmin/rs
+    #rplanet = rp * 6.9634 * 10**10
+    #rmin = np.pow(Mp/(4*np.pi/3)*8.87, 1/3)
+    #rp_rs_min = rmin/rs
 
 folded_table = ascii.read(csvfile)
 folded_lc = lk.LightCurve(data=folded_table)
@@ -322,11 +322,11 @@ flux_err_data = binned_lc.flux_err.value
 noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
 #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
 #noringvalues = [0, period, rp_rs, a_rs, 83.0, 0.0, 90.0, 0.2, 0.2]
-noringvalues = [0, period, 0.15, 5.0, 80.0, 0.5, 90.0, 0.5, 0.5]
-noringmins = [-0.1, 4.0, 0.03, 1, 70, 0.0, 90, 0.0, 0.0]
-noringmaxes = [0.1, 4.0, 0.2, 20, 110, 1.0, 90, 1.0, 1.0]
+noringvalues = [0, period, rp/rs, 5.0, 80.0, 0.5, 90.0, 0.5, 0.5]
+noringmins = [-0.1, period*0.9, 0.03, 1, 70, 0.0, 90, 0.0, 0.0]
+noringmaxes = [0.1, period*1.1, 0.2, 20, 110, 1.0, 90, 1.0, 1.0]
 #vary_flags = [True, False, True, True, True, False, False, True, True]
-noringvary_flags = [True, False, True, True, True, False, False, True, True]
+noringvary_flags = [True, True, True, True, True, False, False, True, True]
 no_ring_params = set_params_lm(noringnames, noringvalues, noringmins, noringmaxes, noringvary_flags)
 #start = time.time()
 
@@ -340,20 +340,20 @@ names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
 #values = [0.2, 0.2, 0.0, 4.0, (float(df2[df2['TIC']=='142087638']['Planet Radius Value'].values[0])*0.0091577) / float(df2[df2['TIC']=='142087638']['Star Radius Value'].values[0]), 40.0,
 #          0.5, 1.0, 45.0, 45.0, 0.5, 1.5,
 #          2.0/1.5, 0.0, 0.0, 0.0, 0.0]
-values = [0.3, 0.3, no_ring_res.params.valuesdict()['t0'], period, rp_rs, a_rs,
-          b, 1, np.pi/6.0, np.pi/9.0, 1, 1.13,
-          2.95, 0.0, 0.0, 0.0, 0.0]
+values = [0.3, 0.3, no_ring_res.params.valuesdict()['t0'], no_ring_res.params.valuesdict()['per'], no_ring_res.params.valuesdict()['rp'], no_ring_res.params.valuesdict()['a'],
+          b, 1, np.random.uniform(0,np.pi), np.random.uniform(0,np.pi), 1, np.random.uniform(1,3),
+          np.random.uniform(1.1,3), 0.0, 0.0, 0.0, 0.0]
 
 saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
           1, 1, np.pi/6.74, 0, 1, 1.53,
           1.95, 0.0, 0.0, 0.0, 0.0]
 
-mins = [0.0, 0.0, -0.1, 0.0, rp_rs_min, 1.0,
+mins = [0.0, 0.0, -0.1, 0.0, 0.0, 1.0,
         0.0, 0.9, 0.0, 0.0, 0.0, 1.0,
         1.1, -0.1, -0.1, 0.0, 0.0]
 
 maxes = [1.0, 1.0, 0.1, 100.0, 1.0, 100.0,
-         1.0, 1.1, np.pi/2, np.pi/2, 1.0, 7.0,
+         1.0, 1.1, np.pi, np.pi, 1.0, 3.0,
          3.0, 0.1, 0.1, 0.0, 0.0]
 
 vary_flags = [True, True, False, False, True, True,
