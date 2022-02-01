@@ -328,7 +328,7 @@ for csvfile in files:
         noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
         #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
         #noringvalues = [0, period, rp_rs, a_rs, 83.0, 0.0, 90.0, 0.2, 0.2]
-        noringvalues = [0, period, rp/rs, 5.0, 80.0, 0.5, 90.0, np.random.uniform(0,1), np.random.uniform(0,1)]
+        noringvalues = [0, period, rp/rs, 5.0, 80.0, 0.5, 90.0, np.random.uniform(0.01,1.0), np.random.uniform(0.01,1.0)]
         noringmins = [-0.1, period*0.9, 0.03, 1, 70, 0.0, 90, 0.0, 0.0]
         noringmaxes = [0.1, period*1.1, 0.2, 20, 110, 1.0, 90, 1.0, 1.0]
         #vary_flags = [True, False, True, True, True, False, False, True, True]
@@ -350,8 +350,8 @@ for csvfile in files:
         #          0.5, 1.0, 45.0, 45.0, 0.5, 1.5,
         #          2.0/1.5, 0.0, 0.0, 0.0, 0.0]
         values = [0.3, 0.3, no_ring_res.params.valuesdict()['t0'], no_ring_res.params.valuesdict()['per'], no_ring_res.params.valuesdict()['rp'], no_ring_res.params.valuesdict()['a'],
-                  b, 1, np.random.uniform(0,np.pi), np.random.uniform(0,np.pi), 1, np.random.uniform(1,3),
-                  np.random.uniform(1.1,3), 0.0, 0.0, 0.0, 0.0]
+                  b, 1, np.random.uniform(0.01,np.pi), np.random.uniform(0.01,np.pi), 1, np.random.uniform(1.01,3.0),
+                  np.random.uniform(1.01,3.0), 0.0, 0.0, 0.0, 0.0]
 
         saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
                   1, 1, np.pi/6.74, 0, 1, 1.53,
@@ -413,7 +413,18 @@ for csvfile in files:
     plt.close()
     ring_res_pdict = ring_res.params.valuesdict()
 
+###csvに書き出し###
+input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
+output_df = pd.DataFrame.from_dict(ring_res.params.valuesdict(), orient="index",columns=["output_value"])
+input_df=input_df.applymap(lambda x: '{:.6f}'.format(x))
+output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
+df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
+#df.to_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/fitting_result_{}_{:.0f}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=True, index=False)
+df.to_csv(f'./fitting_result/data/{TOInumber}.csv', header=True, index=False)
+#fit_report = lmfit.fit_report(ring_res)
+#print(fit_report)
 sys.exit()
+
 ###mcmc setting###
 for try_n in range(5):
     mcmc_df = params_df[params_df['vary_flags']==True]
@@ -560,14 +571,14 @@ for try_n in range(5):
 
         ###csvに書き出し###
         #input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
-        input_df = pd.DataFrame.from_dict(saturnlike_params.valuesdict(), orient="index",columns=["input_value"])
+        input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
         output_df = pd.DataFrame.from_dict(ring_res.params.valuesdict(), orient="index",columns=["output_value"])
         input_df=input_df.applymap(lambda x: '{:.6f}'.format(x))
         output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
         #df = input_df.join((output_df, pd.Series(vary_flags, index=noringnames, name='vary_flags')))
         df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
         #df.to_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/fitting_result_{}_{:.0f}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=True, index=False)
-        df.to_csv(f'./fitting_result_{TOInumber}_{try_n}.csv', header=True, index=False)
+        df.to_csv(f'./fitting_result_{TOInumber}_{m}.csv', header=True, index=False)
         #fit_report = lmfit.fit_report(ring_res)
         #print(fit_report)
 
