@@ -338,7 +338,7 @@ for csvfile in files:
     no_ring_res = lmfit.minimize(no_ring_residual_transitfit, no_ring_params, args=(t, flux_data, flux_err_data, noringnames), max_nfev=1000)
     #print(lmfit.fit_report(no_ring_res))
     best_res_dict = {}
-    for m in range(5):
+    for m in range(20):
         print(m, TOInumber)
         names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
                  "b", "norm", "theta", "phi", "tau", "r_in",
