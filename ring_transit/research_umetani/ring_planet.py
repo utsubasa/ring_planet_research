@@ -371,6 +371,7 @@ for csvfile in files:
 
 
         params = set_params_lm(names, values, mins, maxes, vary_flags)
+        params.pretty_print(columns=['value', 'min', 'max'])
         params_df = pd.DataFrame(list(zip(values, saturnlike_values, mins, maxes)), columns=['values', 'saturnlike_values', 'mins', 'maxes'], index=names)
         vary_dic = dict(zip(names, vary_flags))
         params_df = params_df.join(pd.DataFrame.from_dict(vary_dic, orient='index', columns=['vary_flags']))
