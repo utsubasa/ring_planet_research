@@ -323,21 +323,24 @@ for csvfile in files:
     #t = np.linspace(-0.2, 0.2, 300)
 
     ###ring model fitting by minimizing chi_square###
-
-    noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
-    #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
-    #noringvalues = [0, period, rp_rs, a_rs, 83.0, 0.0, 90.0, 0.2, 0.2]
-    noringvalues = [0, period, rp/rs, 5.0, 80.0, 0.5, 90.0, 0.5, 0.5]
-    noringmins = [-0.1, period*0.9, 0.03, 1, 70, 0.0, 90, 0.0, 0.0]
-    noringmaxes = [0.1, period*1.1, 0.2, 20, 110, 1.0, 90, 1.0, 1.0]
-    #vary_flags = [True, False, True, True, True, False, False, True, True]
-    noringvary_flags = [True, True, True, True, True, False, False, True, True]
-    no_ring_params = set_params_lm(noringnames, noringvalues, noringmins, noringmaxes, noringvary_flags)
-    #start = time.time()
-
-    no_ring_res = lmfit.minimize(no_ring_residual_transitfit, no_ring_params, args=(t, flux_data, flux_err_data, noringnames), max_nfev=1000)
-    #print(lmfit.fit_report(no_ring_res))
     best_res_dict = {}
+    for n in range(20):
+        noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
+        #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
+        #noringvalues = [0, period, rp_rs, a_rs, 83.0, 0.0, 90.0, 0.2, 0.2]
+        noringvalues = [0, period, rp/rs, 5.0, 80.0, 0.5, 90.0, np.random.uniform(0,1), np.random.uniform(0,1)]
+        noringmins = [-0.1, period*0.9, 0.03, 1, 70, 0.0, 90, 0.0, 0.0]
+        noringmaxes = [0.1, period*1.1, 0.2, 20, 110, 1.0, 90, 1.0, 1.0]
+        #vary_flags = [True, False, True, True, True, False, False, True, True]
+        noringvary_flags = [True, True, True, True, True, False, False, True, True]
+        no_ring_params = set_params_lm(noringnames, noringvalues, noringmins, noringmaxes, noringvary_flags)
+        #start = time.time()
+
+        no_ring_res = lmfit.minimize(no_ring_residual_transitfit, no_ring_params, args=(t, flux_data, flux_err_data, noringnames), max_nfev=1000)
+        best_res_dict[no_ring_res.chisqr] = no_ring_res
+        #print(lmfit.fit_report(no_ring_res))
+    no_ring_res = sorted(best_res_dict.items())[0][1]
+    best_ring_res_dict = {}
     for m in range(20):
         print(m, TOInumber)
         names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
@@ -382,9 +385,9 @@ for csvfile in files:
         '''
         pdic = params_df['values'].to_dict()
         ring_res = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux_data, flux_err_data.mean(), names), max_nfev=1000)
-        best_res_dict[ring_res.chisqr] = ring_res
+        best_ring_res_dict[ring_res.chisqr] = ring_res
 
-    ring_res = sorted(best_res_dict.items())[0][1]
+    ring_res = sorted(best_ring_res_dict.items())[0][1]
     fig = plt.figure()
     ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
     ax_re = fig.add_subplot(2,1,2) #for plotting residuals
@@ -405,7 +408,7 @@ for csvfile in files:
     ax_lc.legend()
     ax_lc.set_title(f'w/ chisq:{chisq_ring:0f} w/o chisq:{chisq_noring:0f} dof:{len(binned_lc)}')
     plt.tight_layout()
-    plt.savefig(f'./lmfit_result/{TOInumber}_20.png', header=False, index=False)
+    plt.savefig(f'./lmfit_result/{TOInumber}.png', header=False, index=False)
     #plt.show()
     plt.close()
     ring_res_pdict = ring_res.params.valuesdict()
