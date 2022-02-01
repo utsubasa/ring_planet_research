@@ -134,7 +134,7 @@ def no_ring_residual_transitfit(params, x, data, eps_data, names):
     #if chi_square < 290:
         #import pdb; pdb.set_trace()
     #print(params)
-    print(chi_square)
+    #print(chi_square)
     return (data-model)/eps_data
 
 def ring_model_transitfit_from_lmparams(params, x):
@@ -228,7 +228,6 @@ def draw_ringplanet(pdic, mcmc_pvalues):
     plt.fill(semiring2[:,0], semiring2[:,1],'blue',edgecolor='none')
     plt.axis('equal')
     plt.show()
-
 """
 phi = 0
 theta = 0.01
@@ -261,141 +260,143 @@ plt.show()
 import pdb; pdb.set_trace()
 """
 
-csvfile = './folded_lc_data/TOI2403.01.csv'
-#files = glob.glob("/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/*.csv")
-#homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
+#csvfile = './folded_lc_data/TOI2403.01.csv'
+homedir = '/mwork0/umetanitb/research_umetani'
+homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
+files = glob.glob("./folded_lc_data/*.csv")
 df = pd.read_csv('./exofop_tess_tois.csv')
-param_df = df[df['TOI'] == 2403.01]
-#lm.minimizeのためのparamsのセッティング。これはリングありモデル
-###parameters setting###
-for index, item in param_df.iterrows():
-    TOInumber = 'TOI' + str(item['TOI'])
+df['TOI'] = df['TOI'].astype(str)
+for csvfile in files:
+    param_df = df[df['TOI'] == csvfile.replace('./folded_lc_data/TOI', '').replace('.csv', '')]
+    #lm.minimizeのためのparamsのセッティング。これはリングありモデル
+    ###parameters setting###
+    for index, item in param_df.iterrows():
+        TOInumber = 'TOI' + str(item['TOI'])
+        try:
+            duration = item['Duration (hours)'] / 24
+            period = item['Period (days)']
+            transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD
+            a_rs=4.602
+            b=0.5
+            rp = item['Planet Radius (R_Earth)'] * 0.00916794 #translate to Rsun
+            rs = item['Stellar Radius (R_Sun)']
+        except NameError:
+            print(f'error:{TOInumber}')
+            continue
+        #Mp = ?
+        rp_rs = rp/rs
+        i=87.21 * 0.0175 #radian
+        au=0.0376 #Orbit Semi-Major Axis [au]
+        au=au*1.496e+13 #cm
+        rstar=rs * 6.9634 * 10**10 #Rstar cm
+        a_rs=au/rstar
+        #rplanet = rp * 6.9634 * 10**10
+        #rmin = np.pow(Mp/(4*np.pi/3)*8.87, 1/3)
+        #rp_rs_min = rmin/rs
 
-    duration = item['Duration (hours)'] / 24
-    period = item['Period (days)']
-    transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD
-    a_rs=4.602
-    b=0.5
-    rp = item['Planet Radius (R_Earth)'] * 0.00916794 #translate to Rsun
-    rs = item['Stellar Radius (R_Sun)']
-    #Mp = ?
-    rp_rs = rp/rs
-    i=87.21 * 0.0175 #radian
-    au=0.0376 #Orbit Semi-Major Axis [au]
-    au=au*1.496e+13 #cm
-    rstar=rs * 6.9634 * 10**10 #Rstar cm
-    a_rs=au/rstar
-    #rplanet = rp * 6.9634 * 10**10
-    #rmin = np.pow(Mp/(4*np.pi/3)*8.87, 1/3)
-    #rp_rs_min = rmin/rs
+    folded_table = ascii.read(csvfile)
+    folded_lc = lk.LightCurve(data=folded_table)
+    folded_lc = folded_lc[(folded_lc.time.value < duration*0.7) & (folded_lc.time.value > -duration*0.7)]
+    import astropy.units as u
+    binned_lc = folded_lc.bin(time_bin_size=1*u.minute).remove_nans()
+    '''
+    for file in files:
+        try:
+            print(file)
+            folded_df = pd.read_csv(file, sep=',')
+            folded_table = Table.from_pandas(folded_df)
+            folded_lc = lk.LightCurve(data=folded_table)
+            import astropy.units as u
+            binned_lc = folded_lc.bin(time_bin_size=5*u.minute)
+            binned_lc.errorbar()
+            #plt.show()
+        except:
+            pass
+    #folded_lc = folded_lc.bin(bins=300)
+    import pdb; pdb.set_trace()
+    '''
 
-folded_table = ascii.read(csvfile)
-folded_lc = lk.LightCurve(data=folded_table)
-folded_lc = folded_lc[(folded_lc.time.value < duration*0.7) & (folded_lc.time.value > -duration*0.7)]
-import astropy.units as u
-binned_lc = folded_lc.bin(time_bin_size=1*u.minute).remove_nans()
-'''
-for file in files:
-    try:
-        print(file)
-        folded_df = pd.read_csv(file, sep=',')
-        folded_table = Table.from_pandas(folded_df)
-        folded_lc = lk.LightCurve(data=folded_table)
-        import astropy.units as u
-        binned_lc = folded_lc.bin(time_bin_size=5*u.minute)
-        binned_lc.errorbar()
-        #plt.show()
-    except:
-        pass
-#folded_lc = folded_lc.bin(bins=300)
-import pdb; pdb.set_trace()
-'''
+    t = binned_lc.time.value
+    flux_data = binned_lc.flux.value
+    flux_err_data = binned_lc.flux_err.value
 
-t = binned_lc.time.value
-flux_data = binned_lc.flux.value
-flux_err_data = binned_lc.flux_err.value
+    #t = np.linspace(-0.2, 0.2, 300)
 
-#t = np.linspace(-0.2, 0.2, 300)
+    ###ring model fitting by minimizing chi_square###
 
-###ring model fitting by minimizing chi_square###
+    noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
+    #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
+    #noringvalues = [0, period, rp_rs, a_rs, 83.0, 0.0, 90.0, 0.2, 0.2]
+    noringvalues = [0, period, rp/rs, 5.0, 80.0, 0.5, 90.0, 0.5, 0.5]
+    noringmins = [-0.1, period*0.9, 0.03, 1, 70, 0.0, 90, 0.0, 0.0]
+    noringmaxes = [0.1, period*1.1, 0.2, 20, 110, 1.0, 90, 1.0, 1.0]
+    #vary_flags = [True, False, True, True, True, False, False, True, True]
+    noringvary_flags = [True, True, True, True, True, False, False, True, True]
+    no_ring_params = set_params_lm(noringnames, noringvalues, noringmins, noringmaxes, noringvary_flags)
+    #start = time.time()
 
-noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
-#values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
-#noringvalues = [0, period, rp_rs, a_rs, 83.0, 0.0, 90.0, 0.2, 0.2]
-noringvalues = [0, period, rp/rs, 5.0, 80.0, 0.5, 90.0, 0.5, 0.5]
-noringmins = [-0.1, period*0.9, 0.03, 1, 70, 0.0, 90, 0.0, 0.0]
-noringmaxes = [0.1, period*1.1, 0.2, 20, 110, 1.0, 90, 1.0, 1.0]
-#vary_flags = [True, False, True, True, True, False, False, True, True]
-noringvary_flags = [True, True, True, True, True, False, False, True, True]
-no_ring_params = set_params_lm(noringnames, noringvalues, noringmins, noringmaxes, noringvary_flags)
-#start = time.time()
+    no_ring_res = lmfit.minimize(no_ring_residual_transitfit, no_ring_params, args=(t, flux_data, flux_err_data, noringnames), max_nfev=1000)
+    #print(lmfit.fit_report(no_ring_res))
+    best_res_dict = {}
+    for m in range(5):
+        names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
+                 "b", "norm", "theta", "phi", "tau", "r_in",
+                 "r_out", "norm2", "norm3", "ecosw", "esinw"]
+        #values = [0.2, 0.2, 0.0, 4.0, (float(df2[df2['TIC']=='142087638']['Planet Radius Value'].values[0])*0.0091577) / float(df2[df2['TIC']=='142087638']['Star Radius Value'].values[0]), 40.0,
+        #          0.5, 1.0, 45.0, 45.0, 0.5, 1.5,
+        #          2.0/1.5, 0.0, 0.0, 0.0, 0.0]
+        values = [0.3, 0.3, no_ring_res.params.valuesdict()['t0'], no_ring_res.params.valuesdict()['per'], no_ring_res.params.valuesdict()['rp'], no_ring_res.params.valuesdict()['a'],
+                  b, 1, np.random.uniform(0,np.pi), np.random.uniform(0,np.pi), 1, np.random.uniform(1,3),
+                  np.random.uniform(1.1,3), 0.0, 0.0, 0.0, 0.0]
 
-no_ring_res = lmfit.minimize(no_ring_residual_transitfit, no_ring_params, args=(t, flux_data, flux_err_data, noringnames), max_nfev=1000)
-print(lmfit.fit_report(no_ring_res))
+        saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
+                  1, 1, np.pi/6.74, 0, 1, 1.53,
+                  1.95, 0.0, 0.0, 0.0, 0.0]
 
-nlist = [3, 5, 10, 20, 30, 40, 50]
-min_ring_chisqlist = []
-ring_chisqlist = []
-for m in range(10):
-    print(m)
-    names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
-             "b", "norm", "theta", "phi", "tau", "r_in",
-             "r_out", "norm2", "norm3", "ecosw", "esinw"]
-    #values = [0.2, 0.2, 0.0, 4.0, (float(df2[df2['TIC']=='142087638']['Planet Radius Value'].values[0])*0.0091577) / float(df2[df2['TIC']=='142087638']['Star Radius Value'].values[0]), 40.0,
-    #          0.5, 1.0, 45.0, 45.0, 0.5, 1.5,
-    #          2.0/1.5, 0.0, 0.0, 0.0, 0.0]
-    values = [0.3, 0.3, no_ring_res.params.valuesdict()['t0'], no_ring_res.params.valuesdict()['per'], no_ring_res.params.valuesdict()['rp'], no_ring_res.params.valuesdict()['a'],
-              b, 1, np.random.uniform(0,np.pi), np.random.uniform(0,np.pi), 1, np.random.uniform(1,3),
-              np.random.uniform(1.1,3), 0.0, 0.0, 0.0, 0.0]
+        mins = [0.0, 0.0, -0.1, 0.0, 0.0, 1.0,
+                0.0, 0.9, 0.0, 0.0, 0.0, 1.0,
+                1.1, -0.1, -0.1, 0.0, 0.0]
 
-    saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
-              1, 1, np.pi/6.74, 0, 1, 1.53,
-              1.95, 0.0, 0.0, 0.0, 0.0]
+        maxes = [1.0, 1.0, 0.1, 100.0, 1.0, 100.0,
+                 1.0, 1.1, np.pi, np.pi, 1.0, 3.0,
+                 3.0, 0.1, 0.1, 0.0, 0.0]
 
-    mins = [0.0, 0.0, -0.1, 0.0, 0.0, 1.0,
-            0.0, 0.9, 0.0, 0.0, 0.0, 1.0,
-            1.1, -0.1, -0.1, 0.0, 0.0]
-
-    maxes = [1.0, 1.0, 0.1, 100.0, 1.0, 100.0,
-             1.0, 1.1, np.pi, np.pi, 1.0, 3.0,
-             3.0, 0.1, 0.1, 0.0, 0.0]
-
-    vary_flags = [True, True, False, False, True, True,
-                  True, False, True, True, False, True,
-                  True, False, False, False, False]
+        vary_flags = [True, True, False, False, True, True,
+                      True, False, True, True, False, True,
+                      True, False, False, False, False]
 
 
-    params = set_params_lm(names, values, mins, maxes, vary_flags)
-    params_df = pd.DataFrame(list(zip(values, saturnlike_values, mins, maxes)), columns=['values', 'saturnlike_values', 'mins', 'maxes'], index=names)
-    vary_dic = dict(zip(names, vary_flags))
-    params_df = params_df.join(pd.DataFrame.from_dict(vary_dic, orient='index', columns=['vary_flags']))
-    df_for_mcmc = params_df[params_df['vary_flags']==True]
+        params = set_params_lm(names, values, mins, maxes, vary_flags)
+        params_df = pd.DataFrame(list(zip(values, saturnlike_values, mins, maxes)), columns=['values', 'saturnlike_values', 'mins', 'maxes'], index=names)
+        vary_dic = dict(zip(names, vary_flags))
+        params_df = params_df.join(pd.DataFrame.from_dict(vary_dic, orient='index', columns=['vary_flags']))
+        df_for_mcmc = params_df[params_df['vary_flags']==True]
 
-    ###土星likeな惑星のパラメータで作成したモデル###
-    saturnlike_params = set_params_lm(names, saturnlike_values, mins, maxes, vary_flags)
-    #pdic_saturnlike = make_dic(names, saturnlike_values)
-    pdic_saturnlike = params_df['saturnlike_values'].to_dict()
-    #pdic = make_dic(names, values)
-    pdic = params_df['values'].to_dict()
-    ymodel = ring_model(t, pdic_saturnlike)
-    ring_res = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux_data, flux_err_data.mean(), names), max_nfev=1000)
-    print(ring_chisqlist)
-    #ring_chisqlist.append(ring_res.chisqr)
-    """
+        ###土星likeな惑星のパラメータで作成したモデル###
+        '''
+        saturnlike_params = set_params_lm(names, saturnlike_values, mins, maxes, vary_flags)
+        #pdic_saturnlike = make_dic(names, saturnlike_values)
+        pdic_saturnlike = params_df['saturnlike_values'].to_dict()
+        ymodel = ring_model(t, pdic_saturnlike)
+        '''
+        pdic = params_df['values'].to_dict()
+        ring_res = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux_data, flux_err_data.mean(), names), max_nfev=1000)
+        best_res_dict[ring_res.chisqr] = ring_res
+
+    ring_res = sorted(best_res_dict.items())[0][1]
     fig = plt.figure()
     ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
     ax_re = fig.add_subplot(2,1,2) #for plotting residuals
-    ring_res = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux_data, flux_err_data.mean(), names), max_nfev=1000)
     #elapsed_time = time.time() - start
     #print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
-    flux_model = ring_model_transitfit_from_lmparams(ring_res.params, t)
-    flux_model2 = no_ring_model_transitfit_from_lmparams(no_ring_res.params, t, noringnames)
+    ring_flux_model = ring_model_transitfit_from_lmparams(ring_res.params, t)
+    noring_flux_model = no_ring_model_transitfit_from_lmparams(no_ring_res.params, t, noringnames)
     binned_lc.errorbar(ax=ax_lc)
-    ax_lc.plot(t, flux_model, label='Model w/ ring', color='blue')
-    ax_lc.plot(t, flux_model2, label='Model w/o ring', color='red')
-    residuals_ring = binned_lc - flux_model
+    ax_lc.plot(t, ring_flux_model, label='Model w/ ring', color='blue')
+    ax_lc.plot(t, noring_flux_model, label='Model w/o ring', color='red')
+    residuals_ring = binned_lc - ring_flux_model
+    residuals_no_ring = binned_lc - noring_flux_model
     chisq_ring = np.sum((residuals_ring.flux.value/flux_err_data)**2)
-    residuals_no_ring = binned_lc - flux_model2
     chisq_noring = np.sum((residuals_no_ring.flux.value/flux_err_data)**2)
     residuals_ring.plot(ax=ax_re, color='blue', alpha=0.3,  marker='.', zorder=1)
     residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
@@ -403,28 +404,12 @@ for m in range(10):
     ax_lc.legend()
     ax_lc.set_title(f'w/ chisq:{chisq_ring:0f} w/o chisq:{chisq_noring:0f} dof:{len(binned_lc)}')
     plt.tight_layout()
-    plt.savefig(f'fitting_result_{TOInumber}.png', header=False, index=False)
+    plt.savefig(f'./lmfit_result/{TOInumber}.png', header=False, index=False)
     #plt.show()
     plt.close()
     ring_res_pdict = ring_res.params.valuesdict()
-    """
-print(min(ring_chisqlist))
-min_ring_chisqlist.append(min(ring_chisqlist))
-"""
-x = [10, 7, 5, 3, 2]
-y = [392.35843709624544, 392.14774906628344, 393.6790089330944, 392.16163245311105, 390.5110878564626]
-ax = plt.subplot(1,1,1)
-ax.scatter(x, y)
-ax.plot(x, y)
-ax.text(0.55, 0.95, f'no ring chisq:{no_ring_res.chisqr:0f} ', transform=ax.transAxes)
-ax.set_title(f'dof:{len(binned_lc)}')
-plt.savefig('best_n.png')
-plt.close()
-"""
+
 sys.exit()
-
-
-
 ###mcmc setting###
 for try_n in range(5):
     mcmc_df = params_df[params_df['vary_flags']==True]
