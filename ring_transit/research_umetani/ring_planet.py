@@ -339,6 +339,7 @@ for csvfile in files:
     #print(lmfit.fit_report(no_ring_res))
     best_res_dict = {}
     for m in range(5):
+        print(m, TOInumber)
         names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
                  "b", "norm", "theta", "phi", "tau", "r_in",
                  "r_out", "norm2", "norm3", "ecosw", "esinw"]
