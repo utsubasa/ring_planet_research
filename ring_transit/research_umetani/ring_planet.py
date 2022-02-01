@@ -328,7 +328,7 @@ for csvfile in files:
         noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
         #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
         #noringvalues = [0, period, rp_rs, a_rs, 83.0, 0.0, 90.0, 0.2, 0.2]
-        noringvalues = [0, period, rp/rs, 5.0, 80.0, 0.5, 90.0, np.random.uniform(0.01,1.0), np.random.uniform(0.01,1.0)]
+        noringvalues = [0, period, rp/rs, np.random.uniform(1.01,20.0), 80.0, 0.5, 90.0, np.random.uniform(0.01,1.0), np.random.uniform(0.01,1.0)]
         noringmins = [-0.1, period*0.9, 0.03, 1, 70, 0.0, 90, 0.0, 0.0]
         noringmaxes = [0.1, period*1.1, 0.2, 20, 110, 1.0, 90, 1.0, 1.0]
         #vary_flags = [True, False, True, True, True, False, False, True, True]
@@ -424,6 +424,7 @@ df.to_csv(f'./fitting_result/data/{TOInumber}.csv', header=True, index=False)
 #fit_report = lmfit.fit_report(ring_res)
 #print(fit_report)
 sys.exit()
+
 
 ###mcmc setting###
 for try_n in range(5):
