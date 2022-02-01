@@ -405,7 +405,7 @@ for csvfile in files:
     ax_lc.legend()
     ax_lc.set_title(f'w/ chisq:{chisq_ring:0f} w/o chisq:{chisq_noring:0f} dof:{len(binned_lc)}')
     plt.tight_layout()
-    plt.savefig(f'./lmfit_result/{TOInumber}.png', header=False, index=False)
+    plt.savefig(f'./lmfit_result/{TOInumber}_20.png', header=False, index=False)
     #plt.show()
     plt.close()
     ring_res_pdict = ring_res.params.valuesdict()
