@@ -261,13 +261,11 @@ import pdb; pdb.set_trace()
 """
 
 #csvfile = './folded_lc_data/TOI2403.01.csv'
-homedir = '/mwork0/umetanitb/research_umetani'
-homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
-files = glob.glob("./folded_lc_data/*.csv")
 df = pd.read_csv('./exofop_tess_tois.csv')
 df['TOI'] = df['TOI'].astype(str)
-for csvfile in files:
-    param_df = df[df['TOI'] == csvfile.replace('./folded_lc_data/TOI', '').replace('.csv', '')]
+df = df.sort_values('Planet SNR', ascending=False)
+for TOI in df['TOI'].values:
+    param_df = df[df['TOI'] ==TOI]
     #lm.minimizeのためのparamsのセッティング。これはリングありモデル
     ###parameters setting###
     for index, item in param_df.iterrows():
@@ -293,7 +291,7 @@ for csvfile in files:
         #rplanet = rp * 6.9634 * 10**10
         #rmin = np.pow(Mp/(4*np.pi/3)*8.87, 1/3)
         #rp_rs_min = rmin/rs
-
+    csvfile = f'./folded_lc_data/{TOInumber}.csv'
     folded_table = ascii.read(csvfile)
     folded_lc = lk.LightCurve(data=folded_table)
     folded_lc = folded_lc[(folded_lc.time.value < duration*0.7) & (folded_lc.time.value > -duration*0.7)]
@@ -323,6 +321,7 @@ for csvfile in files:
     #t = np.linspace(-0.2, 0.2, 300)
 
     ###ring model fitting by minimizing chi_square###
+    import pdb; pdb.set_trace()
     best_res_dict = {}
     for n in range(20):
         noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
@@ -371,7 +370,7 @@ for csvfile in files:
 
 
         params = set_params_lm(names, values, mins, maxes, vary_flags)
-        params.pretty_print(columns=['value', 'min', 'max'])
+        print(params.pretty_print(columns=['value', 'min', 'max']))
         params_df = pd.DataFrame(list(zip(values, saturnlike_values, mins, maxes)), columns=['values', 'saturnlike_values', 'mins', 'maxes'], index=names)
         vary_dic = dict(zip(names, vary_flags))
         params_df = params_df.join(pd.DataFrame.from_dict(vary_dic, orient='index', columns=['vary_flags']))
