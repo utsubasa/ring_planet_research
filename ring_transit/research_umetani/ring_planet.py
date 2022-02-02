@@ -264,7 +264,7 @@ import pdb; pdb.set_trace()
 #csvfile = './folded_lc_data/TOI2403.01.csv'
 df = pd.read_csv('./exofop_tess_tois.csv')
 df['TOI'] = df['TOI'].astype(str)
-df = df.sort_values('Planet SNR', ascending=False)
+#df = df.sort_values('Planet SNR', ascending=False)
 for TOI in df['TOI'].values:
     param_df = df[df['TOI'] ==TOI]
     #lm.minimizeのためのparamsのセッティング。これはリングありモデル
