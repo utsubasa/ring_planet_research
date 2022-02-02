@@ -266,7 +266,8 @@ df = pd.read_csv('./exofop_tess_tois.csv')
 df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
 #df = df.sort_values('Planet SNR', ascending=False)
-for TOI in df['TOI'].values:
+#for TOI in df['TOI'].values:
+for TOI in ['2020.01']:
     param_df = df[df['TOI'] ==TOI]
     #lm.minimizeのためのparamsのセッティング。これはリングありモデル
     ###parameters setting###
@@ -423,7 +424,7 @@ df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_fla
 df.to_csv(f'./fitting_result/data/{TOInumber}.csv', header=True, index=False)
 #fit_report = lmfit.fit_report(ring_res)
 #print(fit_report)
-sys.exit()
+#sys.exit()
 
 
 ###mcmc setting###
