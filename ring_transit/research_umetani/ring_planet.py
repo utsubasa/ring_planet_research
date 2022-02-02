@@ -110,7 +110,7 @@ def ring_model(t, pdic, mcmc_pvalues=None):
     pars = np.array([porb, t0, ecosw, esinw, b, a_rs, theta, phi, tau, r_in, r_out, rp_rs, q1, q2])
     times = np.array(t)
     print(pars)
-    print(c_compile_ring.getflux(times, pars, len(times)))
+    #print(c_compile_ring.getflux(times, pars, len(times)))
     return np.array(c_compile_ring.getflux(times, pars, len(times)))*(
             norm + norm2*(times-t0) + norm3*(times-t0)**2)
 
@@ -353,7 +353,7 @@ for TOI in df['TOI'].values:
                   1.95, 0.0, 0.0, 0.0, 0.0]
 
         mins = [0.0, 0.0, -0.1, 0.0, 0.0, 1.0,
-                0.0, 0.9, 0.0, 0.0, 0.0, 1.0,
+                0.0, 0.9, 0.001, 0.0, 0.0, 1.0,
                 1.1, -0.1, -0.1, 0.0, 0.0]
 
         maxes = [1.0, 1.0, 0.1, 100.0, 1.0, 100.0,
