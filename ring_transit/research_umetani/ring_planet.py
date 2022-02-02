@@ -109,13 +109,13 @@ def ring_model(t, pdic, mcmc_pvalues=None):
     # see params_def.h
     pars = np.array([porb, t0, ecosw, esinw, b, a_rs, theta, phi, tau, r_in, r_out, rp_rs, q1, q2])
     times = np.array(t)
+    print(pars)
+    print(c_compile_ring.getflux(times, pars, len(times)))
     return np.array(c_compile_ring.getflux(times, pars, len(times)))*(
             norm + norm2*(times-t0) + norm3*(times-t0)**2)
 
 #リングありモデルをfitting
 def ring_residual_transitfit(params, x, data, eps_data, names):
-    global chi_square
-    start =time.time()
     model = ring_model(x, params.valuesdict())
     chi_square = np.sum(((data-model)/eps_data)**2)
     #print(params)
@@ -275,7 +275,7 @@ for TOI in df['TOI'].values:
             period = item['Period (days)']
             transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD
             a_rs=4.602
-            b=0.5
+            b=0.9
             rp = item['Planet Radius (R_Earth)'] * 0.00916794 #translate to Rsun
             rs = item['Stellar Radius (R_Sun)']
         except NameError:
@@ -330,7 +330,7 @@ for TOI in df['TOI'].values:
         noringmins = [-0.1, period*0.9, 0.03, 1, 70, 0.0, 90, 0.0, 0.0]
         noringmaxes = [0.1, period*1.1, 0.2, 20, 110, 1.0, 90, 1.0, 1.0]
         #vary_flags = [True, False, True, True, True, False, False, True, True]
-        noringvary_flags = [True, True, True, True, True, False, False, True, True]
+        noringvary_flags = [True, True, True, True, True, True, False, True, True]
         no_ring_params = set_params_lm(noringnames, noringvalues, noringmins, noringmaxes, noringvary_flags)
         #start = time.time()
 
@@ -344,10 +344,7 @@ for TOI in df['TOI'].values:
         names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
                  "b", "norm", "theta", "phi", "tau", "r_in",
                  "r_out", "norm2", "norm3", "ecosw", "esinw"]
-        #values = [0.2, 0.2, 0.0, 4.0, (float(df2[df2['TIC']=='142087638']['Planet Radius Value'].values[0])*0.0091577) / float(df2[df2['TIC']=='142087638']['Star Radius Value'].values[0]), 40.0,
-        #          0.5, 1.0, 45.0, 45.0, 0.5, 1.5,
-        #          2.0/1.5, 0.0, 0.0, 0.0, 0.0]
-        values = [0.3, 0.3, no_ring_res.params.valuesdict()['t0'], no_ring_res.params.valuesdict()['per'], no_ring_res.params.valuesdict()['rp'], no_ring_res.params.valuesdict()['a'],
+        values = [no_ring_res.params.valuesdict()['q1'], no_ring_res.params.valuesdict()['q2'], no_ring_res.params.valuesdict()['t0'], no_ring_res.params.valuesdict()['per'], no_ring_res.params.valuesdict()['rp'], no_ring_res.params.valuesdict()['a'],
                   b, 1, np.random.uniform(0.01,np.pi), np.random.uniform(0.01,np.pi), 1, np.random.uniform(1.01,3.0),
                   np.random.uniform(1.01,3.0), 0.0, 0.0, 0.0, 0.0]
 
@@ -369,7 +366,6 @@ for TOI in df['TOI'].values:
 
 
         params = set_params_lm(names, values, mins, maxes, vary_flags)
-        print(params.pretty_print(columns=['value', 'min', 'max']))
         params_df = pd.DataFrame(list(zip(values, saturnlike_values, mins, maxes)), columns=['values', 'saturnlike_values', 'mins', 'maxes'], index=names)
         vary_dic = dict(zip(names, vary_flags))
         params_df = params_df.join(pd.DataFrame.from_dict(vary_dic, orient='index', columns=['vary_flags']))
