@@ -293,7 +293,10 @@ for TOI in df['TOI'].values:
         #rmin = np.pow(Mp/(4*np.pi/3)*8.87, 1/3)
         #rp_rs_min = rmin/rs
     csvfile = f'./folded_lc_data/{TOInumber}.csv'
-    folded_table = ascii.read(csvfile)
+    try:
+        folded_table = ascii.read(csvfile)
+    except FileNotFoundError:
+        continue
     folded_lc = lk.LightCurve(data=folded_table)
     folded_lc = folded_lc[(folded_lc.time.value < duration*0.7) & (folded_lc.time.value > -duration*0.7)]
     import astropy.units as u

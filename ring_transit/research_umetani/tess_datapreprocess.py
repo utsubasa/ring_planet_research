@@ -327,7 +327,7 @@ def transit_fit_and_remove_outliers(lc, t0dict, outliers, estimate_period=False,
         """transit fitting"""
         try:
             flag_time = np.abs(lc.time.value)<1.0
-            lc = lc[flag_time].normalize()
+            lc = lc[flag_time]
             time = lc.time.value
             flux = lc.flux.value
             flux_err = lc.flux_err.value
