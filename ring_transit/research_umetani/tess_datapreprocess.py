@@ -555,7 +555,6 @@ for TOI in TOIlist:
     #各惑星系の惑星ごとに処理
     for index, item in param_df.iterrows():
         lc = lc_collection.stitch() #initialize lc
-        remove_GP(lc)
         duration = item['Duration (hours)'] / 24
         period = item['Period (days)']
         transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD
