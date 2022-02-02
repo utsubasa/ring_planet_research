@@ -263,6 +263,7 @@ import pdb; pdb.set_trace()
 
 #csvfile = './folded_lc_data/TOI2403.01.csv'
 df = pd.read_csv('./exofop_tess_tois.csv')
+df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
 #df = df.sort_values('Planet SNR', ascending=False)
 for TOI in df['TOI'].values:
