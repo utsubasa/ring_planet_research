@@ -321,7 +321,6 @@ for TOI in df['TOI'].values:
     #t = np.linspace(-0.2, 0.2, 300)
 
     ###ring model fitting by minimizing chi_square###
-    import pdb; pdb.set_trace()
     best_res_dict = {}
     for n in range(20):
         noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
