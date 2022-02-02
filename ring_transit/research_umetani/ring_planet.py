@@ -111,8 +111,9 @@ def ring_model(t, pdic, mcmc_pvalues=None):
     times = np.array(t)
     print(pars)
     #print(c_compile_ring.getflux(times, pars, len(times)))
-    return np.array(c_compile_ring.getflux(times, pars, len(times)))*(
-            norm + norm2*(times-t0) + norm3*(times-t0)**2)
+    model_flux = np.array(c_compile_ring.getflux(times, pars, len(times)))*(norm + norm2*(times-t0) + norm3*(times-t0)**2)
+    model_flux = np.nan_to_num(model_flux)
+    return model_flux
 
 #リングありモデルをfitting
 def ring_residual_transitfit(params, x, data, eps_data, names):
