@@ -18,6 +18,9 @@ from astropy.table import Table, vstack
 import astropy.units as u
 from decimal import Decimal, ROUND_HALF_UP
 import os
+import celerite
+from celerite import terms
+from scipy.optimize import minimize
 
 warnings.filterwarnings('ignore')
 
@@ -185,7 +188,8 @@ def clip_transit_hoge(lc, duration, period, transit_time, clip_transit=False):
                     else:
                         pass
             else:
-                print("don't need clip because no data around transit")
+                #print("don't need clip because no data around transit")
+                pass
             transit_time = transit_time - period
 
     return lc, contain_transit, transit_time_list
@@ -271,10 +275,10 @@ def transit_params_setting(rp_rs, period):
     if np.isnan(rp_rs):
         values = [0, period, 0.02, 10, 87, 0, 90, 0.3, 0.2]
     else:
-        values = [0, period, rp_rs, 10, 87, 0, 90, 0.3, 0.2]
-    mins = [-0.7, period*0.6, 0.001, 0.1, 70, 0, 90, 0.0, 0.0]
-    maxes = [0.7, period*1.9, 1.0, 100, 110, 0, 90, 1.0, 1.0]
-    vary_flags = [True, False, True, True, False, False, False, False, False]
+        values = [0, period, rp/rs, np.random.uniform(1.01,20.0), 80.0, 0.5, 90.0, np.random.uniform(0.01,1.0), np.random.uniform(0.01,1.0)]
+    mins = [-0.7, period*0.9, 0.001, 0.1, 70, 0, 90, 0.0, 0.0]
+    maxes = [0.7, period*1.1, 1.0, 100, 110, 0, 90, 1.0, 1.0]
+    vary_flags = [True, False, True, True, True, False, False, False, False]
     return set_params_lm(names, values, mins, maxes, vary_flags)
 
 def transit_case_is4(each_lc, duration, period, flag=False):
@@ -323,11 +327,18 @@ def transit_fit_and_remove_outliers(lc, t0dict, outliers, estimate_period=False,
         """transit fitting"""
         try:
             flag_time = np.abs(lc.time.value)<1.0
-            lc = lc[flag_time]
+            lc = lc[flag_time].normalize()
             time = lc.time.value
             flux = lc.flux.value
             flux_err = lc.flux_err.value
-            out = lmfit.minimize(no_ring_residual_transitfit, params, args=(time, flux, flux_err, names), max_nfev=10000)
+            lc.scatter()
+            plt.show()
+            best_res_dict = {}
+            for n in range(20):
+                params = transit_params_setting(rp_rs, period)
+                out = lmfit.minimize(no_ring_residual_transitfit, params, args=(time, flux, flux_err, names), max_nfev=1000)
+                best_res_dict[out.chisqr] = out
+            out = sorted(best_res_dict.items())[0][1]
             #print(lmfit.fit_report(out))
         except TypeError:
             print('TypeError: out')
@@ -441,7 +452,7 @@ def estimate_period(t0dict, period):
         return estimated_period
 
 def curve_fitting(each_lc, duration, out, each_lc_list):
-    out_transit = each_lc[(each_lc['time'].value < out.params["t0"].value - (duration*0.6)) | (each_lc['time'].value > out.params["t0"].value + (duration*0.6))]
+    out_transit = each_lc[(each_lc['time'].value < out.params["t0"].value - (duration*0.7)) | (each_lc['time'].value > out.params["t0"].value + (duration*0.7))]
     model = lmfit.models.PolynomialModel()
     poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
     result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
@@ -465,19 +476,64 @@ def curve_fitting(each_lc, duration, out, each_lc_list):
     each_lc_list.append(each_lc)
     return each_lc_list
 
+def remove_GP(lc): #remove the gaussian process from lc.stitch
+    def neg_log_like(params, y, gp):
+        gp.set_parameter_vector(params)
+        return -gp.log_likelihood(y)
+
+    y = lc.flux.value
+    yerr = lc.flux_err.value
+    t = lc.time.value
+
+    # A non-periodic component
+    Q = 1.0 / np.sqrt(2.0)
+    w0 = 3.0
+    S0 = np.var(y) / (w0 * Q)
+    bounds = dict(log_S0=(-15, 15), log_Q=(-15, 15), log_omega0=(-15, 15))
+    kernel = terms.SHOTerm(log_S0=np.log(S0), log_Q=np.log(Q), log_omega0=np.log(w0),
+                           bounds=bounds)
+    kernel.freeze_parameter("log_Q")  # We don't want to fit for "Q" in this term
+
+    # A periodic component
+    Q = 1.0
+    w0 = 3.0
+    S0 = np.var(y) / (w0 * Q)
+    kernel += terms.SHOTerm(log_S0=np.log(S0), log_Q=np.log(Q), log_omega0=np.log(w0),
+                            bounds=bounds)
+    gp = celerite.GP(kernel, mean=np.mean(y))
+    gp.compute(t, yerr)
+
+    initial_params = gp.get_parameter_vector()
+    bounds = gp.get_parameter_bounds()
+    r = minimize(neg_log_like, initial_params, method="L-BFGS-B", bounds=bounds, args=(y, gp))
+    gp.set_parameter_vector(r.x)
+    print(r)
+    pred_mean, pred_var = gp.predict(y, t, return_var=True)
+    pred_std = np.sqrt(pred_var)
+    color = "#ff7f0e"
+    plt.errorbar(t, y, yerr=yerr, fmt=".k", capsize=0)
+    plt.plot(t, pred_mean, color=color)
+    plt.fill_between(t, pred_mean+pred_std, pred_mean-pred_std, color=color, alpha=0.3,
+                     edgecolor="none")
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.show()
+
+
 #if __name__ ==  '__main__':
 homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
 
-df = pd.read_csv(f'{homedir}/exofop_tess_tois.csv')
-df = df[df['Planet SNR']>100]
+oridf = pd.read_csv(f'{homedir}/exofop_tess_tois.csv')
+df = oridf[oridf['Planet SNR']>100]
 #import pdb; pdb.set_trace()
-TIClist = df['TIC ID']
-for TIC in TIClist:
-    param_df = df[df['TIC ID'] == TIC]
+TOIlist = df['TOI']
+TOIlist = [1059.01]
+for TOI in TOIlist:
+    param_df = df[df['TOI'] == TOI]
     #tpf = lk.search_targetpixelfile('TIC {}'.format(TIC), mission='TESS', cadence="short").download()
     while True:
         try:
-            search_result = lk.search_lightcurve(f'TIC {TIC}', mission='TESS', cadence="short", author='SPOC')
+            search_result = lk.search_lightcurve(f'TOI {TOI}', mission='TESS', cadence="short", author='SPOC')
             #tpf_file = lk.search_targetpixelfile(f'TIC {TIC}', mission='TESS', cadence="short", author='SPOC').download_all(quality_bitmask='default')
             #tpf_file.plot()
             #plt.show()
@@ -489,15 +545,8 @@ for TIC in TIClist:
     lc_collection = search_result.download_all()
     try:
         lc_collection.plot()
-        #plt.savefig(f'{homedir}/lc_collection/TIC{TIC}.png')
+        plt.savefig(f'{homedir}/lc_collection/TOI{TOI}.png')
         plt.close()
-        '''
-        for i, lc_now in enumerate(lc_collection):
-            mask = lc_now.quality ==0
-            lc_now.flux = lc_now.sap_flux
-            lc_now = lc_now[mask]
-            lc_collection[i] = lc_now
-            '''
     except AttributeError:
         with open('error_tic.dat', 'a') as f:
             f.write(str(TIC) + '\n')
@@ -506,7 +555,7 @@ for TIC in TIClist:
     #各惑星系の惑星ごとに処理
     for index, item in param_df.iterrows():
         lc = lc_collection.stitch() #initialize lc
-
+        remove_GP(lc)
         duration = item['Duration (hours)'] / 24
         period = item['Period (days)']
         transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD
@@ -515,7 +564,7 @@ for TIC in TIClist:
         TOInumber = 'TOI' + str(item['TOI'])
         rp = item['Planet Radius (R_Earth)'] * 0.00916794 #translate to Rsun
         rs = item['Stellar Radius (R_Sun)']
-        rp_rs = (rp**2)/(rs**2)
+        rp_rs = rp/rs
         '''
         bls_period = np.linspace(period*0.6, period*1.5, 10000)
         bls = lc.to_periodogram(method='bls',period=bls_period)#oversample_factor=1)\
@@ -532,6 +581,7 @@ for TIC in TIClist:
 
         """もしもどれかのパラメータがnanだったらそのTIC or TOIを記録して、処理はスキップする。"""
         pdf = pd.Series([duration, period, transit_time], index=['duration', 'period', 'transit_time'])
+
         if np.sum(pdf.isnull()) != 0:
             with open('error_tic.dat', 'a') as f:
                 f.write(f'nan {pdf[pdf.isnull()].index.tolist()}!:{str(TIC)}+ "\n"')
@@ -569,6 +619,7 @@ for TIC in TIClist:
             continue
 
         #他の惑星がある場合、データに影響を与えているか判断。ならその信号を除去する。
+        other_p_df = oridf[oridf['TIC ID'] == param_df['TIC ID'].values[0]]
         if len(param_df.index) != 1:
             print('removing others planet transit in data...')
             time.sleep(1)
@@ -584,11 +635,10 @@ for TIC in TIClist:
 
         #トランジットがデータに何個あるか判断しその周りのライトカーブデータを作成、カーブフィッティングでノーマライズ
         #fitting using the values of catalog
-        folded_lc = lc.fold(period=period , epoch_time=transit_time)
-        not_nan_index = np.where(~np.isnan(folded_lc.flux.value))[0].tolist()
-        folded_lc = folded_lc[not_nan_index]
+        folded_lc = lc.fold(period=period, epoch_time=transit_time)
+        folded_lc = folded_lc.remove_nans()
         folded_lc, epoch_all_list = detect_transit_epoch(folded_lc, transit_time, period)
-        params = transit_params_setting(rp_rs, period)
+
 
         #値を格納するリストを定義
         t0dict = {}
