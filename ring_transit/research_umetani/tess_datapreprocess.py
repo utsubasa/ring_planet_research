@@ -331,8 +331,7 @@ def transit_fit_and_remove_outliers(lc, t0dict, outliers, estimate_period=False,
             time = lc.time.value
             flux = lc.flux.value
             flux_err = lc.flux_err.value
-            lc.scatter()
-            plt.show()
+
             best_res_dict = {}
             for n in range(20):
                 params = transit_params_setting(rp_rs, period)
@@ -525,9 +524,9 @@ homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umet
 
 oridf = pd.read_csv(f'{homedir}/exofop_tess_tois.csv')
 df = oridf[oridf['Planet SNR']>100]
-#import pdb; pdb.set_trace()
+df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
-TOIlist = [1059.01]
+TOIlist = ['102.01']
 for TOI in TOIlist:
     param_df = df[df['TOI'] == TOI]
     #tpf = lk.search_targetpixelfile('TIC {}'.format(TIC), mission='TESS', cadence="short").download()
@@ -545,16 +544,17 @@ for TOI in TOIlist:
     lc_collection = search_result.download_all()
     try:
         lc_collection.plot()
-        plt.savefig(f'{homedir}/lc_collection/TOI{TOI}.png')
+        #plt.savefig(f'{homedir}/lc_collection/TOI{TOI}.png')
         plt.close()
     except AttributeError:
         with open('error_tic.dat', 'a') as f:
-            f.write(str(TIC) + '\n')
+            f.write(TOInumber + '\n')
         continue
 
     #各惑星系の惑星ごとに処理
     for index, item in param_df.iterrows():
         lc = lc_collection.stitch() #initialize lc
+        import pdb; pdb.set_trace()
         duration = item['Duration (hours)'] / 24
         period = item['Period (days)']
         transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD
@@ -583,7 +583,7 @@ for TOI in TOIlist:
 
         if np.sum(pdf.isnull()) != 0:
             with open('error_tic.dat', 'a') as f:
-                f.write(f'nan {pdf[pdf.isnull()].index.tolist()}!:{str(TIC)}+ "\n"')
+                f.write(f'nan {pdf[pdf.isnull()].index.tolist()}!:{str(TOI)}+ "\n"')
             continue
         print('analysing: ', TOInumber)
         print('judging whether or not transit is included in the data...')
@@ -688,7 +688,7 @@ for TOI in TOIlist:
         time.sleep(1)
         #ax = lc.scatter()
 
-        for i, mid_transit_time in enumerate(transit_time_list):
+        for i, mid_transit_time in enumerate(epoch_all_list):
             print(f'epoch: {i}')
             epoch_start = mid_transit_time - (duration*2.5)
             epoch_end = mid_transit_time + (duration*2.5)
@@ -735,7 +735,7 @@ for TOI in TOIlist:
         except ValueError:
             print('no transit!')
             with open('error_tic.dat', 'a') as f:
-                f.write('no transit!: ' + 'str(TIC)' + '\n')
+                f.write('no transit!: ' + 'str(TOI)' + '\n')
             continue
         fig = plt.figure()
         ax1 = fig.add_subplot(2,1,1) #for plotting transit model and data

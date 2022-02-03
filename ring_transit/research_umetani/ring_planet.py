@@ -293,7 +293,7 @@ for TOI in df['TOI'].values:
         #rplanet = rp * 6.9634 * 10**10
         #rmin = np.pow(Mp/(4*np.pi/3)*8.87, 1/3)
         #rp_rs_min = rmin/rs
-    csvfile = f'./folded_lc_data/{TOInumber}.csv'
+    csvfile = f'./binned_lc_data/{TOInumber}.csv'
     try:
         folded_table = ascii.read(csvfile)
     except FileNotFoundError:
@@ -350,7 +350,7 @@ for TOI in df['TOI'].values:
                  "b", "norm", "theta", "phi", "tau", "r_in",
                  "r_out", "norm2", "norm3", "ecosw", "esinw"]
         values = [no_ring_res.params.valuesdict()['q1'], no_ring_res.params.valuesdict()['q2'], no_ring_res.params.valuesdict()['t0'], no_ring_res.params.valuesdict()['per'], no_ring_res.params.valuesdict()['rp'], no_ring_res.params.valuesdict()['a'],
-                  b, 1, np.random.uniform(0.01,np.pi), np.random.uniform(0.01,np.pi), 1, np.random.uniform(1.01,3.0),
+                  b, 1, np.random.uniform(0.01,np.pi), np.random.uniform(1e-5,np.pi-1e-5), 1, np.random.uniform(1.01,3.0),
                   np.random.uniform(1.01,3.0), 0.0, 0.0, 0.0, 0.0]
 
         saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
