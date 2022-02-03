@@ -689,7 +689,7 @@ for TOI in TOIlist:
         time.sleep(1)
         #ax = lc.scatter()
 
-        for i, mid_transit_time in enumerate(epoch_all_list):
+        for i, mid_transit_time in enumerate(transit_time_list):
             print(f'epoch: {i}')
             epoch_start = mid_transit_time - (duration*2.5)
             epoch_end = mid_transit_time + (duration*2.5)
