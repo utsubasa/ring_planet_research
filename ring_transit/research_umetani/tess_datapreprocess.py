@@ -452,7 +452,7 @@ def estimate_period(t0dict, period):
 
 def curve_fitting(each_lc, duration, out, each_lc_list):
     out_transit = each_lc[(each_lc['time'].value < out.params["t0"].value - (duration*0.7)) | (each_lc['time'].value > out.params["t0"].value + (duration*0.7))]
-    model = lmfit.models.PolynomialModel()
+    model = lmfit.models.PolynomialModel(degrees=3)
     #poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
     poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0)
     result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
@@ -555,7 +555,6 @@ for TOI in TOIlist:
     #各惑星系の惑星ごとに処理
     for index, item in param_df.iterrows():
         lc = lc_collection.stitch() #initialize lc
-        import pdb; pdb.set_trace()
         duration = item['Duration (hours)'] / 24
         period = item['Period (days)']
         transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD
