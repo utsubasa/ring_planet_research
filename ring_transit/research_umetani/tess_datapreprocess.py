@@ -452,9 +452,9 @@ def estimate_period(t0dict, period):
 
 def curve_fitting(each_lc, duration, out, each_lc_list):
     out_transit = each_lc[(each_lc['time'].value < out.params["t0"].value - (duration*0.7)) | (each_lc['time'].value > out.params["t0"].value + (duration*0.7))]
-    model = lmfit.models.PolynomialModel(degrees=3)
-    #poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
-    poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0)
+    model = lmfit.models.PolynomialModel()
+    poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
+    #poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0)
     result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
     result.plot()
     os.makedirs(f'{homedir}/fitting_result/figure/curvefit/{TOInumber}', exist_ok=True)
@@ -473,6 +473,10 @@ def curve_fitting(each_lc, duration, out, each_lc_list):
     #normalization
     each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
     each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
+    each_lc.errorbar()
+    os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}', exist_ok=True)
+    plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
+    plt.close()
     each_lc_list.append(each_lc)
     return each_lc_list
 
@@ -527,7 +531,7 @@ oridf = pd.read_csv(f'{homedir}/exofop_tess_tois.csv')
 df = oridf[oridf['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
-TOIlist = ['102.01']
+TOIlist = ['4087.01']
 for TOI in TOIlist:
     param_df = df[df['TOI'] == TOI]
     #tpf = lk.search_targetpixelfile('TIC {}'.format(TIC), mission='TESS', cadence="short").download()
@@ -690,11 +694,16 @@ for TOI in TOIlist:
 
         for i, mid_transit_time in enumerate(transit_time_list):
             print(f'epoch: {i}')
+
+            if i == 9:
+                continue
+
+
+
             epoch_start = mid_transit_time - (duration*2.5)
             epoch_end = mid_transit_time + (duration*2.5)
             tmp = folded_lc[folded_lc.time_original.value > epoch_start]
             each_lc = tmp[tmp.time_original.value < epoch_end]
-
             #解析中断条件を満たさないかチェック
             if len(each_lc) == 0:
                 print('no data in this epoch')
