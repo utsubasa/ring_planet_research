@@ -350,7 +350,7 @@ for TOI in df['TOI'].values:
                  "b", "norm", "theta", "phi", "tau", "r_in",
                  "r_out", "norm2", "norm3", "ecosw", "esinw"]
         values = [no_ring_res.params.valuesdict()['q1'], no_ring_res.params.valuesdict()['q2'], no_ring_res.params.valuesdict()['t0'], no_ring_res.params.valuesdict()['per'], no_ring_res.params.valuesdict()['rp'], no_ring_res.params.valuesdict()['a'],
-                  b, 1, np.random.uniform(1e-5,np.pi-1e-5), np.random.uniform(1e-5,np.pi-1e-5), 1, np.random.uniform(1.01,3.0),
+                  b, 1, np.random.uniform(1e-5,np.pi-1e-5), np.random.uniform(0.0,np.pi), 1, np.random.uniform(1.01,3.0),
                   np.random.uniform(1.01,3.0), 0.0, 0.0, 0.0, 0.0]
 
         saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
