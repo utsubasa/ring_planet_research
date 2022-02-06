@@ -268,6 +268,7 @@ df['TOI'] = df['TOI'].astype(str)
 #df = df.sort_values('Planet SNR', ascending=False)
 for TOI in df['TOI'].values:
     param_df = df[df['TOI'] ==TOI]
+    print(TOI)
     #lm.minimizeのためのparamsのセッティング。これはリングありモデル
     ###parameters setting###
     for index, item in param_df.iterrows():
@@ -293,7 +294,7 @@ for TOI in df['TOI'].values:
         #rplanet = rp * 6.9634 * 10**10
         #rmin = np.pow(Mp/(4*np.pi/3)*8.87, 1/3)
         #rp_rs_min = rmin/rs
-    csvfile = f'./binned_lc_data/{TOInumber}.csv'
+    csvfile = f'./folded_lc_data/{TOInumber}.csv'
     try:
         folded_table = ascii.read(csvfile)
     except FileNotFoundError:
@@ -322,7 +323,7 @@ for TOI in df['TOI'].values:
     t = binned_lc.time.value
     flux_data = binned_lc.flux.value
     flux_err_data = binned_lc.flux_err.value
-
+    import pdb; pdb.set_trace()
     #t = np.linspace(-0.2, 0.2, 300)
 
     ###ring model fitting by minimizing chi_square###
