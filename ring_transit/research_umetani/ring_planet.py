@@ -109,7 +109,7 @@ def ring_model(t, pdic, mcmc_pvalues=None):
     # see params_def.h
     pars = np.array([porb, t0, ecosw, esinw, b, a_rs, theta, phi, tau, r_in, r_out, rp_rs, q1, q2])
     times = np.array(t)
-    print(pars)
+    #print(pars)
     #print(c_compile_ring.getflux(times, pars, len(times)))
     model_flux = np.array(c_compile_ring.getflux(times, pars, len(times)))*(norm + norm2*(times-t0) + norm3*(times-t0)**2)
     model_flux = np.nan_to_num(model_flux)
@@ -345,7 +345,7 @@ for TOI in df['TOI'].values:
     no_ring_res = sorted(best_res_dict.items())[0][1]
     best_ring_res_dict = {}
     for m in range(20):
-        print(m, TOInumber)
+
         names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
                  "b", "norm", "theta", "phi", "tau", "r_in",
                  "r_out", "norm2", "norm3", "ecosw", "esinw"]
@@ -384,7 +384,14 @@ for TOI in df['TOI'].values:
         ymodel = ring_model(t, pdic_saturnlike)
         '''
         pdic = params_df['values'].to_dict()
-        ring_res = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux_data, flux_err_data.mean(), names), max_nfev=1000)
+        try:
+            ring_res = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux_data, flux_err_data.mean(), names), max_nfev=1000)
+        except ValueError:
+            print('Value Error')
+            print(m, TOInumber)
+            print(params_df['values'])
+            continue
+
         best_ring_res_dict[ring_res.chisqr] = ring_res
 
     ring_res = sorted(best_ring_res_dict.items())[0][1]
