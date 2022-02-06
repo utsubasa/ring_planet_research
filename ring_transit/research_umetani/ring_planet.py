@@ -323,7 +323,6 @@ for TOI in df['TOI'].values:
     t = binned_lc.time.value
     flux_data = binned_lc.flux.value
     flux_err_data = binned_lc.flux_err.value
-    import pdb; pdb.set_trace()
     #t = np.linspace(-0.2, 0.2, 300)
 
     ###ring model fitting by minimizing chi_square###
