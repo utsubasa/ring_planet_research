@@ -79,7 +79,6 @@ def ring_model(t, pdic, mcmc_pvalues=None):
     if mcmc_pvalues is None:
         pass
     else:
-        ##import pdb; pdb.set_trace()
         for i, param in enumerate(mcmc_params):
             #print(i, v[i])
             pdic[param] = mcmc_pvalues[i]
@@ -133,7 +132,6 @@ def no_ring_residual_transitfit(params, x, data, eps_data, names):
     model = m.light_curve(params_batman)         #calculates light curve
     chi_square = np.sum(((data-model)/eps_data)**2)
     #if chi_square < 290:
-        #import pdb; pdb.set_trace()
     #print(params)
     #print(chi_square)
     return (data-model)/eps_data
@@ -258,15 +256,23 @@ semiring2 = np.concatenate((Router*rs2[:,:2],Rinner*rs2[::-1,:2]),axis=0)
 plt.fill(semiring2[:,0], semiring2[:,1],'blue',edgecolor='none')
 plt.axis('equal')
 plt.show()
-import pdb; pdb.set_trace()
 """
 
 #csvfile = './folded_lc_data/TOI2403.01.csv'
+done_TOIlist = os.listdir('./lmfit_result') #ダブリ解析防止
 df = pd.read_csv('./exofop_tess_tois.csv')
 df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
 #df = df.sort_values('Planet SNR', ascending=False)
 for TOI in df['TOI'].values:
+
+    #ダブり解析防止
+    pngname = f'TOI{TOI}.png'
+    if pngname in done_TOIlist:
+        continue
+    else:
+        pass
+
     param_df = df[df['TOI'] ==TOI]
     print(TOI)
     #lm.minimizeのためのparamsのセッティング。これはリングありモデル
@@ -279,12 +285,12 @@ for TOI in df['TOI'].values:
             transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD
             a_rs=4.602
             b=0.9
-            rp = item['Planet Radius (R_Earth)'] * 0.00916794 #translate to Rsun
-            rs = item['Stellar Radius (R_Sun)']
         except NameError:
             print(f'error:{TOInumber}')
             continue
         #Mp = ?
+        rp = item['Planet Radius (R_Earth)'] * 0.00916794 #translate to Rsun
+        rs = item['Stellar Radius (R_Sun)']
         rp_rs = rp/rs
         i=87.21 * 0.0175 #radian
         au=0.0376 #Orbit Semi-Major Axis [au]
@@ -317,7 +323,6 @@ for TOI in df['TOI'].values:
         except:
             pass
     #folded_lc = folded_lc.bin(bins=300)
-    import pdb; pdb.set_trace()
     '''
 
     t = binned_lc.time.value
@@ -331,21 +336,22 @@ for TOI in df['TOI'].values:
         noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
         #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
         #noringvalues = [0, period, rp_rs, a_rs, 83.0, 0.0, 90.0, 0.2, 0.2]
-        noringvalues = [0, period, rp/rs, np.random.uniform(1.01,20.0), 80.0, 0.5, 90.0, np.random.uniform(0.01,1.0), np.random.uniform(0.01,1.0)]
-        noringmins = [-0.1, period*0.9, 0.03, 1, 70, 0.0, 90, 0.0, 0.0]
-        noringmaxes = [0.1, period*1.1, 0.2, 20, 110, 1.0, 90, 1.0, 1.0]
+        if np.isnan(rp_rs):
+            noringvalues = [0, period, np.random.uniform(0.01,0.1), np.random.uniform(1.01,20.0), 80.0, 0.5, 90.0, np.random.uniform(0.01,1.0), np.random.uniform(0.01,1.0)]
+        else:
+            noringvalues = [0, period, rp/rs, np.random.uniform(1.01,20.0), 80.0, 0.5, 90.0, np.random.uniform(0.01,1.0), np.random.uniform(0.01,1.0)]
+        noringmins = [-0.1, period*0.9, 0.001, 1, 70, 0.0, 90, 0.0, 0.0]
+        noringmaxes = [0.1, period*1.1, 0.5, 20, 110, 1.0, 90, 1.0, 1.0]
         #vary_flags = [True, False, True, True, True, False, False, True, True]
         noringvary_flags = [True, True, True, True, True, True, False, True, True]
         no_ring_params = set_params_lm(noringnames, noringvalues, noringmins, noringmaxes, noringvary_flags)
         #start = time.time()
-
         no_ring_res = lmfit.minimize(no_ring_residual_transitfit, no_ring_params, args=(t, flux_data, flux_err_data, noringnames), max_nfev=1000)
         best_res_dict[no_ring_res.chisqr] = no_ring_res
         #print(lmfit.fit_report(no_ring_res))
     no_ring_res = sorted(best_res_dict.items())[0][1]
     best_ring_res_dict = {}
     for m in range(20):
-
         names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
                  "b", "norm", "theta", "phi", "tau", "r_in",
                  "r_out", "norm2", "norm3", "ecosw", "esinw"]
@@ -383,6 +389,7 @@ for TOI in df['TOI'].values:
         pdic_saturnlike = params_df['saturnlike_values'].to_dict()
         ymodel = ring_model(t, pdic_saturnlike)
         '''
+
         pdic = params_df['values'].to_dict()
         try:
             ring_res = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux_data, flux_err_data.mean(), names), max_nfev=1000)
@@ -420,16 +427,18 @@ for TOI in df['TOI'].values:
     plt.close()
     ring_res_pdict = ring_res.params.valuesdict()
 
-###csvに書き出し###
-input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
-output_df = pd.DataFrame.from_dict(ring_res.params.valuesdict(), orient="index",columns=["output_value"])
-input_df=input_df.applymap(lambda x: '{:.6f}'.format(x))
-output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
-df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
-#df.to_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/fitting_result_{}_{:.0f}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=True, index=False)
-df.to_csv(f'./fitting_result/data/{TOInumber}.csv', header=True, index=False)
-#fit_report = lmfit.fit_report(ring_res)
-#print(fit_report)
+    ###csvに書き出し###
+    input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
+    output_df = pd.DataFrame.from_dict(ring_res.params.valuesdict(), orient="index",columns=["output_value"])
+    input_df=input_df.applymap(lambda x: '{:.6f}'.format(x))
+    output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
+    df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
+    #df.to_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/fitting_result_{}_{:.0f}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=True, index=False)
+    df.to_csv(f'./fitting_result/data/{TOInumber}.csv', header=True, index=False)
+    #fit_report = lmfit.fit_report(ring_res)
+    #print(fit_report)
+    print(f'lmfit Analysis completed: {TOInumber}')
+
 sys.exit()
 
 
@@ -566,7 +575,6 @@ for try_n in range(5):
         plt.close()
 
 
-        #import pdb; pdb.set_trace()
         #flux_model = no_ring_model_transitfit_from_lmparams(out.params, t, noringnames)
         #flux_model = ring_model_transitfit_from_lmparams(out.params, t)
         #plt.errorbar(time, flux_data,flux_err_data, label='data', fmt='.k', linestyle=None)
@@ -591,7 +599,6 @@ for try_n in range(5):
         #print(fit_report)
 
 
-        #import pdb; pdb.set_trace()
         ###use lightkurve(diffrent method from Aizawa+2018)###
         '''
         kic = "KIC10666592"
@@ -625,7 +632,6 @@ for try_n in range(5):
         folded_lc = folding_each_lc(lc_list)
         folded_lc = folded_lc[folded_lc.time > -0.1]
         folded_lc = folded_lc[folded_lc.time < 0.1]
-        import pdb; pdb.set_trace()
         folded_lc.errorbar()
         #folded_lc.write('folded_lc.csv', overwrite=True)
         plt.savefig('folded_lc.png')
@@ -661,7 +667,6 @@ for try_n in range(5):
         df2 = df2.reset_index()
         #df2 = df2.drop(columns='index')
         df2.head()
-        import pdb; pdb.set_trace()
         TIClist = df2['TIC'].apply(lambda x:int(x))
         for TIC in TIClist:
             tpf = lk.search_targetpixelfile('TIC {}'.format(TIC), mission='TESS', cadence="short").download()
@@ -669,7 +674,6 @@ for try_n in range(5):
             lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
             lc.plot()
             #plt.show()
-            import pdb; pdb.set_trace()
 
         #get transit paramter from TESS database
         period=2.20473541
@@ -684,7 +688,6 @@ for try_n in range(5):
         lc_collection = search_result.download_all()
         lc_collection.plot();
         #plt.show()
-        import pdb; pdb.set_trace()
 
         #tpf.plot(frame=100, scale='log', show_colorbar=True)
         lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
