@@ -265,16 +265,15 @@ df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
 #df = df.sort_values('Planet SNR', ascending=False)
 for TOI in df['TOI'].values:
-
+    print(TOI)
     #ダブり解析防止
     pngname = f'TOI{TOI}.png'
     if pngname in done_TOIlist:
         continue
     else:
         pass
+    param_df = df[df['TOI'] == TOI]
 
-    param_df = df[df['TOI'] ==TOI]
-    print(TOI)
     #lm.minimizeのためのparamsのセッティング。これはリングありモデル
     ###parameters setting###
     for index, item in param_df.iterrows():
@@ -432,12 +431,11 @@ for TOI in df['TOI'].values:
     output_df = pd.DataFrame.from_dict(ring_res.params.valuesdict(), orient="index",columns=["output_value"])
     input_df=input_df.applymap(lambda x: '{:.6f}'.format(x))
     output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
-    df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
+    result_df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
     #df.to_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/fitting_result_{}_{:.0f}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=True, index=False)
-    df.to_csv(f'./fitting_result/data/{TOInumber}.csv', header=True, index=False)
+    result_df.to_csv(f'./fitting_result/data/{TOInumber}.csv', header=True, index=False)
     #fit_report = lmfit.fit_report(ring_res)
     #print(fit_report)
-    print(f'lmfit Analysis completed: {TOInumber}')
 
 sys.exit()
 
