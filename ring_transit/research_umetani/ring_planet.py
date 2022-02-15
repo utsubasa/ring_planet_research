@@ -396,7 +396,7 @@ for TOI in ['4470.01']:
         result_df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
         os.makedirs(f'./fitting_result/data/{TOInumber}', exist_ok=True)
         result_df.to_csv(f'./fitting_result/data/{TOInumber}/{TOInumber}_{m}.csv', header=True, index=False)
-        plot_ring(rp_rs=ring_res.params['rp_rs'].value, rin_rp=ring_res.params['r_in'].value, rout_rin=ring_res.params['r_out'].value, b=ring_res.params['b'].value, theta=ring_res.params['theta'].value, phi=ring_res.params['phi'].value, file_name = f"{TOInumber}_{m}.png")
+        plot_ring(rp_rs=ring_res.params['rp_rs'].value, rin_rp=ring_res.params['r_in'].value, rout_rin=ring_res.params['r_out'].value, b=ring_res.params['b'].value, theta=ring_res.params['theta'].value, phi=ring_res.params['phi'].value, file_name = f"{TOInumber}_{m}.pdf")
         best_ring_res_dict[ring_res.chisqr] = ring_res
 
     ring_res = sorted(best_ring_res_dict.items())[0][1]
