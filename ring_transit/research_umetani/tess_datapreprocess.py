@@ -531,7 +531,7 @@ oridf = pd.read_csv(f'{homedir}/exofop_tess_tois.csv')
 df = oridf[oridf['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
-TOIlist = ['4087.01']
+TOIlist = ['1265.01']
 for TOI in TOIlist:
     param_df = df[df['TOI'] == TOI]
     #tpf = lk.search_targetpixelfile('TIC {}'.format(TIC), mission='TESS', cadence="short").download()
@@ -559,6 +559,9 @@ for TOI in TOIlist:
     #各惑星系の惑星ごとに処理
     for index, item in param_df.iterrows():
         lc = lc_collection.stitch() #initialize lc
+        lc.errorbar()
+        plt.show()
+        import pdb; pdb.set_trace()
         duration = item['Duration (hours)'] / 24
         period = item['Period (days)']
         transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD

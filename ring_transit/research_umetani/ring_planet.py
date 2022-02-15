@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+from numpy.linalg import svd
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -196,82 +197,71 @@ def make_rowlist(n_transit, lc, transit_time, period):
         list.append(mid_transit_row)
     return list
 
-def draw_ringplanet(pdic, mcmc_pvalues):
-    for i, param in enumerate(mcmc_params):
-        pdic[param] = mcmc_pvalues[i]
-    phi = pdic['phi']
-    theta = pdic['theta']
-    Rphi = np.array([[np.cos(phi), -np.sin(phi), 0.], [np.sin(phi), np.cos(phi), 0.], [0.,0.,1.]])
-    Rtheta = np.array([[1.,0.,0.], [0., np.cos(theta), -np.sin(theta)], [0., np.sin(theta), np.cos(theta)]])
-    R = np.dot(Rphi, Rtheta)
-    Router = 0.06
-    Rinner = 0.04
-    Rsaturn = 0.018
+def plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name):
+    """
+        plotter for rings
 
-    #rs0 = np.array([[np.cos(phi), np.sin(phi), 0.] for phi in np.linspace(0., 2*np.pi, 100)])
-    phivec1 = np.linspace(0., np.pi, 50)
-    phivec2 = np.linspace(np.pi,2*np.pi, 50)
-    rs1 = np.array([np.cos(phivec1), np.sin(phivec1), np.zeros_like(phivec1)]).T  # first half arc
-    rs2 = np.array([np.cos(phivec2), np.sin(phivec2), np.zeros_like(phivec2)]).T  # second half arc
-    rs0 = np.concatenate((rs1,rs2),axis=0)  # full arc for Saturn
-    rs1 = np.dot(rs1, R.T)  # rotate
-    rs2 = np.dot(rs2, R.T)  # rotate
+        Params:
+            rp_rs (float): ratio of planetary raidus to stellar radius
+            rp_rin (float):ratio of inner ring radius to planetary raidus
+            rout_rin (float):ratio of outer ring radius to inner ring radius
+            b (float):impact parameter
+            theta (float): ring angle 1 (radian)
+            phi (float): ring angle 2 (radian)
+        init values:
+            rp_rs=0.1, rin_rp=1.3, rout_rin=2, b=0.8, theta=30 * 3.14/180.0, phi = 30 * 3.14/180.0, file_name = "test.pdf"
+        Returns:
+            None:
+    """
 
-    # draw foreground
-    semiring1 = np.concatenate((Router*rs1[:,:2],Rinner*rs1[::-1,:2]),axis=0)
-    plt.fill(semiring1[:,0], semiring1[:,1],'blue',edgecolor='none')
-    # draw Saturn
-    plt.fill(Rsaturn*rs0[:,0], Rsaturn*rs0[:,1],'yellow')
-    # draw foreground
-    semiring2 = np.concatenate((Router*rs2[:,:2],Rinner*rs2[::-1,:2]),axis=0)
-    plt.fill(semiring2[:,0], semiring2[:,1],'blue',edgecolor='none')
-    plt.axis('equal')
-    plt.show()
-"""
-phi = 0
-theta = 0.01
-Rphi = np.array([[np.sin(phi), -np.cos(phi), 0.], [np.cos(phi), np.sin(phi), 0.], [0.,0.,1.]])
-Rtheta = np.array([[1.,0.,0.], [0., np.sin(theta), -np.cos(theta)], [0., np.cos(theta), np.sin(theta)]])
-R = np.dot(Rphi, Rtheta)
-Router = 0.06
-Rinner = 0.04
-Rsaturn = 0.018
+    #ring outer & innter radii
+    R_in = rp_rs * rin_rp
+    R_out = rp_rs * rin_rp * rout_rin
 
-#rs0 = np.array([[np.cos(phi), np.sin(phi), 0.] for phi in np.linspace(0., 2*np.pi, 100)])
-phivec1 = np.linspace(0., np.pi, 50)
-phivec2 = np.linspace(np.pi,2*np.pi, 50)
-rs1 = np.array([np.sin(phivec1), np.cos(phivec1), np.zeros_like(phivec1)]).T  # first half arc
-rs2 = np.array([np.sin(phivec2), np.cos(phivec2), np.zeros_like(phivec2)]).T  # second half arc
-rs0 = np.concatenate((rs1,rs2),axis=0)  # full arc for Saturn
-rs1 = np.dot(rs1, R.T)  # rotate
-rs2 = np.dot(rs2, R.T)  # rotate
+    ## calculte of ellipse of rings
+    a0 =1
+    b0 = - np.sin(phi) /np.tan(theta)
+    c0 = (np.sin(phi)**2)/(np.tan(theta)**2) + ((np.cos(phi)**2)/(np.sin(theta)**2))
+    A = np.array([[a0, b0],[b0,c0]])
+    u, s, vh = svd(A)
+    angle = (np.arctan2(u[0][0], u[0][1]))*180/np.pi
+    major = s[0]
+    major_to_minor = np.sqrt((s[1]/s[0]))
 
-# draw foreground
-semiring1 = np.concatenate((Router*rs1[:,:2],Rinner*rs1[::-1,:2]),axis=0)
-plt.fill(semiring1[:,0], semiring1[:,1],'blue',edgecolor='none')
-# draw Saturn
-plt.fill(Rsaturn*rs0[:,0], Rsaturn*rs0[:,1],'yellow')
-# draw foreground
-semiring2 = np.concatenate((Router*rs2[:,:2],Rinner*rs2[::-1,:2]),axis=0)
-plt.fill(semiring2[:,0], semiring2[:,1],'blue',edgecolor='none')
-plt.axis('equal')
-plt.show()
-"""
+    #plotter
+    fig = plt.figure(figsize = (8,8))
+    ax = plt.axes()
+    c = patches.Circle(xy=(0, 0), radius=1.0, fc='orange', ec='orange')
+    c2 = patches.Circle(xy=(0, -b), radius=rp_rs, fc='k', ec='k')
+    e = patches.Ellipse(xy=(0, -b), width=2 * R_in, height=2 * R_in * major_to_minor, angle = angle, fc='none', ec='r')
+    e2 = patches.Ellipse(xy=(0, -b), width=2 * R_out, height=2 * R_out * major_to_minor, angle = angle, fc='none', ec='r')
+    ax.add_patch(c)
+    ax.add_patch(c2)
+    ax.add_patch(e)
+    ax.add_patch(e2)
+    plt.axis('scaled')
+    ax.set_aspect('equal')
+    os.makedirs(f'./lmfit_result/illustration/{TOInumber}', exist_ok=True)
+    plt.savefig(f'./lmfit_result/illustration/{TOInumber}/{file_name}', bbox_inches="tight")
 
 #csvfile = './folded_lc_data/TOI2403.01.csv'
 done_TOIlist = os.listdir('./lmfit_result') #ダブリ解析防止
 df = pd.read_csv('./exofop_tess_tois.csv')
 df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
+#TOIlist = ['1265.01']
 #df = df.sort_values('Planet SNR', ascending=False)
-for TOI in df['TOI'].values:
+#for TOI in df['TOI'].values:
+for TOI in ['4470.01']:
     print(TOI)
+    '''
     #ダブり解析防止
     pngname = f'TOI{TOI}.png'
     if pngname in done_TOIlist:
         continue
     else:
         pass
+    '''
     param_df = df[df['TOI'] == TOI]
 
     #lm.minimizeのためのparamsのセッティング。これはリングありモデル
@@ -340,7 +330,7 @@ for TOI in df['TOI'].values:
         else:
             noringvalues = [0, period, rp/rs, np.random.uniform(1.01,20.0), 80.0, 0.5, 90.0, np.random.uniform(0.01,1.0), np.random.uniform(0.01,1.0)]
         noringmins = [-0.1, period*0.9, 0.001, 1, 70, 0.0, 90, 0.0, 0.0]
-        noringmaxes = [0.1, period*1.1, 0.5, 20, 110, 1.0, 90, 1.0, 1.0]
+        noringmaxes = [0.1, period*1.1, 0.5, 20, 120, 1.0, 90, 1.0, 1.0]
         #vary_flags = [True, False, True, True, True, False, False, True, True]
         noringvary_flags = [True, True, True, True, True, True, False, True, True]
         no_ring_params = set_params_lm(noringnames, noringvalues, noringmins, noringmaxes, noringvary_flags)
@@ -398,9 +388,19 @@ for TOI in df['TOI'].values:
             print(params_df['values'])
             continue
 
+        ###csvに書き出し###
+        input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
+        output_df = pd.DataFrame.from_dict(ring_res.params.valuesdict(), orient="index",columns=["output_value"])
+        input_df=input_df.applymap(lambda x: '{:.6f}'.format(x))
+        output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
+        result_df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
+        os.makedirs(f'./fitting_result/data/{TOInumber}', exist_ok=True)
+        result_df.to_csv(f'./fitting_result/data/{TOInumber}/{TOInumber}_{m}.csv', header=True, index=False)
+        plot_ring(rp_rs=ring_res.params['rp_rs'].value, rin_rp=ring_res.params['r_in'].value, rout_rin=ring_res.params['r_out'].value, b=ring_res.params['b'].value, theta=ring_res.params['theta'].value, phi=ring_res.params['phi'].value, file_name = f"{TOInumber}_{m}.pdf")
         best_ring_res_dict[ring_res.chisqr] = ring_res
 
     ring_res = sorted(best_ring_res_dict.items())[0][1]
+    import pdb; pdb.set_trace()
     fig = plt.figure()
     ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
     ax_re = fig.add_subplot(2,1,2) #for plotting residuals
@@ -421,19 +421,11 @@ for TOI in df['TOI'].values:
     ax_lc.legend()
     ax_lc.set_title(f'w/ chisq:{chisq_ring:0f} w/o chisq:{chisq_noring:0f} dof:{len(binned_lc)}')
     plt.tight_layout()
-    plt.savefig(f'./lmfit_result/{TOInumber}.png', header=False, index=False)
+    plt.savefig(f'./lmfit_result/transit_fit/{TOInumber}.png', header=False, index=False)
     #plt.show()
     plt.close()
     ring_res_pdict = ring_res.params.valuesdict()
 
-    ###csvに書き出し###
-    input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
-    output_df = pd.DataFrame.from_dict(ring_res.params.valuesdict(), orient="index",columns=["output_value"])
-    input_df=input_df.applymap(lambda x: '{:.6f}'.format(x))
-    output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
-    result_df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
-    #df.to_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/fitting_result_{}_{:.0f}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=True, index=False)
-    result_df.to_csv(f'./fitting_result/data/{TOInumber}.csv', header=True, index=False)
     #fit_report = lmfit.fit_report(ring_res)
     #print(fit_report)
 
