@@ -239,6 +239,7 @@ def plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name):
     ax.add_patch(c2)
     ax.add_patch(e)
     ax.add_patch(e2)
+    ax.set_title(f'chisq={str(ring_res.chisqr)[:6]}, dof={ring_res.nfree}')
     plt.axis('scaled')
     ax.set_aspect('equal')
     os.makedirs(f'./lmfit_result/illustration/{TOInumber}', exist_ok=True)
@@ -398,9 +399,7 @@ for TOI in ['4470.01']:
         result_df.to_csv(f'./fitting_result/data/{TOInumber}/{TOInumber}_{m}.csv', header=True, index=False)
         plot_ring(rp_rs=ring_res.params['rp_rs'].value, rin_rp=ring_res.params['r_in'].value, rout_rin=ring_res.params['r_out'].value, b=ring_res.params['b'].value, theta=ring_res.params['theta'].value, phi=ring_res.params['phi'].value, file_name = f"{TOInumber}_{m}.pdf")
         best_ring_res_dict[ring_res.chisqr] = ring_res
-
     ring_res = sorted(best_ring_res_dict.items())[0][1]
-    import pdb; pdb.set_trace()
     fig = plt.figure()
     ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
     ax_re = fig.add_subplot(2,1,2) #for plotting residuals
