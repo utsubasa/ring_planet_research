@@ -194,7 +194,6 @@ def clip_transit_hoge(lc, duration, period, transit_time, clip_transit=False):
 
     return lc, contain_transit, transit_time_list
 
-
 def judge_transit_contain(lc, transit_start, transit_end):
     if transit_end < lc.time[0].value: # || -----
         case = 1
@@ -386,8 +385,12 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
                     plt.close()
                 else:
                     #pass
-                    t0list.append(transit_time+(period*i)+out.params["t0"].value)
-                    t0dict[i] = [transit_time+(period*i)+out.params["t0"].value, out.params["t0"].stderr]
+                    ###epoch ベースの場合
+                    #t0list.append(transit_time+(period*i)+out.params["t0"].value)
+                    #t0dict[i] = [transit_time+(period*i)+out.params["t0"].value, out.params["t0"].stderr]
+                    ###
+                    t0list.append(mid_transit_time+out.params["t0"].value)
+                    t0dict[i] = [mid_transit_time+out.params["t0"].value, out.params["t0"].stderr]
                     #t0dict[i] = [out.params["t0"].value, out.params["t0"].stderr]
                     #each_lc = clip_lc
                 break
@@ -517,7 +520,7 @@ oridf = pd.read_csv(f'{homedir}/exofop_tess_tois.csv')
 df = oridf[oridf['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
-TOIlist = ['822.01']
+TOIlist = ['774.01']
 for TOI in TOIlist:
     param_df = df[df['TOI'] == TOI]
     #tpf = lk.search_targetpixelfile('TIC {}'.format(TIC), mission='TESS', cadence="short").download()
@@ -545,6 +548,8 @@ for TOI in TOIlist:
     #各惑星系の惑星ごとに処理
     for index, item in param_df.iterrows():
         lc = lc_collection.stitch() #initialize lc
+        lc.scatter()
+        plt.show()
         duration = item['Duration (hours)'] / 24
         period = item['Period (days)']
         transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD
@@ -585,7 +590,7 @@ for TOI in TOIlist:
         """ターゲットの惑星の信号がデータに影響を与えていないなら処理を中断する"""
         if contain_transit == 1:
 
-            ax = lc.scatter()
+            #ax = lc.scatter()
             #for transit in transit_time_list:
 
                 #ax = lc.scatter()
@@ -595,10 +600,9 @@ for TOI in TOIlist:
                 #ax.set_xlim(transit-duration, transit+duration)
                 #plt.show()
 
-            #import pdb; pdb.set_trace()
             #plt.savefig(f'{homedir}/check_transit_timing/TIC{TIC}.png')
             #plt.show()
-            plt.close()
+            #plt.close()
 
 
             pass
@@ -668,15 +672,15 @@ for TOI in TOIlist:
         for i, mid_transit_time in enumerate(transit_time_list):
             print(f'epoch: {i}')
             '''
-            if i == 1:
+            if i == 0 or i == 2:
                 continue
                 '''
-
 
             epoch_start = mid_transit_time - (duration*2.5)
             epoch_end = mid_transit_time + (duration*2.5)
             tmp = folded_lc[folded_lc.time_original.value > epoch_start]
             each_lc = tmp[tmp.time_original.value < epoch_end]
+
             #解析中断条件を満たさないかチェック
             if len(each_lc) == 0:
                 print('no data in this epoch')
@@ -781,7 +785,6 @@ for TOI in TOIlist:
             #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/before_preprocess/ori_t_based/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
             plt.show()
             #plt.close()
-            import pdb; pdb.set_trace()
     '''
     '''
     """estimate period(2021/12/08現在解析にはestimate periodを使用していない。残余をみる目的)"""
