@@ -609,14 +609,12 @@ for TOI in TOIlist:
         #plt.savefig(f'{homedir}/check_transit_timing/TIC{TIC}.png')
         #plt.show()
         #plt.close()
-
-
         pass
 
     else:
         print('no transit in data: ', TOInumber)
         continue
-
+    '''
     #他の惑星がある場合、データに影響を与えているか判断。ならその信号を除去する。
     other_p_df = oridf[oridf['TIC ID'] == param_df['TIC ID'].values[0]]
     if len(param_df.index) != 1:
@@ -631,7 +629,7 @@ for TOI in TOIlist:
                 continue
             else:
                 lc, _, _ = clip_transit_hoge(lc, other_duration, other_period, other_transit_time, clip_transit=True)
-
+    '''
     #トランジットがデータに何個あるか判断しその周りのライトカーブデータを作成、カーブフィッティングでノーマライズ
     #fitting using the values of catalog
     folded_lc = lc.fold(period=period, epoch_time=transit_time)
