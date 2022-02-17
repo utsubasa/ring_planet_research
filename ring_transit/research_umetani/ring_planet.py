@@ -252,8 +252,8 @@ df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
 #TOIlist = ['1265.01']
 #df = df.sort_values('Planet SNR', ascending=False)
-#for TOI in df['TOI'].values:
-for TOI in ['4470.01']:
+for TOI in df['TOI'].values:
+#for TOI in ['4470.01']:
     print(TOI)
     '''
     #ダブり解析防止
