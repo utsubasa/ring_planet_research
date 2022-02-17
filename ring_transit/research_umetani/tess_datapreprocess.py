@@ -630,11 +630,13 @@ for TOI in TOIlist:
             else:
                 lc, _, _ = clip_transit_hoge(lc, other_duration, other_period, other_transit_time, clip_transit=True)
     '''
+    '''
     #トランジットがデータに何個あるか判断しその周りのライトカーブデータを作成、カーブフィッティングでノーマライズ
     #fitting using the values of catalog
     folded_lc = lc.fold(period=period, epoch_time=transit_time)
     folded_lc = folded_lc.remove_nans()
     folded_lc, epoch_all_list = detect_transit_epoch(folded_lc, transit_time, period)
+    '''
 
 
     #値を格納するリストを定義
