@@ -142,8 +142,8 @@ def no_ring_model_transitfit_from_lmparams(params, x, names):
     model = m.light_curve(params_batman)
     return model
 
-def clip_transit(lc, duration, transit_time_list):
-    for transit_time in trasit_time_list:
+def clip_transit(lc, duration, epoch_list):
+    for transit_time in epoch_list:
         transit_start = transit_time - (duration/2)
         transit_end = transit_time + (duration/2)
         case = judge_transit_contain(lc, transit_start, transit_end)
@@ -549,23 +549,27 @@ for TOI in TOIlist:
 
     """他の惑星がある場合、データに影響を与えているか判断。ならその信号を除去する。"""
     other_p_df = oridf[oridf['TIC ID'] == param_df['TIC ID'].values[0]]
+
     if len(other_p_df.index) != 1:
         print('removing others planet transit in data...')
         time.sleep(1)
-        import pdb; pdb.set_trace()
-        others_duration = other_p_df[other_p_df.index!=index]['Planet Transit Duration Value [hours]'].values / 24
-        others_period = other_p_df[other_p_df.index!=index]['Planet Orbital Period Value [days]'].values
-        others_transit_time = other_p_df[other_p_df.index!=index]['Planet Transit Midpoint Value [BJD]'].values - 2457000.0 #translate BTJD
-        others_transit_time_list = np.append(np.arange(others_transit_time, lc.time[-1].value, others_period), np.arange(others_transit_time, lc.time[0].value, -others_period))
-        others_transit_time_list.sort()
-        for other_duration, other_period, other_transit_time in zip(others_duration, others_period, others_transit_time):
-            if np.any(np.isnan([other_period, other_duration, other_transit_time])):
+        cliped_lc = lc
+        for index, item in other_p_df[other_p_df['TOI']!=float(TOI)].iterrows():
+            others_duration = item['Duration (hours)'] / 24
+            others_period = item['Period (days)']
+            others_transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD
+            others_transit_time_list = np.append(np.arange(others_transit_time, lc.time[-1].value, others_period), np.arange(others_transit_time, lc.time[0].value, -others_period))
+            others_transit_time_list.sort()
+            if np.any(np.isnan([others_period, others_duration, others_transit_time])):
                 with open('error_tic.dat', 'a') as f:
                     f.write(f'nan {pdf[pdf.isnull()].index.tolist()}!:{str(TOI)}+ "\n"')
                 continue
             else:
-                lc, _ = clip_transit_hoge(lc, other_duration, other_transit_time_list)
-
+                cliped_lc, _ = clip_transit(cliped_lc, others_duration, others_transit_time_list)
+        ax = lc.scatter(color='red', label='Other transit signals' )
+        cliped_lc.scatter(ax=ax, color='black')
+        plt.savefig(f'//Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/other_transit_signals/{TOInumber}.png')
+        plt.close()
     '''
     #トランジットがデータに何個あるか判断しその周りのライトカーブデータを作成、カーブフィッティングでノーマライズ
     #fitting using the values of catalog
