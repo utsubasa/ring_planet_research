@@ -235,12 +235,12 @@ def transit_params_setting(rp_rs, period):
     """トランジットフィッティングパラメータの設定"""
     names = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
     if np.isnan(rp_rs):
-        values = [0, period, 0.02, 10, 87, 0, 90, 0.3, 0.2]
+        values = [0, period, np.random.uniform(0.01,0.1), np.random.uniform(1.01,20.0), 80.0, 0.5, 90.0, np.random.uniform(0.01,1.0), np.random.uniform(0.01,1.0)]
     else:
         values = [0, period, rp/rs, np.random.uniform(1.01,20.0), 80.0, 0.5, 90.0, np.random.uniform(0.01,1.0), np.random.uniform(0.01,1.0)]
     mins = [-0.7, period*0.9, 0.001, 0.1, 70, 0, 90, 0.0, 0.0]
-    maxes = [0.7, period*1.1, 1.0, 100, 110, 0, 90, 1.0, 1.0]
-    vary_flags = [True, False, True, True, True, False, False, False, False]
+    maxes = [0.7, period*1.1, 1.0, 100, 110, 1.0, 90, 1.0, 1.0]
+    vary_flags = [True, True, True, True, True, True, False, True, True]
     return set_params_lm(names, values, mins, maxes, vary_flags)
 
 def transit_case_is4(each_lc, duration, period, flag=False):
@@ -484,6 +484,8 @@ df = oridf[oridf['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
 #TOIlist = df['TOI']
 TOIlist = ['157.01']
+
+each_lc_anomalylist = [102.01,106.01,114.01,123.01,135.01,149.01,150.01,163.01,349.01,471.01,505.01,625.01,626.01,677.01,738.01,834.01,842.01,858.01,934.01,987.01,1019.01,1161.01,1163.01,1176.01,1259.01,1264.01,1274.01,1341.01,1970.01,2000.01,2014.01,2021.01,2131.01,2200.01,2222.01,4087.01]
 for TOI in TOIlist:
     param_df = df[df['TOI'] == TOI]
     duration = param_df['Duration (hours)'].values[0] / 24
