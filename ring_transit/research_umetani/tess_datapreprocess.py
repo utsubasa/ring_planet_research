@@ -483,7 +483,7 @@ oridf = pd.read_csv(f'{homedir}/exofop_tess_tois.csv')
 df = oridf[oridf['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
 #TOIlist = df['TOI']
-TOIlist = ['1670.01']
+TOIlist = ['157.01']
 for TOI in TOIlist:
     param_df = df[df['TOI'] == TOI]
     duration = param_df['Duration (hours)'].values[0] / 24
@@ -547,6 +547,7 @@ for TOI in TOIlist:
     transit_time_list = np.append(np.arange(transit_time, lc.time[-1].value, period), np.arange(transit_time, lc.time[0].value, -period))
     transit_time_list.sort()
 
+
     """他の惑星がある場合、データに影響を与えているか判断。ならその信号を除去する。"""
     other_p_df = oridf[oridf['TIC ID'] == param_df['TIC ID'].values[0]]
 
@@ -570,14 +571,13 @@ for TOI in TOIlist:
         cliped_lc.scatter(ax=ax, color='black')
         plt.savefig(f'//Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/other_transit_signals/{TOInumber}.png')
         plt.close()
-    '''
+
+
     #トランジットがデータに何個あるか判断しその周りのライトカーブデータを作成、カーブフィッティングでノーマライズ
     #fitting using the values of catalog
     folded_lc = lc.fold(period=period, epoch_time=transit_time)
     folded_lc = folded_lc.remove_nans()
     folded_lc, epoch_all_list = detect_transit_epoch(folded_lc, transit_time, period)
-    '''
-
 
     #値を格納するリストを定義
     t0dict = {}
@@ -597,8 +597,12 @@ for TOI in TOIlist:
         print(f'epoch: {i}')
         epoch_start = mid_transit_time - (duration*2.5)
         epoch_end = mid_transit_time + (duration*2.5)
-        tmp = folded_lc[folded_lc.time_original.value > epoch_start]
-        each_lc = tmp[tmp.time_original.value < epoch_end]
+        tmp = lc[lc.time.value > epoch_start]
+        each_lc = tmp[tmp.time.value < epoch_end]
+        #ax = lc.scatter()
+        #ax.axvline(mid_transit_time)
+        #plt.show()
+        each_lc = each_lc.fold(period=period, epoch_time=mid_transit_time).remove_nans()
         #解析中断条件を満たさないかチェック
         if len(each_lc) == 0:
             print('no data in this epoch')
@@ -618,14 +622,17 @@ for TOI in TOIlist:
     for i, mid_transit_time in enumerate(transit_time_list):
         print(f'epoch: {i}')
         '''
-        if i == 0 or i == 2:
+        if i == 10:
             continue
             '''
 
+
+
         epoch_start = mid_transit_time - (duration*2.5)
         epoch_end = mid_transit_time + (duration*2.5)
-        tmp = folded_lc[folded_lc.time_original.value > epoch_start]
-        each_lc = tmp[tmp.time_original.value < epoch_end]
+        tmp = lc[lc.time.value > epoch_start]
+        each_lc = tmp[tmp.time.value < epoch_end]
+        each_lc = each_lc.fold(period=period, epoch_time=mid_transit_time).remove_nans()
 
         #解析中断条件を満たさないかチェック
         if len(each_lc) == 0:
