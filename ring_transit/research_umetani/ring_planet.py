@@ -252,7 +252,9 @@ df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
 #TOIlist = ['1265.01']
 #df = df.sort_values('Planet SNR', ascending=False)
-for TOI in df['TOI'].values:
+mtt_shiftlist = ['199.01','129.01','236.01','758.01','774.01','822.01','834.01','1050.01','1151.01','1236.01','1265.01','1270.01','1292.01','1341.01','1963.01','2131.01']
+#for TOI in df['TOI'].values:
+for TOI in mtt_shiftlist:
 #for TOI in ['4470.01']:
     print(TOI)
     '''
@@ -297,6 +299,7 @@ for TOI in df['TOI'].values:
         continue
     folded_lc = lk.LightCurve(data=folded_table)
     folded_lc = folded_lc[(folded_lc.time.value < duration*0.7) & (folded_lc.time.value > -duration*0.7)]
+    import pdb; pdb.set_trace()
     import astropy.units as u
     binned_lc = folded_lc.bin(time_bin_size=1*u.minute).remove_nans()
     '''
@@ -398,31 +401,33 @@ for TOI in df['TOI'].values:
         os.makedirs(f'./fitting_result/data/{TOInumber}', exist_ok=True)
         result_df.to_csv(f'./fitting_result/data/{TOInumber}/{TOInumber}_{m}.csv', header=True, index=False)
         plot_ring(rp_rs=ring_res.params['rp_rs'].value, rin_rp=ring_res.params['r_in'].value, rout_rin=ring_res.params['r_out'].value, b=ring_res.params['b'].value, theta=ring_res.params['theta'].value, phi=ring_res.params['phi'].value, file_name = f"{TOInumber}_{m}.pdf")
-        best_ring_res_dict[ring_res.chisqr] = ring_res
+        #ring_res = sorted(best_ring_res_dict.items())[0][1]
+        fig = plt.figure()
+        ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
+        ax_re = fig.add_subplot(2,1,2) #for plotting residuals
+        #elapsed_time = time.time() - start
+        #print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+        ring_flux_model = ring_model_transitfit_from_lmparams(ring_res.params, t)
+        noring_flux_model = no_ring_model_transitfit_from_lmparams(no_ring_res.params, t, noringnames)
+        binned_lc.errorbar(ax=ax_lc)
+        ax_lc.plot(t, ring_flux_model, label='Model w/ ring', color='blue')
+        ax_lc.plot(t, noring_flux_model, label='Model w/o ring', color='red')
+        residuals_ring = binned_lc - ring_flux_model
+        residuals_no_ring = binned_lc - noring_flux_model
+        chisq_ring = np.sum((residuals_ring.flux.value/flux_err_data)**2)
+        chisq_noring = np.sum((residuals_no_ring.flux.value/flux_err_data)**2)
+        residuals_ring.plot(ax=ax_re, color='blue', alpha=0.3,  marker='.', zorder=1)
+        residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
+        ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
+        ax_lc.legend()
+        ax_lc.set_title(f'w/ chisq:{chisq_ring:0f} w/o chisq:{chisq_noring:0f} dof:{len(binned_lc)}')
+        plt.tight_layout()
+        os.makedirs(f'./lmfit_result/transit_fit/{TOInumber}', exist_ok=True)
+        plt.savefig(f'./lmfit_result/transit_fit/{TOInumber}/{TOInumber}_{m}.png', header=False, index=False)
+        #plt.show()
+        plt.close()
+        best_ring_res_dict[np.abs(ring_res.redchi-1)] = ring_res
     ring_res = sorted(best_ring_res_dict.items())[0][1]
-    fig = plt.figure()
-    ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
-    ax_re = fig.add_subplot(2,1,2) #for plotting residuals
-    #elapsed_time = time.time() - start
-    #print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
-    ring_flux_model = ring_model_transitfit_from_lmparams(ring_res.params, t)
-    noring_flux_model = no_ring_model_transitfit_from_lmparams(no_ring_res.params, t, noringnames)
-    binned_lc.errorbar(ax=ax_lc)
-    ax_lc.plot(t, ring_flux_model, label='Model w/ ring', color='blue')
-    ax_lc.plot(t, noring_flux_model, label='Model w/o ring', color='red')
-    residuals_ring = binned_lc - ring_flux_model
-    residuals_no_ring = binned_lc - noring_flux_model
-    chisq_ring = np.sum((residuals_ring.flux.value/flux_err_data)**2)
-    chisq_noring = np.sum((residuals_no_ring.flux.value/flux_err_data)**2)
-    residuals_ring.plot(ax=ax_re, color='blue', alpha=0.3,  marker='.', zorder=1)
-    residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
-    ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
-    ax_lc.legend()
-    ax_lc.set_title(f'w/ chisq:{chisq_ring:0f} w/o chisq:{chisq_noring:0f} dof:{len(binned_lc)}')
-    plt.tight_layout()
-    plt.savefig(f'./lmfit_result/transit_fit/{TOInumber}.png', header=False, index=False)
-    #plt.show()
-    plt.close()
     ring_res_pdict = ring_res.params.valuesdict()
 
     #fit_report = lmfit.fit_report(ring_res)

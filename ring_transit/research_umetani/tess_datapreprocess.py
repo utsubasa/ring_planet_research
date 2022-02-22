@@ -290,14 +290,15 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
         try:
             flag_time = np.abs(lc.time.value)<1.0
             lc = lc[flag_time]
-            time = lc.time.value
+            t = lc.time.value
             flux = lc.flux.value
             flux_err = lc.flux_err.value
 
             best_res_dict = {}
-            for n in range(20):
+            for n in range(10):
                 params = transit_params_setting(rp_rs, period)
-                out = lmfit.minimize(no_ring_residual_transitfit, params, args=(time, flux, flux_err, names), max_nfev=1000)
+                out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, flux_err, names), max_nfev=1000)
+                #time.sleep(2)
                 best_res_dict[out.chisqr] = out
             out = sorted(best_res_dict.items())[0][1]
             #print(lmfit.fit_report(out))
@@ -315,7 +316,7 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
         if lc_type == 'each':
             #print(out.params.pretty_print())
             #time_now_arr.append(0.5 * np.min(each_lc.time_original.value) + 0.5* np.max(each_lc.time_original.value))
-            flux_model = no_ring_model_transitfit_from_lmparams(out.params, time, names)
+            flux_model = no_ring_model_transitfit_from_lmparams(out.params, t, names)
             clip_lc = lc.copy()
             clip_lc.flux = np.sqrt(np.square(flux_model - clip_lc.flux))
             _, mask = clip_lc.remove_outliers(return_mask=True)
@@ -328,7 +329,7 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
                     ax1 = fig.add_subplot(2,1,1) #for plotting transit model and data
                     ax2 = fig.add_subplot(2,1,2) #for plotting residuals
                     lc.errorbar(ax=ax1, color='black', marker='.')
-                    ax1.plot(time,flux_model, label='fit_model', color='red')
+                    ax1.plot(t,flux_model, label='fit_model', color='red')
                     try:
                         outliers = vstack(outliers)
                         outliers.errorbar(ax=ax1, color='cyan', label='outliers(each_lc)', marker='.')
@@ -338,7 +339,7 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
                     ax1.set_title(f'chi square/dof: {int(out.chisqr)}/{out.nfree} ')
                     residuals = lc - flux_model
                     residuals.errorbar(ax=ax2, color='black', marker='.')
-                    ax2.plot(time,np.zeros(len(time)), label='fitting model', color='red')
+                    ax2.plot(t,np.zeros(len(t)), label='fitting model', color='red')
                     ax2.set_ylabel('residuals')
                     os.makedirs(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}', exist_ok=True)
                     plt.tight_layout()
@@ -481,11 +482,37 @@ homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umet
 
 oridf = pd.read_csv(f'{homedir}/exofop_tess_tois.csv')
 df = oridf[oridf['Planet SNR']>100]
+each_lc_anomalylist = [102.01,106.01,114.01,123.01,135.01,150.01,163.01,349.01,471.01,
+                        505.01,625.01,626.01,677.01,738.01,834.01,842.01,845.01,858.01,
+                        934.01,987.01,1019.01,1161.01,1163.01,1176.01,1259.01,1264.01,
+                        1274.01,1341.01,1970.01,2000.01,2014.01,2021.01,2131.01,2200.01,2222.01,4087.01]
+mtt_shiftlist = [129.01,199.01,236.01,758.01,774.01,822.01,834.01,1050.01,1151.01,1236.01,
+                    1265.01,1270.01,1292.01,1341.01,1963.01,2131.01] #mid_transit_time shift
+done_list = [4470.01,116.01,105.01,112.01,116.01,190.01,195.01,241.01,398.01,
+                413.01,423.01,671.01,744.01,1069.01,1076.01,418.01,391.01,231.01,
+                192.01,143.01,766.01,246.01,250.01,567.01,404.01,490.01,1612.01,
+                1268.01,1173.01,1670.01,1135.01,1257.01,1181.01,4449.01,1823.01,
+                1312.01,1148.01,1165.01,2579.01,1627.01,683.01,1937.01,157.01,
+                4606.01,4612.01,4601.01,2218.01,899.01,4623.01,781.01,1682.01,4516.01,
+                4535.01,4545.01,1494.01,267.01,2403.01,573.01,272.01,675.01,656.01,232.01,
+                481.01,655.01,107.01,483.01,479.01,194.01,477.01,101.01,4486.01,640.01,
+                1107.01,1861.01,924.01,159.01,173.01,1951.01,4420.01,3460.01,165.01,201.01,
+                1924.01,1059.01,905.01,1934.01,4381.01,1976.01,527.01,1025.01,3492.01,
+                212.01,622.01,507.01,780.01,778.01,769.01,4162.01,4059.01,4138.01,3846.01,
+                3960.01,3612.01,4140.01,3849.01,3501.01,495.01,501.01,1478.01,615.01,1909.01,
+                1012.01,966.01,508.01,811.01,2464.01,511.01,624.01,1936.01,559.01,1130.01,
+                264.01,185.01,857.01,182.01,121.01,1425.01,1830.01,665.01,1573.01,1651.01,2126.01,
+                1864.01,1295.01,1251.01,1420.01,2127.01,1825.01,2129.01,2197.01,2020.01,2119.01,
+                2024.01,1826.01,1874.01]
+df = df.set_index(['TOI'])
+df = df.drop(index=each_lc_anomalylist)
+df = df.drop(index=mtt_shiftlist, errors='ignore')
+df = df.drop(index=done_list, errors='ignore')
+df = df.reset_index()
 df['TOI'] = df['TOI'].astype(str)
-#TOIlist = df['TOI']
-TOIlist = ['157.01']
+TOIlist = df['TOI']
+#TOIlist = ['157.01']
 
-each_lc_anomalylist = [102.01,106.01,114.01,123.01,135.01,149.01,150.01,163.01,349.01,471.01,505.01,625.01,626.01,677.01,738.01,834.01,842.01,858.01,934.01,987.01,1019.01,1161.01,1163.01,1176.01,1259.01,1264.01,1274.01,1341.01,1970.01,2000.01,2014.01,2021.01,2131.01,2200.01,2222.01,4087.01]
 for TOI in TOIlist:
     param_df = df[df['TOI'] == TOI]
     duration = param_df['Duration (hours)'].values[0] / 24
@@ -500,7 +527,7 @@ for TOI in TOIlist:
     #tpf = lk.search_targetpixelfile('TIC {}'.format(TIC), mission='TESS', cadence="short").download()
     while True:
         try:
-            search_result = lk.search_lightcurve(f'TOI {TOI}', mission='TESS', cadence="short", author='SPOC')
+            search_result = lk.search_lightcurve(f'TOI{TOI}', mission='TESS', cadence="short", author='SPOC')
             #tpf_file = lk.search_targetpixelfile(f'TIC {TIC}', mission='TESS', cadence="short", author='SPOC').download_all(quality_bitmask='default')
             #tpf_file.plot()
             #plt.show()
@@ -592,7 +619,7 @@ for TOI in TOIlist:
     outliers = []
     each_lc_list = []
     t0list =[]
-
+    '''
     print('fixing t0...')
     time.sleep(1)
     for i, mid_transit_time in enumerate(transit_time_list):
@@ -618,18 +645,22 @@ for TOI in TOIlist:
         _, _, _, t0dict, t0list, _ = transit_fit_and_remove_outliers(each_lc, t0dict, t0list, outliers, estimate_period=True, lc_type='each')
     transit_time_list = t0list
     _ = estimate_period(t0dict, period) #TTVを調べる。
+    '''
+    ax = lc.scatter()
+    for i, mid_transit_time in enumerate(transit_time_list):
+        ax.axvline(mid_transit_time, alpha=0.3)
+    plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/check_transit_timing/{TOI}.png')
+    plt.close()
 
     print('preprocessing...')
     time.sleep(1)
+
     for i, mid_transit_time in enumerate(transit_time_list):
         print(f'epoch: {i}')
         '''
         if i == 10:
             continue
             '''
-
-
-
         epoch_start = mid_transit_time - (duration*2.5)
         epoch_end = mid_transit_time + (duration*2.5)
         tmp = lc[lc.time.value > epoch_start]
@@ -705,6 +736,8 @@ for TOI in TOIlist:
     binned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/binned_lc_data/{TOInumber}.csv')
 
     print(f'Analysis completed: {TOInumber}')
+    with open('done.csv','a') as f:
+        f.write(f'{TOI},')
     """
     for i, epoch_now in enumerate(epoch_all_list):
         print(f'epoch: {epoch_now}')
