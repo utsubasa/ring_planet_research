@@ -251,10 +251,10 @@ df = pd.read_csv('./exofop_tess_tois.csv')
 df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
 #TOIlist = ['1265.01']
-#df = df.sort_values('Planet SNR', ascending=False)
+df = df.sort_values('Planet SNR', ascending=False)
 mtt_shiftlist = ['199.01','129.01','236.01','758.01','774.01','822.01','834.01','1050.01','1151.01','1236.01','1265.01','1270.01','1292.01','1341.01','1963.01','2131.01']
-#for TOI in df['TOI'].values:
-for TOI in mtt_shiftlist:
+for TOI in df['TOI'].values:
+#for TOI in mtt_shiftlist:
 #for TOI in ['4470.01']:
     print(TOI)
     '''
@@ -419,7 +419,7 @@ for TOI in mtt_shiftlist:
         residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
         ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
         ax_lc.legend()
-        ax_lc.set_title(f'w/ chisq:{chisq_ring:.0f}/:{ring_res.nfree:.0f} w/o chisq:{chisq_noring:.0f}/:{no_ring_res.nfree:.0f}')
+        ax_lc.set_title(f'w/ chisq:{chisq_ring:.0f}/{ring_res.nfree:.0f} w/o chisq:{chisq_noring:.0f}/{no_ring_res.nfree:.0f}')
         plt.tight_layout()
         os.makedirs(f'./lmfit_result/transit_fit/{TOInumber}', exist_ok=True)
         plt.savefig(f'./lmfit_result/transit_fit/{TOInumber}/{TOInumber}_{chisq_ring:.0f}_{m}.png', header=False, index=False)
