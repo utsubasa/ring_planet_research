@@ -287,30 +287,20 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
     no_use_lc = False
     while True:
         """transit fitting"""
-        try:
-            flag_time = np.abs(lc.time.value)<1.0
-            lc = lc[flag_time]
-            t = lc.time.value
-            flux = lc.flux.value
-            flux_err = lc.flux_err.value
+        flag_time = np.abs(lc.time.value)<1.0
+        lc = lc[flag_time]
+        t = lc.time.value
+        flux = lc.flux.value
+        flux_err = lc.flux_err.value
 
-            best_res_dict = {}
-            for n in range(10):
-                params = transit_params_setting(rp_rs, period)
-                out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, flux_err, names), max_nfev=1000)
-                #time.sleep(2)
-                best_res_dict[out.chisqr] = out
-            out = sorted(best_res_dict.items())[0][1]
-            #print(lmfit.fit_report(out))
-        except TypeError:
-            print('TypeError: out')
-            import pdb; pdb.set_trace()
-            continue
-        except ValueError:
-            print('cant fiting')
-            import pdb; pdb.set_trace()
-            #return lc, outliers, out, t0dict, no_use_lc
-            continue
+        best_res_dict = {}
+        for n in range(10):
+            params = transit_params_setting(rp_rs, period)
+            out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, flux_err, names), max_nfev=1000)
+            #time.sleep(2)
+            best_res_dict[out.chisqr] = out
+        out = sorted(best_res_dict.items())[0][1]
+        #print(lmfit.fit_report(out))
 
         """remove outliers"""
         if lc_type == 'each':
@@ -385,6 +375,7 @@ def estimate_period(t0dict, period):
         fig = plt.figure()
         ax1 = fig.add_subplot(2,1,1)
         ax2 = fig.add_subplot(2,1,2) #for plotting residuals
+        import pdb; pdb.set_trace()
         ax1.errorbar(x=x, y=y,yerr=yerr, fmt='.k')
         ax1.plot(x, res.intercept + res.slope*x, label='fitted line')
         ax1.text(0.5, 0.2, f'period: {res.slope:.6f} +/- {ts*res.stderr:.6f}', transform=ax1.transAxes)
@@ -482,12 +473,22 @@ homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umet
 
 oridf = pd.read_csv(f'{homedir}/exofop_tess_tois.csv')
 df = oridf[oridf['Planet SNR']>100]
-each_lc_anomalylist = [102.01,106.01,114.01,123.01,135.01,150.01,163.01,349.01,471.01,
+each_lc_anomalylist = [102.01,106.01,114.01,123.01,135.01,150.01,163.01,173.01,349.01,471.01,
                         505.01,625.01,626.01,677.01,738.01,834.01,842.01,845.01,858.01,
                         934.01,987.01,1019.01,1161.01,1163.01,1176.01,1259.01,1264.01,
-                        1274.01,1341.01,1970.01,2000.01,2014.01,2021.01,2131.01,2200.01,2222.01,4087.01]
-mtt_shiftlist = [129.01,199.01,236.01,758.01,774.01,822.01,834.01,1050.01,1151.01,1236.01,
-                    1265.01,1270.01,1292.01,1341.01,1963.01,2131.01] #mid_transit_time shift
+                        1274.01,1341.01,1845.01,1861.01,1924.01,1970.01,2000.01,2014.01,2021.01,2131.01,
+                        2200.01,2222.01,3846.01,4087.01,4486.01]#トランジットが途中で切れてcurvefitによって変なかたちになっているeach_lcを削除したデータ
+mtt_shiftlist = [121.01,129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1236.01,
+                    1265.01,1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift
+
+no_data_list = [4726.01,372.01,352.01,2617.01,2766.01,2969.01,2989.01,2619.01,2626.01,2624.01,2625.01,
+                2622.01,3041.01,2889.01,4543.01,3010.01,2612.01,4463.01,4398.01,4283.01,4145.01,3883.01,
+                4153.01,3910.01,3604.01,3972.01,3589.01,3735.01,4079.01,4137.01,3109.01,3321.01,3136.01,
+                3329.01,2826.01,2840.01,3241.01,2724.01,2704.01,2803.01,2799.01,2690.01,2745.01,2645.01,
+                2616.01,2591.01,2580.01,2346.01,2236.01,2047.01,2109.01,2031.01,2040.01,2046.01,1905.01,
+                2055.01,1518.01,1567.01,1355.01,1498.01,1373.01,628.01,1482.01,1580.01,1388.01,1310.01,
+                1521.01,1123.01] #short がないか、SPOCがないか
+
 done_list = [4470.01,116.01,105.01,112.01,116.01,190.01,195.01,241.01,398.01,
                 413.01,423.01,671.01,744.01,1069.01,1076.01,418.01,391.01,231.01,
                 192.01,143.01,766.01,246.01,250.01,567.01,404.01,490.01,1612.01,
@@ -503,15 +504,26 @@ done_list = [4470.01,116.01,105.01,112.01,116.01,190.01,195.01,241.01,398.01,
                 1012.01,966.01,508.01,811.01,2464.01,511.01,624.01,1936.01,559.01,1130.01,
                 264.01,185.01,857.01,182.01,121.01,1425.01,1830.01,665.01,1573.01,1651.01,2126.01,
                 1864.01,1295.01,1251.01,1420.01,2127.01,1825.01,2129.01,2197.01,2020.01,2119.01,
-                2024.01,1826.01,1874.01]
+                1810.01,1796.01,1811.01,1771.01,1779.01,1845.01,2024.01,1826.01,472.01,1455.01,
+                1465.01,1431.01,1300.01,224.01,1150.01,1766.01,585.01,1456.01,453.01,2154.01,
+                2017.01,368.01,1385.01,1302.01,1725.01,621.01,1271.01,587.01,1283.01,147.01,
+                1299.01,1198.01,1198.01,1815.01,767.01,1676.01,959.01,1714.01,1297.01,1767.01,
+                1141.01,1337.01,2025.01,1092.01,1454.01,964.01,590.01,1874.01,1647.01,1419.01,
+                1104.01,1248.01,828.01,645.01,1833.01,1721.01,1458.01,820.01,1615.01,2140.01,
+                1186.01,818.01,984.01,1182.01,433.01,]
+
+'''
 df = df.set_index(['TOI'])
 df = df.drop(index=each_lc_anomalylist)
 df = df.drop(index=mtt_shiftlist, errors='ignore')
 df = df.drop(index=done_list, errors='ignore')
+df = df.drop(index=no_data_list, errors='ignore')
 df = df.reset_index()
+'''
+df = df.sort_values('Planet SNR', ascending=False)
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
-#TOIlist = ['157.01']
+TOIlist = ['2127.01']
 
 for TOI in TOIlist:
     param_df = df[df['TOI'] == TOI]
@@ -534,6 +546,9 @@ for TOI in TOIlist:
 
         except HTTPError:
             print('HTTPError, retry.')
+        except SearchError:
+            with open('./no_data.csv', 'a')as f:
+                f.write(f'{TOI},')
         else:
             break
     lc_collection = search_result.download_all()
@@ -547,6 +562,7 @@ for TOI in TOIlist:
         continue
 
     lc = lc_collection.stitch() #initialize lc
+
 
     '''
     bls_period = np.linspace(period*0.6, period*1.5, 10000)
@@ -645,22 +661,24 @@ for TOI in TOIlist:
         _, _, _, t0dict, t0list, _ = transit_fit_and_remove_outliers(each_lc, t0dict, t0list, outliers, estimate_period=True, lc_type='each')
     transit_time_list = t0list
     _ = estimate_period(t0dict, period) #TTVを調べる。
-    '''
+
     ax = lc.scatter()
     for i, mid_transit_time in enumerate(transit_time_list):
         ax.axvline(mid_transit_time, alpha=0.3)
     plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/check_transit_timing/{TOI}.png')
     plt.close()
-
+    '''
     print('preprocessing...')
     time.sleep(1)
 
     for i, mid_transit_time in enumerate(transit_time_list):
         print(f'epoch: {i}')
         '''
-        if i == 10:
+        if i == 248:
             continue
             '''
+
+
         epoch_start = mid_transit_time - (duration*2.5)
         epoch_end = mid_transit_time + (duration*2.5)
         tmp = lc[lc.time.value > epoch_start]
@@ -682,7 +700,6 @@ for TOI in TOIlist:
             continue
         else:
             each_lc_list = curve_fitting(each_lc, duration, out, each_lc_list)
-
     """folded_lcに対してtransitfit & remove outliers. folded_lcを描画する"""
     print('refolding...')
     time.sleep(1)
@@ -736,74 +753,5 @@ for TOI in TOIlist:
     binned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/binned_lc_data/{TOInumber}.csv')
 
     print(f'Analysis completed: {TOInumber}')
-    with open('done.csv','a') as f:
+    with open('./done.csv','a') as f:
         f.write(f'{TOI},')
-    """
-    for i, epoch_now in enumerate(epoch_all_list):
-        print(f'epoch: {epoch_now}')
-        flag = folded_lc.epoch_all == epoch_now
-        each_lc = folded_lc[flag]
-        #ax = each_lc.scatter()
-        ax = plt.subplot(1,1,1)
-        ax.scatter(each_lc.time_original.value, each_lc.flux.value)
-        ax.set_title('epoch based')
-        #ax.axvspan(each_lc.time_original.value[0], each_lc.time_original.value[-1], color = "gray", alpha=0.3, hatch="////")
-        #ax.axvline(x=np.median(each_lc.time_original.value), color='blue',alpha=0.7)
-        os.makedirs(f'{homedir}/fitting_result/figure/each_lc/before_preprocess/epoch_based/{TOInumber}', exist_ok=True)
-        #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/before_preprocess/epoch_based/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
-        plt.show()
-        plt.close()
-        continue
-
-    continue
-    """
-    '''
-    for i, epoch_now in enumerate(epoch_all_list):
-        print(f'epoch: {epoch_now}')
-        flag = folded_lc.epoch_all == epoch_now
-        each_lc = folded_lc[flag]
-        if epoch_now == 178 and TOInumber == 'TOI187.01':
-            continue
-        if i == 11:
-            ax = plt.subplot(1,1,1)
-            ax.scatter(each_lc.time_original.value, each_lc.flux.value)
-            ax.set_title('mid t based')
-            #ax.axvline(x=np.median(each_lc.time_original.value), color='blue',alpha=0.7)
-            #os.makedirs(f'{homedir}/fitting_result/figure/each_lc/before_preprocess/ori_t_based/{TOInumber}', exist_ok=True)
-            #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/before_preprocess/ori_t_based/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
-            plt.show()
-            #plt.close()
-    '''
-    '''
-    """estimate period(2021/12/08現在解析にはestimate periodを使用していない。残余をみる目的)"""
-    print('estimate period...')
-    time.sleep(1)
-    for i, mid_transit_time in enumerate(transit_time_list):
-        print(f'epoch: {i}')
-        epoch_start = mid_transit_time - (duration*2.5)
-        epoch_end = mid_transit_time + (duration*2.5)
-        tmp = folded_lc[folded_lc.time_original.value > epoch_start]
-        each_lc = tmp[tmp.time_original.value < epoch_end]
-
-        #解析中断条件を満たさないかチェック。トランジットがライトカーブに収まっていて、トランジット中にデータの欠損がない場合のみ解析する
-        if len(each_lc) == 0:
-            print('> no data in this epoch')
-            continue
-        abort_list = np.array([transit_case_is4(each_lc, duration, period), aroud_midtransitdata_isexist(each_lc), nospace_in_transit(each_lc, transit_start, transit_end)])
-        if np.all(abort_list) == True:
-            pass
-        else:
-            print('> Satisfies the analysis interruption condition')
-            continue
-        _, _, _,t0dict, _ = transit_fit_and_remove_outliers(each_lc, t0dict, outliers, estimate_period=True, lc_type='each')
-    #estimated_periodで再refolding
-    if len(t0dict) != 1:
-        _ = estimate_period(t0dict, period)
-    else:
-        estimated_period = period
-    #folded_lc = lc.fold(period=estimated_period , epoch_time=transit_time)
-    #not_nan_index = np.where(~np.isnan(folded_lc.flux.value))[0].tolist()
-    #folded_lc = folded_lc[not_nan_index]
-    #folded_lc, epoch_all_list = detect_transit_epoch(folded_lc, transit_time, estimated_period)
-    #params = transit_params_setting(rp_rs, estimated_period)
-    '''

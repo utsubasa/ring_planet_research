@@ -298,8 +298,7 @@ for TOI in mtt_shiftlist:
     except FileNotFoundError:
         continue
     folded_lc = lk.LightCurve(data=folded_table)
-    folded_lc = folded_lc[(folded_lc.time.value < duration*0.7) & (folded_lc.time.value > -duration*0.7)]
-    import pdb; pdb.set_trace()
+    folded_lc = folded_lc[(folded_lc.time.value < duration*0.8) & (folded_lc.time.value > -duration*0.8)]
     import astropy.units as u
     binned_lc = folded_lc.bin(time_bin_size=1*u.minute).remove_nans()
     '''
@@ -399,8 +398,8 @@ for TOI in mtt_shiftlist:
         output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
         result_df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
         os.makedirs(f'./fitting_result/data/{TOInumber}', exist_ok=True)
-        result_df.to_csv(f'./fitting_result/data/{TOInumber}/{TOInumber}_{m}.csv', header=True, index=False)
-        plot_ring(rp_rs=ring_res.params['rp_rs'].value, rin_rp=ring_res.params['r_in'].value, rout_rin=ring_res.params['r_out'].value, b=ring_res.params['b'].value, theta=ring_res.params['theta'].value, phi=ring_res.params['phi'].value, file_name = f"{TOInumber}_{m}.pdf")
+        result_df.to_csv(f'./fitting_result/data/{TOInumber}/{TOInumber}_{ring_res.chisqr:.0f}_{m}.csv', header=True, index=False)
+        plot_ring(rp_rs=ring_res.params['rp_rs'].value, rin_rp=ring_res.params['r_in'].value, rout_rin=ring_res.params['r_out'].value, b=ring_res.params['b'].value, theta=ring_res.params['theta'].value, phi=ring_res.params['phi'].value, file_name = f"{TOInumber}_{ring_res.chisqr:.0f}_{m}.pdf")
         #ring_res = sorted(best_ring_res_dict.items())[0][1]
         fig = plt.figure()
         ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
@@ -414,16 +413,16 @@ for TOI in mtt_shiftlist:
         ax_lc.plot(t, noring_flux_model, label='Model w/o ring', color='red')
         residuals_ring = binned_lc - ring_flux_model
         residuals_no_ring = binned_lc - noring_flux_model
-        chisq_ring = np.sum((residuals_ring.flux.value/flux_err_data)**2)
-        chisq_noring = np.sum((residuals_no_ring.flux.value/flux_err_data)**2)
+        chisq_ring = ring_res.chisqr
+        chisq_noring = no_ring_res.chisqr
         residuals_ring.plot(ax=ax_re, color='blue', alpha=0.3,  marker='.', zorder=1)
         residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
         ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
         ax_lc.legend()
-        ax_lc.set_title(f'w/ chisq:{chisq_ring:0f} w/o chisq:{chisq_noring:0f} dof:{len(binned_lc)}')
+        ax_lc.set_title(f'w/ chisq:{chisq_ring:.0f}/:{ring_res.nfree:.0f} w/o chisq:{chisq_noring:.0f}/:{no_ring_res.nfree:.0f}')
         plt.tight_layout()
         os.makedirs(f'./lmfit_result/transit_fit/{TOInumber}', exist_ok=True)
-        plt.savefig(f'./lmfit_result/transit_fit/{TOInumber}/{TOInumber}_{m}.png', header=False, index=False)
+        plt.savefig(f'./lmfit_result/transit_fit/{TOInumber}/{TOInumber}_{chisq_ring:.0f}_{m}.png', header=False, index=False)
         #plt.show()
         plt.close()
         best_ring_res_dict[np.abs(ring_res.redchi-1)] = ring_res
