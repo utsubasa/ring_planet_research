@@ -478,8 +478,8 @@ each_lc_anomalylist = [102.01,106.01,114.01,123.01,135.01,150.01,163.01,173.01,3
                         934.01,987.01,1019.01,1161.01,1163.01,1176.01,1259.01,1264.01,
                         1274.01,1341.01,1845.01,1861.01,1924.01,1970.01,2000.01,2014.01,2021.01,2131.01,
                         2200.01,2222.01,3846.01,4087.01,4486.01]#トランジットが途中で切れてcurvefitによって変なかたちになっているeach_lcを削除したデータ
-mtt_shiftlist = [121.01,129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1236.01,
-                    1265.01,1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift
+mtt_shiftlist = [121.01,129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1165.01,
+                    1236.01,1265.01,1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift
 
 no_data_list = [4726.01,372.01,352.01,2617.01,2766.01,2969.01,2989.01,2619.01,2626.01,2624.01,2625.01,
                 2622.01,3041.01,2889.01,4543.01,3010.01,2612.01,4463.01,4398.01,4283.01,4145.01,3883.01,
@@ -523,7 +523,7 @@ df = df.reset_index()
 df = df.sort_values('Planet SNR', ascending=False)
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
-TOIlist = ['2127.01']
+TOIlist = ['1148.01']
 
 for TOI in TOIlist:
     param_df = df[df['TOI'] == TOI]
@@ -546,9 +546,6 @@ for TOI in TOIlist:
 
         except HTTPError:
             print('HTTPError, retry.')
-        except SearchError:
-            with open('./no_data.csv', 'a')as f:
-                f.write(f'{TOI},')
         else:
             break
     lc_collection = search_result.download_all()
@@ -562,8 +559,6 @@ for TOI in TOIlist:
         continue
 
     lc = lc_collection.stitch() #initialize lc
-
-
     '''
     bls_period = np.linspace(period*0.6, period*1.5, 10000)
     bls = lc.to_periodogram(method='bls',period=bls_period)#oversample_factor=1)\
@@ -635,6 +630,18 @@ for TOI in TOIlist:
     outliers = []
     each_lc_list = []
     t0list =[]
+    ax = lc.scatter()
+    for i, mid_transit_time in enumerate(transit_time_list):
+        print(f'epoch: {i}')
+        epoch_start = mid_transit_time - (duration*2.5)
+        epoch_end = mid_transit_time + (duration*2.5)
+        tmp = lc[lc.time.value > epoch_start]
+        each_lc = tmp[tmp.time.value < epoch_end]
+        #ax = lc.scatter()
+        if i == 165:
+            ax.axvline(mid_transit_time)
+    plt.show()
+    import pdb; pdb.set_trace()
     '''
     print('fixing t0...')
     time.sleep(1)

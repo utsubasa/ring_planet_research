@@ -246,25 +246,29 @@ def plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name):
     plt.savefig(f'./lmfit_result/illustration/{TOInumber}/{file_name}', bbox_inches="tight")
 
 #csvfile = './folded_lc_data/TOI2403.01.csv'
-done_TOIlist = os.listdir('./lmfit_result') #ダブリ解析防止
+done_TOIlist = os.listdir('./lmfit_result/transit_fit') #ダブリ解析防止
 df = pd.read_csv('./exofop_tess_tois.csv')
 df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
 #TOIlist = ['1265.01']
 df = df.sort_values('Planet SNR', ascending=False)
 mtt_shiftlist = ['199.01','129.01','236.01','758.01','774.01','822.01','834.01','1050.01','1151.01','1236.01','1265.01','1270.01','1292.01','1341.01','1963.01','2131.01']
+df = df.set_index(['TOI'])
+df = df.drop(index=mtt_shiftlist, errors='ignore')
+df = df.reset_index()
+
 for TOI in df['TOI'].values:
 #for TOI in mtt_shiftlist:
 #for TOI in ['4470.01']:
     print(TOI)
-    '''
+
     #ダブり解析防止
-    pngname = f'TOI{TOI}.png'
-    if pngname in done_TOIlist:
+    fname = f'TOI{TOI}'
+    if fname in done_TOIlist:
         continue
     else:
         pass
-    '''
+
     param_df = df[df['TOI'] == TOI]
 
     #lm.minimizeのためのparamsのセッティング。これはリングありモデル
@@ -324,7 +328,7 @@ for TOI in df['TOI'].values:
 
     ###ring model fitting by minimizing chi_square###
     best_res_dict = {}
-    for n in range(20):
+    for n in range(3):
         noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
         #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
         #noringvalues = [0, period, rp_rs, a_rs, 83.0, 0.0, 90.0, 0.2, 0.2]
@@ -428,7 +432,8 @@ for TOI in df['TOI'].values:
         best_ring_res_dict[np.abs(ring_res.redchi-1)] = ring_res
     ring_res = sorted(best_ring_res_dict.items())[0][1]
     ring_res_pdict = ring_res.params.valuesdict()
-
+    with open('./done.csv','a') as f:
+        f.write(f'{TOI},')
     #fit_report = lmfit.fit_report(ring_res)
     #print(fit_report)
 
