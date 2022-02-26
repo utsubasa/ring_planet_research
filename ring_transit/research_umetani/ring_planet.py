@@ -251,7 +251,7 @@ df = pd.read_csv('./exofop_tess_tois.csv')
 df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
 #TOIlist = ['1265.01']
-df = df.sort_values('Planet SNR', ascending=False)
+df = df.sort_values('Planet SNR')
 mtt_shiftlist = ['199.01','129.01','236.01','758.01','774.01','822.01','834.01','1050.01','1151.01','1236.01','1265.01','1270.01','1292.01','1341.01','1963.01','2131.01']
 df = df.set_index(['TOI'])
 df = df.drop(index=mtt_shiftlist, errors='ignore')
@@ -432,8 +432,6 @@ for TOI in df['TOI'].values:
         best_ring_res_dict[np.abs(ring_res.redchi-1)] = ring_res
     ring_res = sorted(best_ring_res_dict.items())[0][1]
     ring_res_pdict = ring_res.params.valuesdict()
-    with open('./done.csv','a') as f:
-        f.write(f'{TOI},')
     #fit_report = lmfit.fit_report(ring_res)
     #print(fit_report)
 
