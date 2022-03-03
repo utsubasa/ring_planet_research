@@ -551,10 +551,6 @@ for try_n in range(5):
         print("flat chain shape: {0}".format(samples.shape))
         """
 
-
-        samples = sampler.flatchain
-        flat_samples = sampler.get_chain(discard=1000, thin=15, flat=True)
-        print(flat_samples.shape)
         inds = np.random.randint(len(flat_samples), size=100)
         plt.errorbar(t, flux_data, yerr=flux_err_data, fmt=".k", capsize=0, alpha=0.1)
         for ind in inds:

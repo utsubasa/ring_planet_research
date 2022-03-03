@@ -524,7 +524,7 @@ df = df.sort_values('Planet SNR', ascending=False)
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
 TOIlist = ['1148.01']
-
+TOIlist = mtt_shiftlist
 for TOI in TOIlist:
     param_df = df[df['TOI'] == TOI]
     duration = param_df['Duration (hours)'].values[0] / 24
@@ -559,7 +559,7 @@ for TOI in TOIlist:
         continue
 
     lc = lc_collection.stitch() #initialize lc
-    '''
+
     bls_period = np.linspace(period*0.6, period*1.5, 10000)
     bls = lc.to_periodogram(method='bls',period=bls_period)#oversample_factor=1)\
     print('planet_b_period = ', bls.period_at_max_power)
@@ -571,7 +571,7 @@ for TOI in TOIlist:
     duration = bls.duration_at_max_power.value
     period = bls.period_at_max_power.value
     transit_time = bls.transit_time_at_max_power.value
-    '''
+    import pdb; pdb.set_trace()
 
     """もしもどれかのパラメータがnanだったらそのTIC or TOIを記録して、処理はスキップする。"""
     pdf = pd.Series([duration, period, transit_time], index=['duration', 'period', 'transit_time'])
