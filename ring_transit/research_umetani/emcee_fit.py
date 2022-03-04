@@ -140,8 +140,10 @@ def plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name):
     ax.set_title(f'chisq={str(ring_res.chisqr)[:6]}, dof={ring_res.nfree}')
     plt.axis('scaled')
     ax.set_aspect('equal')
-    os.makedirs(f'./lmfit_result/illustration/{TOInumber}', exist_ok=True)
-    plt.savefig(f'./lmfit_result/illustration/{TOInumber}/{file_name}', bbox_inches="tight")
+    #os.makedirs(f'./lmfit_result/illustration/{TOInumber}', exist_ok=True)
+    os.makedirs(f'./mcmc_result/figure/{TOInumber}/illustration', exist_ok=True)
+    #plt.savefig(f'./lmfit_result/illustration/{TOInumber}/{file_name}', bbox_inches="tight")
+    plt.savefig(f'./mcmc_result/figure/{TOInumber}/illustration/{file_name}', bbox_inches="tight")
 
 p_names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
          "b", "norm", "theta", "phi", "tau", "r_in",
@@ -186,14 +188,13 @@ for p_csv in p_csvlist:
     import astropy.units as u
     #binned_lc = folded_lc.bin(time_bin_size=1*u.minute).remove_nans()
     binned_lc = folded_lc.bin(bins=500).remove_nans()
-    import pdb; pdb.set_trace()
     t = binned_lc.time.value
     flux_data = binned_lc.flux.value
     flux_err_data = binned_lc.flux_err.value
 
     ###mcmc setting###
-    #mcmc_df = pd.read_csv(f'./mcmc_result/fit_pdata/{TOInumber}/{p_csv}')
-    mcmc_df = pd.read_csv(f'./mcmc_result/fit_pdata/{p_csv}')
+    mcmc_df = pd.read_csv(f'./fitting_result/data/{TOInumber}/{p_csv}')
+    #mcmc_df = pd.read_csv(f'./mcmc_result/fit_pdata/{p_csv}')
     mcmc_df.index = p_names
     pdic = mcmc_df['input_value'].to_dict()
     mcmc_df = mcmc_df[mcmc_df['vary_flags']==True]
@@ -264,7 +265,7 @@ for p_csv in p_csvlist:
             print(tau)
             '''
 
-            os.makedirs(f'./mcmc_result_result/figure/{TOInumber}', exist_ok=True)
+            os.makedirs(f'./mcmc_result/figure/{TOInumber}', exist_ok=True)
 
             ###step visualization###
             fig, axes = plt.subplots(ndim, figsize=(10, 7), sharex=True)
@@ -279,7 +280,7 @@ for p_csv in p_csvlist:
                 ax.set_ylabel(labels[i])
                 ax.yaxis.set_label_coords(-0.1, 0.5)
             axes[-1].set_xlabel("step number");
-            plt.savefig(f'./mcmc_result_result/figure/{TOInumber}/step_{try_n}.png')
+            plt.savefig(f'./mcmc_result/figure/{TOInumber}/step_{try_n}.png')
             ##plt.show()
             plt.close()
             ##plt.show()
@@ -295,7 +296,7 @@ for p_csv in p_csvlist:
             fig = corner.corner(flat_samples, labels=labels, truths=truths);
             """
             fig = corner.corner(flat_samples, labels=labels);
-            plt.savefig(f'./mcmc_result_result/figure/{TOInumber}/corner_{try_n}.png')
+            plt.savefig(f'./mcmc_result/figure/{TOInumber}/corner_{try_n}.png')
             ##plt.show()
             plt.close()
 
@@ -319,7 +320,15 @@ for p_csv in p_csvlist:
                 mcmc_res_df = mcmc_df
                 mcmc_res_df['output_value'] = sample
                 #df.to_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/fitting_result_{}_{:.0f}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=True, index=False)
-                os.makedirs(f'./mcmc_result_result/fit_pdata/{TOInumber}', exist_ok=True)
+                rp_rs = mcmc_res_df.at['rp_rs', 'output_value']
+                rin_rp = mcmc_res_df.at['r_in', 'output_value']
+                rout_rin = mcmc_res_df.at['r_out', 'output_value']
+                b = mcmc_res_df.at['b', 'output_value']
+                theta = mcmc_res_df.at['theta', 'output_value']
+                phi = mcmc_res_df.at['phi', 'output_value']
+                file_name = f'{TOInumber}_{ind}_{try_n}.pdf'
+                plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name)
+                os.makedirs(f'./mcmc_result/fit_pdata/{TOInumber}', exist_ok=True)
                 mcmc_res_df.to_csv(f'./mcmc_result/fit_pdata/{TOInumber}/{TOInumber}_{ind}_{try_n}.csv', header=True, index=False)
                 #fit_report = lmfit.fit_report(ring_res)
                 #print(fit_report)
@@ -329,66 +338,6 @@ for p_csv in p_csvlist:
             plt.xlabel("orbital phase")
             plt.ylabel("flux")
             plt.title(f'n_bins: {len(binned_lc)}')
-            plt.savefig(f"./mcmc_result_result/figure/{TOInumber}/fit_result_{try_n}.png")
+            plt.savefig(f"./mcmc_result/figure/{TOInumber}/fit_result_{try_n}.png")
             ##plt.show()
             plt.close()
-
-
-            #flux_model = no_ring_model_transitfit_from_lmparams(out.params, t, noringnames)
-            #flux_model = ring_model_transitfit_from_lmparams(out.params, t)
-            #plt.errorbar(time, flux_data,flux_err_data, label='data', fmt='.k', linestyle=None)
-            #folded_lc.errorbar()
-            #plt.plot(t, flux_model, label='fit_model')
-            #plt.plot(t, ymodel, label='model')
-            #plt.legend()
-            #plt.savefig('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/fitting_result_{}_{:.0f}.png'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=False, index=False)
-            ##plt.show()
-
-
-
-
-            ###use lightkurve(diffrent method from Aizawa+2018)###
-            '''
-            kic = "KIC10666592"
-            tpf = lk.search_targetpixelfile(kic, author="Kepler", cadence="short").download()
-            #tpf.plot(frame=100, scale='log', show_colorbar=True)
-            lc = tpf.to_lightcurve(aperture_mask=tpf.pipeline_mask)
-            #lc.plot()
-            period = np.linspace(1, 3, 10000)
-            bls = lc.to_periodogram(method='bls', period=period, frequency_factor=500);
-
-            period=2.20473541 #day
-            transit_time=121.3585417
-            duration=0.162026
-            a_rs=4.602
-            b=0.224
-            rp_rs=0.075522
-            i=87.21 * 0.0175 #radian
-            a=0.0376 #Orbit Semi-Major Axis [au]
-            a=562487835826.56 #cm
-            rstar=1.952 * 6.9634 * 10**10 #Rstar cm
-            #lc_list = preprocess_each_lc(lc, duration, period, transit_time)
-            #transit_time_per_exposure = (duration * len(lc_list) / (lc.time[-1].value - lc.time[0].value))
-            #lc = lc.bin(bins=int(300 // transit_time_per_exposure))
-            tot = (rstar/a)* (np.sqrt(np.square(1+rp_rs)-np.square(b)) / np.sin(i))
-            Ttot = (period/np.pi) * np.arcsin(tot)
-            full = (rstar/a)* (np.sqrt(np.square(1-rp_rs)-np.square(b)) / np.sin(i))
-            Tfull = (period/np.pi) * np.arcsin(full)
-            ingress = (Ttot-Tfull) / 2 #day
-            _ = ingress/period
-            lc_list = preprocess_each_lc(lc, duration, period, transit_time)
-            folded_lc = folding_each_lc(lc_list)
-            folded_lc = folded_lc[folded_lc.time > -0.1]
-            folded_lc = folded_lc[folded_lc.time < 0.1]
-            folded_lc.errorbar()
-            #folded_lc.write('folded_lc.csv', overwrite=True)
-            plt.savefig('folded_lc.png')
-            ##plt.show()
-            plt.close()
-            '''
-            '''
-            ###土星likeな惑星のパラメータで作成したlight curve###
-            error_scale = 0.0001
-            eps_data = np.random.normal(size=t.size, scale=error_scale)
-            flux = ymodel + eps_data
-            '''

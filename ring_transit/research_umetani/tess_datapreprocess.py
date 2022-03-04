@@ -478,8 +478,9 @@ each_lc_anomalylist = [102.01,106.01,114.01,123.01,135.01,150.01,163.01,173.01,3
                         934.01,987.01,1019.01,1161.01,1163.01,1176.01,1259.01,1264.01,
                         1274.01,1341.01,1845.01,1861.01,1924.01,1970.01,2000.01,2014.01,2021.01,2131.01,
                         2200.01,2222.01,3846.01,4087.01,4486.01]#トランジットが途中で切れてcurvefitによって変なかたちになっているeach_lcを削除したデータ
-mtt_shiftlist = [121.01,129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1165.01,
-                    1236.01,1265.01,1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift
+mtt_shiftlist = [1092.01,129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1165.01,
+                1236.01,1265.01,1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift　
+
 
 no_data_list = [4726.01,372.01,352.01,2617.01,2766.01,2969.01,2989.01,2619.01,2626.01,2624.01,2625.01,
                 2622.01,3041.01,2889.01,4543.01,3010.01,2612.01,4463.01,4398.01,4283.01,4145.01,3883.01,
@@ -526,6 +527,7 @@ TOIlist = df['TOI']
 TOIlist = ['1148.01']
 TOIlist = mtt_shiftlist
 for TOI in TOIlist:
+    TOI = str(TOI)
     param_df = df[df['TOI'] == TOI]
     duration = param_df['Duration (hours)'].values[0] / 24
     period = param_df['Period (days)'].values[0]
@@ -562,16 +564,23 @@ for TOI in TOIlist:
 
     bls_period = np.linspace(period*0.6, period*1.5, 10000)
     bls = lc.to_periodogram(method='bls',period=bls_period)#oversample_factor=1)\
-    print('planet_b_period = ', bls.period_at_max_power)
+    print('bls period = ', bls.period_at_max_power)
     print(f'period = {period}')
-    print('planet_b_t0 = ', bls.transit_time_at_max_power)
-    print(f'period = {transit_time}')
-    print('planet_b_dur = ', bls.duration_at_max_power)
-    print(f'period = {duration}')
-    duration = bls.duration_at_max_power.value
-    period = bls.period_at_max_power.value
-    transit_time = bls.transit_time_at_max_power.value
-    import pdb; pdb.set_trace()
+    print('bls transit time = ', bls.transit_time_at_max_power)
+    print(f'transit time = {transit_time}')
+    print('bls duration = ', bls.duration_at_max_power)
+    print(f'duration = {duration}')
+    #duration = bls.duration_at_max_power.value
+    #period = bls.period_at_max_power.value
+    bls_transit_time = bls.transit_time_at_max_power.value
+    catalog_lc = lc.fold(period=period, epoch_time=transit_time)
+    bls_lc = lc.fold(period=period, epoch_time=bls_transit_time)
+    ax = catalog_lc[np.abs(catalog_lc.time.value)<1.0].scatter(label='catalog t0')
+    bls_lc[np.abs(bls_lc.time.value)<1.0].scatter(ax=ax,color='red', label='BLS t0')
+    plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/comp_bls/{TOInumber}.png')
+    plt.close()
+    continue
+    transit_time = bls_transit_time
 
     """もしもどれかのパラメータがnanだったらそのTIC or TOIを記録して、処理はスキップする。"""
     pdf = pd.Series([duration, period, transit_time], index=['duration', 'period', 'transit_time'])
@@ -630,6 +639,7 @@ for TOI in TOIlist:
     outliers = []
     each_lc_list = []
     t0list =[]
+    '''
     ax = lc.scatter()
     for i, mid_transit_time in enumerate(transit_time_list):
         print(f'epoch: {i}')
@@ -638,10 +648,11 @@ for TOI in TOIlist:
         tmp = lc[lc.time.value > epoch_start]
         each_lc = tmp[tmp.time.value < epoch_end]
         #ax = lc.scatter()
-        if i == 165:
-            ax.axvline(mid_transit_time)
+        #if i == 165:
+            #ax.axvline(mid_transit_time)
     plt.show()
     import pdb; pdb.set_trace()
+    '''
     '''
     print('fixing t0...')
     time.sleep(1)
@@ -675,6 +686,7 @@ for TOI in TOIlist:
     plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/check_transit_timing/{TOI}.png')
     plt.close()
     '''
+
     print('preprocessing...')
     time.sleep(1)
 
@@ -684,7 +696,6 @@ for TOI in TOIlist:
         if i == 248:
             continue
             '''
-
 
         epoch_start = mid_transit_time - (duration*2.5)
         epoch_end = mid_transit_time + (duration*2.5)
@@ -748,7 +759,7 @@ for TOI in TOIlist:
     plt.tight_layout()
     plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
     plt.close()
-    cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/{TOInumber}.csv')
+    cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/bls/{TOInumber}.csv')
 
     binned_lc = cleaned_lc.bin(time_bin_size=3*u.minute)
     ax = plt.subplot(1,1,1)
@@ -757,7 +768,7 @@ for TOI in TOIlist:
     plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/binned_lc/figure/{TOInumber}.png')
     #plt.show()
     plt.close()
-    binned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/binned_lc_data/{TOInumber}.csv')
+    #binned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/binned_lc_data/{TOInumber}.csv')
 
     print(f'Analysis completed: {TOInumber}')
     with open('./done.csv','a') as f:
