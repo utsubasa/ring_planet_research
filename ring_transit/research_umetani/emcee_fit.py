@@ -166,7 +166,11 @@ params_df = pd.DataFrame(list(zip(mins, maxes)), columns=['mins', 'maxes'], inde
 params_df['vary_flags'] = vary_flags
 df_for_mcmc = params_df[params_df['vary_flags']==True]
 
-p_csvlist = ['TOI665.01_594_0.csv']
+p_csvlist = ['TOI267.01_735_1.csv','TOI585.01_352_14.png','TOI615.01_444_2.png','TOI624.01_847_16.png',
+            'TOI665.01_594_0.csv','TOI857.01_462_14.png','TOI1025.01_426_12.png','TOI1092.01_434_19.png',
+            'TOI1283.01_450_7.png','TOI1292.01_204_16.png','TOI1431.01_284_19.png','TOI1924.01_548_11.png',
+            'TOI1976.01_798_5.png','TOI2020.01_445_6.png','TOI2140.01_232_9.png','TOI3460.01_715_7.png',
+            'TOI4606.01_753_12.png']
 df = pd.read_csv('./exofop_tess_tois.csv')
 df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
