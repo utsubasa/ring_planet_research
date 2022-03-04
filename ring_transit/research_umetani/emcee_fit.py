@@ -137,7 +137,7 @@ def plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name):
     ax.add_patch(c2)
     ax.add_patch(e)
     ax.add_patch(e2)
-    ax.set_title(f'chisq={str(ring_res.chisqr)[:6]}, dof={ring_res.nfree}')
+    ax.set_title(f'chisq={chi_square}, dof={len(flux_data)-len(mcmc_df.index)}')
     plt.axis('scaled')
     ax.set_aspect('equal')
     #os.makedirs(f'./lmfit_result/illustration/{TOInumber}', exist_ok=True)
@@ -331,6 +331,8 @@ for p_csv in p_csvlist:
                 theta = mcmc_res_df.at['theta', 'output_value']
                 phi = mcmc_res_df.at['phi', 'output_value']
                 file_name = f'{TOInumber}_{ind}_{try_n}.pdf'
+                chi_square = np.sum(((model-flux_data)/flux_err_data)**2)
+
                 plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name)
                 os.makedirs(f'./mcmc_result/fit_pdata/{TOInumber}', exist_ok=True)
                 mcmc_res_df.to_csv(f'./mcmc_result/fit_pdata/{TOInumber}/{TOInumber}_{ind}_{try_n}.csv', header=True, index=False)
