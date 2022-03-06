@@ -144,6 +144,7 @@ def plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name):
     os.makedirs(f'./mcmc_result/figure/{TOInumber}/illustration', exist_ok=True)
     #plt.savefig(f'./lmfit_result/illustration/{TOInumber}/{file_name}', bbox_inches="tight")
     plt.savefig(f'./mcmc_result/figure/{TOInumber}/illustration/{file_name}', bbox_inches="tight")
+    plt.close()
 
 p_names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
          "b", "norm", "theta", "phi", "tau", "r_in",
@@ -203,7 +204,7 @@ for p_csv in p_csvlist:
     pdic = mcmc_df['input_value'].to_dict()
     mcmc_df = mcmc_df[mcmc_df['vary_flags']==True]
     mcmc_params = mcmc_df.index.tolist()
-    for try_n in range(5):
+    for try_n in range(1):
         mcmc_pvalues = mcmc_df['output_value'].values
         #vary_dic = make_dic(names, vary_flags)
         ###generate initial value for theta, phi
@@ -315,27 +316,12 @@ for p_csv in p_csvlist:
             print("flat chain shape: {0}".format(samples.shape))
             """
             inds = np.random.randint(len(flat_samples), size=100)
+            ###ライトカーブとモデルのプロット
             plt.errorbar(t, flux_data, yerr=flux_err_data, fmt=".k", capsize=0, alpha=0.1)
             for ind in inds:
                 sample = flat_samples[ind]
                 model = ring_model(t, pdic, sample)
                 plt.plot(t, model, "C1", alpha=0.5)
-                ###csvに書き出し###
-                mcmc_res_df = mcmc_df
-                mcmc_res_df['output_value'] = sample
-                #df.to_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/fitting_result_{}_{:.0f}.csv'.format(datetime.datetime.now().strftime('%y%m%d%H%M'), chi_square), header=True, index=False)
-                rp_rs = mcmc_res_df.at['rp_rs', 'output_value']
-                rin_rp = mcmc_res_df.at['r_in', 'output_value']
-                rout_rin = mcmc_res_df.at['r_out', 'output_value']
-                b = mcmc_res_df.at['b', 'output_value']
-                theta = mcmc_res_df.at['theta', 'output_value']
-                phi = mcmc_res_df.at['phi', 'output_value']
-                file_name = f'{TOInumber}_{ind}_{try_n}.pdf'
-                chi_square = np.sum(((model-flux_data)/flux_err_data)**2)
-
-                plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name)
-                os.makedirs(f'./mcmc_result/fit_pdata/{TOInumber}', exist_ok=True)
-                mcmc_res_df.to_csv(f'./mcmc_result/fit_pdata/{TOInumber}/{TOInumber}_{ind}_{try_n}.csv', header=True, index=False)
                 #fit_report = lmfit.fit_report(ring_res)
                 #print(fit_report)
             #plt.plot(t, ymodel, "k", label="truth")
@@ -347,3 +333,22 @@ for p_csv in p_csvlist:
             plt.savefig(f"./mcmc_result/figure/{TOInumber}/fit_result_{try_n}.png")
             ##plt.show()
             plt.close()
+
+            ###ポンチ絵の作成とcsvへの保存
+            for ind in inds:
+                sample = flat_samples[ind]
+                model = ring_model(t, pdic, sample)
+                ###csvに書き出し###
+                mcmc_res_df = mcmc_df
+                mcmc_res_df['output_value'] = sample
+                rp_rs = mcmc_res_df.at['rp_rs', 'output_value']
+                rin_rp = mcmc_res_df.at['r_in', 'output_value']
+                rout_rin = mcmc_res_df.at['r_out', 'output_value']
+                b = mcmc_res_df.at['b', 'output_value']
+                theta = mcmc_res_df.at['theta', 'output_value']
+                phi = mcmc_res_df.at['phi', 'output_value']
+                file_name = f'{TOInumber}_{ind}_{try_n}.pdf'
+                chi_square = np.sum(((model-flux_data)/flux_err_data)**2)
+                plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name)
+                os.makedirs(f'./mcmc_result/fit_pdata/{TOInumber}', exist_ok=True)
+                mcmc_res_df.to_csv(f'./mcmc_result/fit_pdata/{TOInumber}/{TOInumber}_{ind}_{try_n}.csv', header=True, index=False)

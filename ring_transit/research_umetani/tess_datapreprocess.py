@@ -562,6 +562,7 @@ for TOI in TOIlist:
 
     lc = lc_collection.stitch() #initialize lc
 
+    """bls analysis"""
     bls_period = np.linspace(period*0.6, period*1.5, 10000)
     bls = lc.to_periodogram(method='bls',period=bls_period)#oversample_factor=1)\
     print('bls period = ', bls.period_at_max_power)
@@ -591,11 +592,6 @@ for TOI in TOIlist:
     print('analysing: ', TOInumber)
     print('judging whether or not transit is included in the data...')
     time.sleep(1)
-
-    """ターゲットの惑星のtransit time listを作成"""
-    transit_time_list = np.append(np.arange(transit_time, lc.time[-1].value, period), np.arange(transit_time, lc.time[0].value, -period))
-    transit_time_list.sort()
-
 
     """他の惑星がある場合、データに影響を与えているか判断。ならその信号を除去する。"""
     other_p_df = oridf[oridf['TIC ID'] == param_df['TIC ID'].values[0]]
@@ -628,15 +624,14 @@ for TOI in TOIlist:
     folded_lc = folded_lc.remove_nans()
     folded_lc, epoch_all_list = detect_transit_epoch(folded_lc, transit_time, period)
 
-    #値を格納するリストを定義
-    t0dict = {}
-    #time_now_arr = []
-    outliers = []
-    each_lc_list = []
+    """ターゲットの惑星のtransit time listを作成"""
+    transit_time_list = np.append(np.arange(transit_time, lc.time[-1].value, period), np.arange(transit_time, lc.time[0].value, -period))
+    transit_time_list.sort()
 
     """各エポックで外れ値除去、カーブフィッティング"""
     #値を格納するリストの定義
     outliers = []
+    t0dict = {}
     each_lc_list = []
     t0list =[]
     '''
