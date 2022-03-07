@@ -10,14 +10,12 @@ import lightkurve as lk
 from fit_model import model
 import warnings
 import c_compile_ring
-import batman
-import datetime
+#import batman
+#import datetime
 import time
 import emcee
 import corner
 from multiprocessing import Pool
-#from lightkurve import search_targetpixelfile
-from scipy import signal
 from astropy.io import ascii
 import glob
 import os
@@ -320,8 +318,8 @@ for p_csv in p_csvlist:
             plt.errorbar(t, flux_data, yerr=flux_err_data, fmt=".k", capsize=0, alpha=0.1)
             for ind in inds:
                 sample = flat_samples[ind]
-                model = ring_model(t, pdic, sample)
-                plt.plot(t, model, "C1", alpha=0.5)
+                flux_model = ring_model(t, pdic, sample)
+                plt.plot(t, flux_model, "C1", alpha=0.5)
                 #fit_report = lmfit.fit_report(ring_res)
                 #print(fit_report)
             #plt.plot(t, ymodel, "k", label="truth")
@@ -337,7 +335,7 @@ for p_csv in p_csvlist:
             ###ポンチ絵の作成とcsvへの保存
             for ind in inds:
                 sample = flat_samples[ind]
-                model = ring_model(t, pdic, sample)
+                flux_model = ring_model(t, pdic, sample)
                 ###csvに書き出し###
                 mcmc_res_df = mcmc_df
                 mcmc_res_df['output_value'] = sample
@@ -347,7 +345,7 @@ for p_csv in p_csvlist:
                 b = mcmc_res_df.at['b', 'output_value']
                 theta = mcmc_res_df.at['theta', 'output_value']
                 phi = mcmc_res_df.at['phi', 'output_value']
-                chi_square = np.sum(((model-flux_data)/flux_err_data)**2)
+                chi_square = np.sum(((flux_model-flux_data)/flux_err_data)**2)
                 file_name = f'{TOInumber}_{chi_square:.0f}_{try_n}.pdf'
                 plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name)
                 os.makedirs(f'./mcmc_result/fit_pdata/{TOInumber}', exist_ok=True)
