@@ -204,7 +204,7 @@ for p_csv in p_csvlist:
     pdic = mcmc_df['input_value'].to_dict()
     mcmc_df = mcmc_df[mcmc_df['vary_flags']==True]
     mcmc_params = mcmc_df.index.tolist()
-    for try_n in range(1):
+    for try_n in range(5):
         mcmc_pvalues = mcmc_df['output_value'].values
         #vary_dic = make_dic(names, vary_flags)
         ###generate initial value for theta, phi
@@ -347,8 +347,8 @@ for p_csv in p_csvlist:
                 b = mcmc_res_df.at['b', 'output_value']
                 theta = mcmc_res_df.at['theta', 'output_value']
                 phi = mcmc_res_df.at['phi', 'output_value']
-                file_name = f'{TOInumber}_{ind}_{try_n}.pdf'
                 chi_square = np.sum(((model-flux_data)/flux_err_data)**2)
+                file_name = f'{TOInumber}_{chi_square:.0f}_{try_n}.pdf'
                 plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name)
                 os.makedirs(f'./mcmc_result/fit_pdata/{TOInumber}', exist_ok=True)
-                mcmc_res_df.to_csv(f'./mcmc_result/fit_pdata/{TOInumber}/{TOInumber}_{ind}_{try_n}.csv', header=True, index=False)
+                mcmc_res_df.to_csv(f'./mcmc_result/fit_pdata/{TOInumber}/{TOInumber}_{chi_square:.0f}_{try_n}.csv', header=True, index=False)
