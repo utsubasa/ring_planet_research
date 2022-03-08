@@ -480,7 +480,8 @@ each_lc_anomalylist = [102.01,106.01,114.01,123.01,135.01,150.01,163.01,173.01,3
                         2200.01,2222.01,3846.01,4087.01,4486.01]#トランジットが途中で切れてcurvefitによって変なかたちになっているeach_lcを削除したデータ
 mtt_shiftlist = [1092.01,129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1165.01,
                 1236.01,1265.01,1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift　
-
+mtt_shiftlist = [129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1165.01,
+                1236.01,1265.01,1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift　
 
 no_data_list = [4726.01,372.01,352.01,2617.01,2766.01,2969.01,2989.01,2619.01,2626.01,2624.01,2625.01,
                 2622.01,3041.01,2889.01,4543.01,3010.01,2612.01,4463.01,4398.01,4283.01,4145.01,3883.01,
@@ -551,15 +552,8 @@ for TOI in TOIlist:
         else:
             break
     lc_collection = search_result.download_all()
-    try:
-        lc_collection.plot()
-        #plt.savefig(f'{homedir}/lc_collection/TOI{TOI}.png')
-        plt.close()
-    except AttributeError:
-        with open('error_tic.dat', 'a') as f:
-            f.write(TOInumber + '\n')
-        continue
-
+    
+    import pdb; pdb.set_trace()
     lc = lc_collection.stitch() #initialize lc
 
     """bls analysis"""
