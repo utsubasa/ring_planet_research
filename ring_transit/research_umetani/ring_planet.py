@@ -253,27 +253,29 @@ df['TOI'] = df['TOI'].astype(str)
 #TOIlist = ['1265.01']
 df = df.sort_values('Planet SNR', ascending=False)
 df = df.set_index(['TOI'])
-df = df.drop(index=mtt_shiftlist, errors='ignore')
+#df = df.drop(index=mtt_shiftlist, errors='ignore')
 df = df.reset_index()
-
-for TOI in df['TOI'].values:
-#for TOI in mtt_shiftlist:
+mtt_shiftlist = [129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1165.01,1236.01,1265.01,
+                1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift
+#for TOI in df['TOI'].values:
+for TOI in mtt_shiftlist:
 #for TOI in ['4470.01']:
     print(TOI)
-
+    '''
     #ダブり解析防止
     fname = f'TOI{TOI}'
     if fname in done_TOIlist:
         continue
     else:
         pass
-
+    '''
+    TOInumber = 'TOI' + TOI
     param_df = df[df['TOI'] == TOI]
 
     #lm.minimizeのためのparamsのセッティング。これはリングありモデル
     ###parameters setting###
     for index, item in param_df.iterrows():
-        TOInumber = 'TOI' + str(item['TOI'])
+
         try:
             duration = item['Duration (hours)'] / 24
             period = item['Period (days)']

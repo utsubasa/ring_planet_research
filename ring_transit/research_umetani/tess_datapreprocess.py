@@ -292,7 +292,6 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
         t = lc.time.value
         flux = lc.flux.value
         flux_err = lc.flux_err.value
-
         best_res_dict = {}
         for n in range(10):
             params = transit_params_setting(rp_rs, period)
@@ -300,6 +299,7 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
             #time.sleep(2)
             best_res_dict[out.chisqr] = out
         out = sorted(best_res_dict.items())[0][1]
+        ###lc.time = lc.time - out.params['t0'].value t0を補正する場合に使う
         #print(lmfit.fit_report(out))
 
         """remove outliers"""
@@ -480,9 +480,8 @@ each_lc_anomalylist = [102.01,106.01,114.01,123.01,135.01,150.01,163.01,173.01,3
                         2200.01,2222.01,3846.01,4087.01,4486.01]#トランジットが途中で切れてcurvefitによって変なかたちになっているeach_lcを削除したデータ
 mtt_shiftlist = [1092.01,129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1165.01,
                 1236.01,1265.01,1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift　
-mtt_shiftlist = [129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1165.01,
-                1236.01,1265.01,1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift　
-
+mtt_shiftlist = [129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1165.01,1236.01,1265.01,
+                1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift　
 no_data_list = [4726.01,372.01,352.01,2617.01,2766.01,2969.01,2989.01,2619.01,2626.01,2624.01,2625.01,
                 2622.01,3041.01,2889.01,4543.01,3010.01,2612.01,4463.01,4398.01,4283.01,4145.01,3883.01,
                 4153.01,3910.01,3604.01,3972.01,3589.01,3735.01,4079.01,4137.01,3109.01,3321.01,3136.01,
@@ -525,8 +524,8 @@ df = df.reset_index()
 df = df.sort_values('Planet SNR', ascending=False)
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
-TOIlist = ['1148.01']
-TOIlist = mtt_shiftlist
+TOIlist = ['2131.01']
+#TOIlist = mtt_shiftlist
 for TOI in TOIlist:
     TOI = str(TOI)
     param_df = df[df['TOI'] == TOI]
@@ -552,10 +551,8 @@ for TOI in TOIlist:
         else:
             break
     lc_collection = search_result.download_all()
-    
-    import pdb; pdb.set_trace()
     lc = lc_collection.stitch() #initialize lc
-
+    '''
     """bls analysis"""
     bls_period = np.linspace(period*0.6, period*1.5, 10000)
     bls = lc.to_periodogram(method='bls',period=bls_period)#oversample_factor=1)\
@@ -576,6 +573,7 @@ for TOI in TOIlist:
     plt.close()
     continue
     transit_time = bls_transit_time
+    '''
 
     """もしもどれかのパラメータがnanだったらそのTIC or TOIを記録して、処理はスキップする。"""
     pdf = pd.Series([duration, period, transit_time], index=['duration', 'period', 'transit_time'])
@@ -637,7 +635,7 @@ for TOI in TOIlist:
         tmp = lc[lc.time.value > epoch_start]
         each_lc = tmp[tmp.time.value < epoch_end]
         #ax = lc.scatter()
-        #if i == 165:
+        #if i == 9:
             #ax.axvline(mid_transit_time)
     plt.show()
     import pdb; pdb.set_trace()
@@ -682,9 +680,10 @@ for TOI in TOIlist:
     for i, mid_transit_time in enumerate(transit_time_list):
         print(f'epoch: {i}')
         '''
-        if i == 248:
+        if i == 7 or i == 206:
             continue
             '''
+
 
         epoch_start = mid_transit_time - (duration*2.5)
         epoch_end = mid_transit_time + (duration*2.5)
@@ -747,6 +746,7 @@ for TOI in TOIlist:
     ax2.set_ylabel('residuals')
     plt.tight_layout()
     plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
+    #plt.show()
     plt.close()
     cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/bls/{TOInumber}.csv')
 
@@ -758,7 +758,6 @@ for TOI in TOIlist:
     #plt.show()
     plt.close()
     #binned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/binned_lc_data/{TOInumber}.csv')
-
     print(f'Analysis completed: {TOInumber}')
     with open('./done.csv','a') as f:
         f.write(f'{TOI},')
