@@ -260,6 +260,7 @@ mtt_shiftlist = [129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01
 #for TOI in df['TOI'].values:
 for TOI in mtt_shiftlist:
 #for TOI in ['4470.01']:
+    TOI =  str(TOI)
     print(TOI)
     '''
     #ダブり解析防止
