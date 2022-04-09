@@ -500,8 +500,8 @@ no_perioddata_list = [1134.01,1897.01,2423.01,2666.01,4465.01]#exofopの表にpe
 no_signal_list = [2218.01,212.01,1823.01] #トランジットのsignalが無いか、ノイズに埋もれて見えない
 
 #done_list = [4470.01,495.01,423.01,398.01,165.01,1148.01,157.01,1682.01,1612.01,112.01,656.01]
-done_list = os.listdir('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/estimate_period')
-
+done_list = os.listdir('/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/catalog_v')
+import pdb; pdb.set_trace()
 df = df.set_index(['TOI'])
 df = df.drop(index=each_lc_anomalylist)
 df = df.drop(index=mtt_shiftlist, errors='ignore')
@@ -514,8 +514,7 @@ df = df.sort_values('Planet SNR', ascending=False)
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
 
-for TOI in each_lc_anomalylist:
-#for TOI in TOIlist:
+for TOI in TOIlist:
     if f'TOI{TOI}.png' in done_list:
         continue
     TOI = str(TOI)
@@ -641,6 +640,7 @@ for TOI in each_lc_anomalylist:
     import pdb; pdb.set_trace()
     '''
 
+    '''
     #print('fixing t0...')
     print('checking TTV...')
     time.sleep(1)
@@ -668,11 +668,7 @@ for TOI in each_lc_anomalylist:
         _, _, _, t0dict, t0list, _ = transit_fit_and_remove_outliers(each_lc, t0dict, t0list, outliers, estimate_period=True, lc_type='each')
     #transit_time_list = t0list
     _ = estimate_period(t0dict, period) #TTVを調べる。
-
-    print(f'Analysis completed: {TOInumber}')
-    with open('./done.csv','a') as f:
-        f.write(f'{TOI},')
-    continue
+    '''
 
     '''
     ax = lc.scatter()
