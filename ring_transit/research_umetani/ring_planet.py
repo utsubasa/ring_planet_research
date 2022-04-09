@@ -246,7 +246,7 @@ def plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name):
     plt.savefig(f'./lmfit_result/illustration/{TOInumber}/{file_name}', bbox_inches="tight")
 
 #csvfile = './folded_lc_data/TOI2403.01.csv'
-done_TOIlist = os.listdir('./lmfit_result/transit_fit') #ダブリ解析防止
+#done_TOIlist = os.listdir('./lmfit_result/transit_fit') #ダブリ解析防止
 df = pd.read_csv('./exofop_tess_tois.csv')
 df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
@@ -258,8 +258,8 @@ df = df.reset_index()
 mtt_shiftlist = [129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1165.01,1236.01,1265.01,
                 1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift
 #for TOI in df['TOI'].values:
-for TOI in mtt_shiftlist:
-#for TOI in ['4470.01']:
+#for TOI in mtt_shiftlist:
+for TOI in ['811.01','1059.01','959.01']:
     TOI =  str(TOI)
     print(TOI)
     '''
@@ -279,7 +279,8 @@ for TOI in mtt_shiftlist:
 
         try:
             duration = item['Duration (hours)'] / 24
-            period = item['Period (days)']
+            #period = item['Period (days)']
+            period = 18.69286928692869
             transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD
             a_rs=4.602
             b=0.9

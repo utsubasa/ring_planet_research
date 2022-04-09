@@ -299,8 +299,10 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
             #time.sleep(2)
             best_res_dict[out.chisqr] = out
         out = sorted(best_res_dict.items())[0][1]
-        ###lc.time = lc.time - out.params['t0'].value t0を補正する場合に使う
+        #lc.time = lc.time - out.params['t0'].value #t0を補正する場合に使う
         #print(lmfit.fit_report(out))
+        #if i == 558 or i == 559:
+            #import pdb; pdb.set_trace()
 
         """remove outliers"""
         if lc_type == 'each':
@@ -331,9 +333,11 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
                     residuals.errorbar(ax=ax2, color='black', marker='.')
                     ax2.plot(t,np.zeros(len(t)), label='fitting model', color='red')
                     ax2.set_ylabel('residuals')
-                    os.makedirs(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}', exist_ok=True)
+                    #os.makedirs(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}', exist_ok=True)
+                    os.makedirs(f'{homedir}/fitting_result/figure/each_lc/catalog_v/{TOInumber}', exist_ok=True)
                     plt.tight_layout()
-                    plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
+                    #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
+                    plt.savefig(f'{homedir}/fitting_result/figure/each_lc/catalog_v/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
                     #ax.set_xlim(-1, 1)
                     #plt.show()
                     plt.close()
@@ -375,19 +379,24 @@ def estimate_period(t0dict, period):
         fig = plt.figure()
         ax1 = fig.add_subplot(2,1,1)
         ax2 = fig.add_subplot(2,1,2) #for plotting residuals
-        import pdb; pdb.set_trace()
-        ax1.errorbar(x=x, y=y,yerr=yerr, fmt='.k')
+        try:
+            ax1.errorbar(x=x, y=y,yerr=yerr, fmt='.k')
+        except TypeError:
+            ax1.scatter(x=x, y=y, color='r')
         ax1.plot(x, res.intercept + res.slope*x, label='fitted line')
         ax1.text(0.5, 0.2, f'period: {res.slope:.6f} +/- {ts*res.stderr:.6f}', transform=ax1.transAxes)
         ax1.set_xlabel('epoch')
         ax1.set_ylabel('mid transit time[BTJD]')
         residuals = y - (res.intercept + res.slope*x)
-        ax2.errorbar(x=x, y=residuals,yerr=yerr, fmt='.k')
+        try:
+            ax2.errorbar(x=x, y=residuals,yerr=yerr, fmt='.k')
+        except TypeError:
+            ax2.scatter(x=x, y=residuals, color='r')
         ax2.plot(x,np.zeros(len(x)), color='red')
         ax2.set_xlabel('epoch')
         ax2.set_ylabel('residuals')
         plt.tight_layout()
-        plt.savefig(f'{homedir}/fitting_result/figure/esitimate_period/{TOInumber}.png')
+        plt.savefig(f'{homedir}/fitting_result/figure/estimate_period/{TOInumber}.png')
         plt.close()
         return estimated_period
     else:
@@ -478,8 +487,6 @@ each_lc_anomalylist = [102.01,106.01,114.01,123.01,135.01,150.01,163.01,173.01,3
                         934.01,987.01,1019.01,1161.01,1163.01,1176.01,1259.01,1264.01,
                         1274.01,1341.01,1845.01,1861.01,1924.01,1970.01,2000.01,2014.01,2021.01,2131.01,
                         2200.01,2222.01,3846.01,4087.01,4486.01]#トランジットが途中で切れてcurvefitによって変なかたちになっているeach_lcを削除したデータ
-mtt_shiftlist = [1092.01,129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1165.01,
-                1236.01,1265.01,1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift　
 mtt_shiftlist = [129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1165.01,1236.01,1265.01,
                 1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift　
 no_data_list = [4726.01,372.01,352.01,2617.01,2766.01,2969.01,2989.01,2619.01,2626.01,2624.01,2625.01,
@@ -489,44 +496,28 @@ no_data_list = [4726.01,372.01,352.01,2617.01,2766.01,2969.01,2989.01,2619.01,26
                 2616.01,2591.01,2580.01,2346.01,2236.01,2047.01,2109.01,2031.01,2040.01,2046.01,1905.01,
                 2055.01,1518.01,1567.01,1355.01,1498.01,1373.01,628.01,1482.01,1580.01,1388.01,1310.01,
                 1521.01,1123.01] #short がないか、SPOCがないか
+no_perioddata_list = [1134.01,1897.01,2423.01,2666.01,4465.01]#exofopの表にperiodの記載無し。1567.01,1656.01もperiodなかったがこちらはcadence=’short’のデータなし。
+no_signal_list = [2218.01,212.01,1823.01] #トランジットのsignalが無いか、ノイズに埋もれて見えない
 
-done_list = [4470.01,116.01,105.01,112.01,116.01,190.01,195.01,241.01,398.01,
-                413.01,423.01,671.01,744.01,1069.01,1076.01,418.01,391.01,231.01,
-                192.01,143.01,766.01,246.01,250.01,567.01,404.01,490.01,1612.01,
-                1268.01,1173.01,1670.01,1135.01,1257.01,1181.01,4449.01,1823.01,
-                1312.01,1148.01,1165.01,2579.01,1627.01,683.01,1937.01,157.01,
-                4606.01,4612.01,4601.01,2218.01,899.01,4623.01,781.01,1682.01,4516.01,
-                4535.01,4545.01,1494.01,267.01,2403.01,573.01,272.01,675.01,656.01,232.01,
-                481.01,655.01,107.01,483.01,479.01,194.01,477.01,101.01,4486.01,640.01,
-                1107.01,1861.01,924.01,159.01,173.01,1951.01,4420.01,3460.01,165.01,201.01,
-                1924.01,1059.01,905.01,1934.01,4381.01,1976.01,527.01,1025.01,3492.01,
-                212.01,622.01,507.01,780.01,778.01,769.01,4162.01,4059.01,4138.01,3846.01,
-                3960.01,3612.01,4140.01,3849.01,3501.01,495.01,501.01,1478.01,615.01,1909.01,
-                1012.01,966.01,508.01,811.01,2464.01,511.01,624.01,1936.01,559.01,1130.01,
-                264.01,185.01,857.01,182.01,121.01,1425.01,1830.01,665.01,1573.01,1651.01,2126.01,
-                1864.01,1295.01,1251.01,1420.01,2127.01,1825.01,2129.01,2197.01,2020.01,2119.01,
-                1810.01,1796.01,1811.01,1771.01,1779.01,1845.01,2024.01,1826.01,472.01,1455.01,
-                1465.01,1431.01,1300.01,224.01,1150.01,1766.01,585.01,1456.01,453.01,2154.01,
-                2017.01,368.01,1385.01,1302.01,1725.01,621.01,1271.01,587.01,1283.01,147.01,
-                1299.01,1198.01,1198.01,1815.01,767.01,1676.01,959.01,1714.01,1297.01,1767.01,
-                1141.01,1337.01,2025.01,1092.01,1454.01,964.01,590.01,1874.01,1647.01,1419.01,
-                1104.01,1248.01,828.01,645.01,1833.01,1721.01,1458.01,820.01,1615.01,2140.01,
-                1186.01,818.01,984.01,1182.01,433.01,]
+#done_list = [4470.01,495.01,423.01,398.01,165.01,1148.01,157.01,1682.01,1612.01,112.01,656.01]
+done_list = os.listdir('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/estimate_period')
 
-'''
 df = df.set_index(['TOI'])
 df = df.drop(index=each_lc_anomalylist)
 df = df.drop(index=mtt_shiftlist, errors='ignore')
-df = df.drop(index=done_list, errors='ignore')
+#df = df.drop(index=done_list, errors='ignore')
 df = df.drop(index=no_data_list, errors='ignore')
+df = df.drop(index=no_signal_list, errors='ignore')
 df = df.reset_index()
-'''
+
 df = df.sort_values('Planet SNR', ascending=False)
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
-TOIlist = ['2131.01']
-#TOIlist = mtt_shiftlist
-for TOI in TOIlist:
+
+for TOI in each_lc_anomalylist:
+#for TOI in TOIlist:
+    if f'TOI{TOI}.png' in done_list:
+        continue
     TOI = str(TOI)
     param_df = df[df['TOI'] == TOI]
     duration = param_df['Duration (hours)'].values[0] / 24
@@ -550,11 +541,16 @@ for TOI in TOIlist:
             print('HTTPError, retry.')
         else:
             break
+
     lc_collection = search_result.download_all()
-    lc = lc_collection.stitch() #initialize lc
+    try:
+        lc = lc_collection.stitch().remove_nans() #initialize lc
+    except AttributeError:
+        continue
+
     '''
     """bls analysis"""
-    bls_period = np.linspace(period*0.6, period*1.5, 10000)
+    bls_period = np.linspace(10, 50, 10000)
     bls = lc.to_periodogram(method='bls',period=bls_period)#oversample_factor=1)\
     print('bls period = ', bls.period_at_max_power)
     print(f'period = {period}')
@@ -563,7 +559,7 @@ for TOI in TOIlist:
     print('bls duration = ', bls.duration_at_max_power)
     print(f'duration = {duration}')
     #duration = bls.duration_at_max_power.value
-    #period = bls.period_at_max_power.value
+    period = bls.period_at_max_power.value
     bls_transit_time = bls.transit_time_at_max_power.value
     catalog_lc = lc.fold(period=period, epoch_time=transit_time)
     bls_lc = lc.fold(period=period, epoch_time=bls_transit_time)
@@ -572,8 +568,8 @@ for TOI in TOIlist:
     plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/comp_bls/{TOInumber}.png')
     plt.close()
     continue
-    transit_time = bls_transit_time
     '''
+    #transit_time = bls_transit_time
 
     """もしもどれかのパラメータがnanだったらそのTIC or TOIを記録して、処理はスキップする。"""
     pdf = pd.Series([duration, period, transit_time], index=['duration', 'period', 'transit_time'])
@@ -582,9 +578,9 @@ for TOI in TOIlist:
             f.write(f'nan {pdf[pdf.isnull()].index.tolist()}!:{str(TOI)}+ "\n"')
         continue
     print('analysing: ', TOInumber)
+
     print('judging whether or not transit is included in the data...')
     time.sleep(1)
-
     """他の惑星がある場合、データに影響を与えているか判断。ならその信号を除去する。"""
     other_p_df = oridf[oridf['TIC ID'] == param_df['TIC ID'].values[0]]
 
@@ -606,7 +602,7 @@ for TOI in TOIlist:
                 cliped_lc, _ = clip_transit(cliped_lc, others_duration, others_transit_time_list)
         ax = lc.scatter(color='red', label='Other transit signals' )
         cliped_lc.scatter(ax=ax, color='black')
-        plt.savefig(f'//Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/other_transit_signals/{TOInumber}.png')
+        plt.savefig(f'//Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/other_transit_signals/catalog_v/{TOInumber}.png')
         plt.close()
 
 
@@ -618,6 +614,7 @@ for TOI in TOIlist:
 
     """ターゲットの惑星のtransit time listを作成"""
     transit_time_list = np.append(np.arange(transit_time, lc.time[-1].value, period), np.arange(transit_time, lc.time[0].value, -period))
+    transit_time_list = np.unique(transit_time_list)
     transit_time_list.sort()
 
     """各エポックで外れ値除去、カーブフィッティング"""
@@ -627,6 +624,9 @@ for TOI in TOIlist:
     each_lc_list = []
     t0list =[]
     '''
+    """
+    この部分はどのエポックナンバーがどのエポックか見るときに使う。
+    """
     ax = lc.scatter()
     for i, mid_transit_time in enumerate(transit_time_list):
         print(f'epoch: {i}')
@@ -640,8 +640,9 @@ for TOI in TOIlist:
     plt.show()
     import pdb; pdb.set_trace()
     '''
-    '''
-    print('fixing t0...')
+
+    #print('fixing t0...')
+    print('checking TTV...')
     time.sleep(1)
     for i, mid_transit_time in enumerate(transit_time_list):
         print(f'epoch: {i}')
@@ -653,7 +654,8 @@ for TOI in TOIlist:
         #ax.axvline(mid_transit_time)
         #plt.show()
         each_lc = each_lc.fold(period=period, epoch_time=mid_transit_time).remove_nans()
-        #解析中断条件を満たさないかチェック
+
+        """解析中断条件を満たさないかチェック"""
         if len(each_lc) == 0:
             print('no data in this epoch')
             continue
@@ -664,13 +666,19 @@ for TOI in TOIlist:
             print('Satisfies the analysis interruption condition')
             continue
         _, _, _, t0dict, t0list, _ = transit_fit_and_remove_outliers(each_lc, t0dict, t0list, outliers, estimate_period=True, lc_type='each')
-    transit_time_list = t0list
+    #transit_time_list = t0list
     _ = estimate_period(t0dict, period) #TTVを調べる。
 
+    print(f'Analysis completed: {TOInumber}')
+    with open('./done.csv','a') as f:
+        f.write(f'{TOI},')
+    continue
+
+    '''
     ax = lc.scatter()
     for i, mid_transit_time in enumerate(transit_time_list):
         ax.axvline(mid_transit_time, alpha=0.3)
-    plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/check_transit_timing/{TOI}.png')
+    plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/check_transit_timing/catalog_v/{TOI}.png')
     plt.close()
     '''
 
@@ -683,8 +691,6 @@ for TOI in TOIlist:
         if i == 7 or i == 206:
             continue
             '''
-
-
         epoch_start = mid_transit_time - (duration*2.5)
         epoch_end = mid_transit_time + (duration*2.5)
         tmp = lc[lc.time.value > epoch_start]
@@ -745,16 +751,19 @@ for TOI in TOIlist:
     ax2.plot(cleaned_lc.time.value, np.zeros(len(cleaned_lc.time)), color='red', zorder=2)
     ax2.set_ylabel('residuals')
     plt.tight_layout()
-    plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
+    #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
+    plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/catalog_v/{TOInumber}.png')
     #plt.show()
     plt.close()
-    cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/bls/{TOInumber}.csv')
+    #cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/bls/{TOInumber}.csv')
+    cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/catalog_v/{TOInumber}.csv')
 
     binned_lc = cleaned_lc.bin(time_bin_size=3*u.minute)
     ax = plt.subplot(1,1,1)
     binned_lc.errorbar(ax=ax, color='black')
     ax.set_title(TOInumber)
-    plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/binned_lc/figure/{TOInumber}.png')
+    #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/binned_lc/figure/{TOInumber}.png')
+    plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/binned_lc/figure/catalog_v/{TOInumber}.png')
     #plt.show()
     plt.close()
     #binned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/binned_lc_data/{TOInumber}.csv')

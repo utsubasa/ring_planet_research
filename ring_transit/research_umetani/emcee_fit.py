@@ -170,6 +170,8 @@ p_csvlist = ['TOI267.01_735_1.csv','TOI585.01_352_14.csv','TOI615.01_444_2.csv',
             'TOI1283.01_450_7.csv','TOI1292.01_204_16.csv','TOI1431.01_284_19.csv','TOI1924.01_548_11.csv',
             'TOI1976.01_798_5.csv','TOI2020.01_445_6.csv','TOI2140.01_232_9.csv','TOI3460.01_715_7.csv',
             'TOI4606.01_753_12.csv']
+#p_csvlist = ['TOI1963.01_665_6.csv']
+p_csvlist = ['TOI4470.01_0.csv']
 df = pd.read_csv('./exofop_tess_tois.csv')
 df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
