@@ -501,7 +501,6 @@ no_signal_list = [2218.01,212.01,1823.01] #トランジットのsignalが無い�
 
 #done_list = [4470.01,495.01,423.01,398.01,165.01,1148.01,157.01,1682.01,1612.01,112.01,656.01]
 done_list = os.listdir('/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/catalog_v')
-import pdb; pdb.set_trace()
 df = df.set_index(['TOI'])
 df = df.drop(index=each_lc_anomalylist)
 df = df.drop(index=mtt_shiftlist, errors='ignore')

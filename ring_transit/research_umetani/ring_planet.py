@@ -440,7 +440,7 @@ for TOI in ['811.01','1059.01','959.01']:
 
 sys.exit()
 
-
+'''↓emcee_fit.pyに移行
 ###mcmc setting###
 for try_n in range(5):
     mcmc_df = params_df[params_df['vary_flags']==True]
@@ -764,3 +764,4 @@ for try_n in range(5):
         eps_data = np.random.normal(size=t.size, scale=error_scale)
         flux = ymodel + eps_data
         '''
+'''

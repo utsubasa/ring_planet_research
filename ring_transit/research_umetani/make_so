@@ -1,0 +1,3 @@
+gcc -fpic -I/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.8/Headers -I/opt/local/include -o c_compile_ring.o -c c_compile_ring.c
+gcc -undefined dynamic_lookup -bundle -lgsl -lgslcblas c_compile_ring.o -o c_compile_ring.so
+
