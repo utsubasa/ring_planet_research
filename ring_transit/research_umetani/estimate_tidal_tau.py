@@ -21,10 +21,15 @@ import os
 import celerite
 from celerite import terms
 from scipy.optimize import minimize
+import re
 
 warnings.filterwarnings('ignore')
 
+def atoi(text):
+    return int(text) if text.isdigit() else text
 
+def natural_keys(text):
+    return [ atoi(c) for c in re.split(r'(\d+)', text) ]
 
 #if __name__ ==  '__main__':
 homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
@@ -82,7 +87,11 @@ df = pd.merge(df, nasa_df, how='left')
 df['log Mass'] = np.log10(df['pl_masse'])
 
 #lmfit(mcmc)のフィッティングパラメータを読み込む。
-homedir='/Users/u_tsubasa/Dropbox/ring_planet_research/fitting_result/data'
+homedir='/Users/u_tsubasa/Dropbox/ring_planet_research/fitting_result/data/'
+for TOI in df.TOI.values:
+    files = os.listdir(homedir+f'TOI{TOI}')
+    print(sorted(files, key=natural_keys))
+    import pdb; pdb.set_trace()
 
 
 #a、period,Rpの値を使用。aばRsの値を使って単位をAUに戻す
