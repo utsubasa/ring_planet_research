@@ -78,7 +78,7 @@ nasa_df = nasa_df[nasa_df.index < 124]
 nasa_df['TIC ID'] = nasa_df['tic_id'].apply(lambda x: x[4:])
 nasa_df['TIC ID'] = nasa_df['TIC ID'].astype(int)
 df['log Period'] = np.log10(df['Period (days)'])
-df = df.merge(nasa_df, on='TIC ID')
+df = pd.merge(df, nasa_df, how='left')
 df['log Mass'] = np.log10(df['pl_masse'])
 
 #lmfit(mcmc)のフィッティングパラメータを読み込む。
