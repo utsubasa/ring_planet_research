@@ -502,8 +502,8 @@ no_signal_list = [2218.01,212.01,1823.01] #トランジットのsignalが無い�
 #done_list = [4470.01,495.01,423.01,398.01,165.01,1148.01,157.01,1682.01,1612.01,112.01,656.01]
 done_list = os.listdir('/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/catalog_v')
 df = df.set_index(['TOI'])
-df = df.drop(index=each_lc_anomalylist)
-df = df.drop(index=mtt_shiftlist, errors='ignore')
+#df = df.drop(index=each_lc_anomalylist)
+#df = df.drop(index=mtt_shiftlist, errors='ignore')
 #df = df.drop(index=done_list, errors='ignore')
 df = df.drop(index=no_data_list, errors='ignore')
 df = df.drop(index=no_signal_list, errors='ignore')
@@ -512,7 +512,33 @@ df = df.reset_index()
 df = df.sort_values('Planet SNR', ascending=False)
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
-
+'''
+plt.scatter(df['Period (days)'],df['Planet Radius (R_Earth)'], color='k')
+plt.xscale('log')
+plt.xlabel('Period[days]')
+plt.ylabel('Radius[Earth Radii]')
+plt.show()
+plt.scatter(df['Period (days)'],df['Planet Eq Temp (K)'], color='k')
+plt.xscale('log')
+plt.xlabel('Period[days]')
+plt.ylabel('Planet Eq Temp (K)')
+plt.show()
+'''
+nasa_df = pd.read_csv('/Users/u_tsubasa/Downloads/PS_2022.04.14_04.34.07.csv')
+nasa_df = nasa_df[nasa_df.index < 124]
+nasa_df['TIC ID'] = nasa_df['tic_id'].apply(lambda x: x[4:])
+nasa_df['TIC ID'] = nasa_df['TIC ID'].astype(int)
+df['log Period'] = np.log10(df['Period (days)'])
+df = df.merge(nasa_df, on='TIC ID')
+sns.pairplot(df[['pl_orbsmax', 'pl_massj']])
+df['log Mass'] = np.log10(df['pl_masse'])
+sns.pairplot(df[['pl_dens', 'pl_eqt', 'log Period']])
+sns.pairplot(df[['Planet Radius (R_Earth)', 'log Mass']])
+pairdf = df[['log Period', 'Planet Radius (R_Earth)', 'Planet SNR', 'Stellar Distance (pc)', 'Stellar Teff (K)', 'Stellar Radius (R_Sun)', 'Stellar Mass (M_Sun)', 'pl_orbsmax']]
+paridf = pairdf[~pairdf['pl_orbsmax'].isnull()]
+sns.pairplot(pairdf)
+plt.show()
+import pdb; pdb.set_trace()
 for TOI in TOIlist:
     if f'TOI{TOI}.png' in done_list:
         continue
@@ -763,5 +789,3 @@ for TOI in TOIlist:
     plt.close()
     #binned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/binned_lc_data/{TOInumber}.csv')
     print(f'Analysis completed: {TOInumber}')
-    with open('./done.csv','a') as f:
-        f.write(f'{TOI},')
