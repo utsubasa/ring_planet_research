@@ -157,7 +157,7 @@ maxes = [1.0, 1.0, 0.1, 100.0, 1.0, 100.0,
          3.0, 0.1, 0.1, 0.0, 0.0]
 
 vary_flags = [True, True, False, False, True, True,
-              True, False, True, True, False, True,
+              True, False, False, True, False, True,
               True, False, False, False, False]
 
 
@@ -171,7 +171,8 @@ p_csvlist = ['TOI267.01_735_1.csv','TOI585.01_352_14.csv','TOI615.01_444_2.csv',
             'TOI1976.01_798_5.csv','TOI2020.01_445_6.csv','TOI2140.01_232_9.csv','TOI3460.01_715_7.csv',
             'TOI4606.01_753_12.csv']
 #p_csvlist = ['TOI1963.01_665_6.csv']
-p_csvlist = ['TOI4470.01_0.csv']
+#p_csvlist = ['TOI4470.01_0.csv']
+p_csvlist = ['TOI267.01_735_1.csv']
 df = pd.read_csv('./exofop_tess_tois.csv')
 df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
@@ -202,14 +203,15 @@ for p_csv in p_csvlist:
     #mcmc_df = pd.read_csv(f'./mcmc_result/fit_pdata/{p_csv}')
     mcmc_df.index = p_names
     pdic = mcmc_df['input_value'].to_dict()
+    mcmc_df.at['theta', 'output_value'] = 0
+    mcmc_df.at['theta', 'vary_flags'] = False
     mcmc_df = mcmc_df[mcmc_df['vary_flags']==True]
     mcmc_params = mcmc_df.index.tolist()
     for try_n in range(5):
-        mcmc_pvalues = mcmc_df['output_value'].values
-        #vary_dic = make_dic(names, vary_flags)
         ###generate initial value for theta, phi
-        mcmc_df.at['theta', 'output_value'] = np.random.uniform(1e-5,np.pi-1e-5)
+        #mcmc_df.at['theta', 'output_value'] = np.random.uniform(0.0,np.pi)
         mcmc_df.at['phi', 'output_value'] = np.random.uniform(0.0,np.pi)
+        mcmc_pvalues = mcmc_df['output_value'].values
         print('mcmc_params: ', mcmc_params)
         print('mcmc_pvalues: ', mcmc_pvalues)
         pos = mcmc_pvalues + 1e-5 * np.random.randn(32, len(mcmc_pvalues))
@@ -345,10 +347,10 @@ for p_csv in p_csvlist:
                 rin_rp = mcmc_res_df.at['r_in', 'output_value']
                 rout_rin = mcmc_res_df.at['r_out', 'output_value']
                 b = mcmc_res_df.at['b', 'output_value']
-                theta = mcmc_res_df.at['theta', 'output_value']
+                #theta = mcmc_res_df.at['theta', 'output_value']
                 phi = mcmc_res_df.at['phi', 'output_value']
                 chi_square = np.sum(((flux_model-flux_data)/flux_err_data)**2)
                 file_name = f'{TOInumber}_{chi_square:.0f}_{try_n}.pdf'
-                plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name)
+                plot_ring(rp_rs, rin_rp, rout_rin, b, 0, phi, file_name)
                 os.makedirs(f'./mcmc_result/fit_pdata/{TOInumber}', exist_ok=True)
                 mcmc_res_df.to_csv(f'./mcmc_result/fit_pdata/{TOInumber}/{TOInumber}_{chi_square:.0f}_{try_n}.csv', header=True, index=False)
