@@ -257,9 +257,10 @@ df = df.set_index(['TOI'])
 df = df.reset_index()
 mtt_shiftlist = [129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1165.01,1236.01,1265.01,
                 1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift
-for TOI in df['TOI'].values:
+#for TOI in df['TOI'].values:
 #for TOI in mtt_shiftlist:
 #for TOI in ['811.01','1059.01','959.01']:
+for TOI in ['811.01']:
     TOI =  str(TOI)
     print(TOI)
     '''
