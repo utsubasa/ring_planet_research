@@ -153,7 +153,7 @@ mins = [0.0, 0.0, -0.1, 0.0, 0.003, 1.0,
         1.1, -0.1, -0.1, 0.0, 0.0]
 
 maxes = [1.0, 1.0, 0.1, 100.0, 1.0, 100.0,
-         1.0, 1.1, np.pi, np.pi, 1.0, 3.0,
+         1.0, 1.1, np.pi+1e-5, np.pi, 1.0, 3.0,
          3.0, 0.1, 0.1, 0.0, 0.0]
 
 vary_flags = [True, True, False, False, True, True,
@@ -172,7 +172,7 @@ p_csvlist = ['TOI267.01_735_1.csv','TOI585.01_352_14.csv','TOI615.01_444_2.csv',
             'TOI4606.01_753_12.csv']
 #p_csvlist = ['TOI1963.01_665_6.csv']
 #p_csvlist = ['TOI4470.01_0.csv']
-p_csvlist = ['TOI267.01_735_1.csv']
+#p_csvlist = ['TOI267.01_735_1.csv']
 df = pd.read_csv('./exofop_tess_tois.csv')
 df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
@@ -203,7 +203,7 @@ for p_csv in p_csvlist:
     #mcmc_df = pd.read_csv(f'./mcmc_result/fit_pdata/{p_csv}')
     mcmc_df.index = p_names
     pdic = mcmc_df['input_value'].to_dict()
-    pdic['theta'] = 0
+    pdic['theta'] = np.pi
     mcmc_df = mcmc_df[mcmc_df['vary_flags']==True]
     mcmc_params = mcmc_df.index.tolist()
     for try_n in range(5):
