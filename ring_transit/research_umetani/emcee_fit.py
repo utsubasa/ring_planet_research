@@ -203,8 +203,7 @@ for p_csv in p_csvlist:
     #mcmc_df = pd.read_csv(f'./mcmc_result/fit_pdata/{p_csv}')
     mcmc_df.index = p_names
     pdic = mcmc_df['input_value'].to_dict()
-    mcmc_df.at['theta', 'output_value'] = 0
-    mcmc_df.at['theta', 'vary_flags'] = False
+    pdic['theta'] = 0
     mcmc_df = mcmc_df[mcmc_df['vary_flags']==True]
     mcmc_params = mcmc_df.index.tolist()
     for try_n in range(5):
@@ -351,6 +350,6 @@ for p_csv in p_csvlist:
                 phi = mcmc_res_df.at['phi', 'output_value']
                 chi_square = np.sum(((flux_model-flux_data)/flux_err_data)**2)
                 file_name = f'{TOInumber}_{chi_square:.0f}_{try_n}.pdf'
-                plot_ring(rp_rs, rin_rp, rout_rin, b, 0, phi, file_name)
+                plot_ring(rp_rs, rin_rp, rout_rin, b, np.pi*2, phi, file_name)
                 os.makedirs(f'./mcmc_result/fit_pdata/{TOInumber}', exist_ok=True)
                 mcmc_res_df.to_csv(f'./mcmc_result/fit_pdata/{TOInumber}/{TOInumber}_{chi_square:.0f}_{try_n}.csv', header=True, index=False)
