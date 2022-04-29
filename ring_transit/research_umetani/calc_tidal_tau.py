@@ -48,7 +48,7 @@ def calc_damp_tau(p_data,df):
     kp=1.5 #Love number
 
     Teff = df['Stellar Teff (K)'].iloc[-1]
-    Rs_cm = df['Stellar Radius (R_Sun)'].iloc[-1]* 6.9634*np.power(10.0, 10) #[cm]
+    Rs_cm = df['Stellar Radius (R_Sun)'].iloc[-1]* 6.9634e+10 #[cm]
     Rs_earth = df['Stellar Radius (R_Sun)'].iloc[-1]* 109 #[R_Earth]
     Ms = df['Stellar Mass (M_Sun)'].iloc[-1]
     Ms_kg = Ms*1.9891*np.power(10.0, 30) #[kg]
@@ -60,13 +60,14 @@ def calc_damp_tau(p_data,df):
     a_cm = a_rs*Rs_cm
 
     '''カタログ値の惑星質量を使う場合'''
-    Mp = df['pl_masse'].iloc[-1]*5.972*np.power(10.0, 24) #カタログ値。[kg]
+    Mp = df['pl_masse'].iloc[-1]*5.972e+24 #カタログ値。[kg]
+    import pdb; pdb.set_trace()
     if np.isnan(Mp):
         '''カタログ値の惑星質量を使わない場合'''
-        sigma_sb = 5.67 * np.power(10.0, -5)
-        F_inc = (sigma_sb * Teff**4 * Rs_cm**2) / (4* np.pi * a_cm**2)
-        Rp_earth = rp_cm/6637100000 #[R_earth]
-        Mp = (0.337*np.power(Rp_earth, 1/0.53)*F_inc)*5.972*np.power(10.0, 24) #[kg]
+        sigma_sb = 5.67e-5
+        F_inc = (sigma_sb * (Teff**4) * (Rs_cm**2)) / (4* np.pi * (a_cm**2))
+        Rp_earth = rp_cm/6378e+5 #[R_earth]
+        Mp = (0.337*np.power(Rp_earth, 1/0.53)*np.power(F_inc, 0.03/0.53))*5.972e+24 #[kg]
 
     return (2*c*q/(3*kp)) * (Mp/Ms_kg) * np.power((a_rs/rp_rs),3) * (porb/(2*np.pi))
 
