@@ -171,7 +171,7 @@ p_csvlist = ['TOI267.01_735_1.csv','TOI585.01_352_14.csv','TOI615.01_444_2.csv',
             'TOI1976.01_798_5.csv','TOI2020.01_445_6.csv','TOI2140.01_232_9.csv','TOI3460.01_715_7.csv',
             'TOI4606.01_753_12.csv']
 #p_csvlist = ['TOI1963.01_665_6.csv']
-p_csvlist = ['TOI4470.01_0.csv']
+#p_csvlist = ['TOI4470.01_0.csv']
 #p_csvlist = ['TOI267.01_735_1.csv']
 df = pd.read_csv('./exofop_tess_tois.csv')
 df = df[df['Planet SNR']>100]
@@ -181,8 +181,8 @@ df['TOI'] = df['TOI'].astype(str)
 #ここはファイル名を要素にしたリストでfor loop
 for p_csv in p_csvlist:
     #dataの呼び出し
-    #TOInumber, _, _ = p_csv.split('_')
-    TOInumber, _ = p_csv.split('_')
+    TOInumber, _, _ = p_csv.split('_')
+    #TOInumber, _ = p_csv.split('_')
     param_df = df[df['TOI'] == TOInumber[3:]]
     duration = param_df['Duration (hours)'].values / 24
     csvfile = f'./folded_lc_data/{TOInumber}.csv'
@@ -336,6 +336,7 @@ for p_csv in p_csvlist:
             plt.savefig(f"./mcmc_result/figure/{TOInumber}/fit_result_{try_n}.png")
             ##plt.show()
             plt.close()
+            
 
             ###ポンチ絵の作成とcsvへの保存
             for ind in inds:
