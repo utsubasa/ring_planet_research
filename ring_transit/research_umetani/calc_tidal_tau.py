@@ -61,7 +61,7 @@ def calc_damp_tau(p_data,df):
 
     '''カタログ値の惑星質量を使う場合'''
     Mp = df['pl_masse'].iloc[-1]*5.972e+24 #カタログ値。[kg]
-    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
     if np.isnan(Mp):
         '''カタログ値の惑星質量を使わない場合'''
         sigma_sb = 5.67e-5
@@ -111,6 +111,9 @@ for TOI in TOIlist:
     try:
         files = os.listdir(f'{homedir}/TOI{TOI}')
     except FileNotFoundError:
+        df = df.set_index(['TOI'])
+        df = df.drop(TOI)
+        df = df.reset_index()
         continue
     try:
         files.remove('.DS_Store')
@@ -121,5 +124,8 @@ for TOI in TOIlist:
     tau = calc_damp_tau(p_data,TOIdf)
     taulist.append(tau)
 #結果をstellar ageと比較。
-
+df['tdamp']=taulist
+df[~df['st_age'].isnull()][['TOI','st_age','tdamp']]
 import pdb; pdb.set_trace()
+mcmc_list=['267.01','585.01','615.01','624.01','665.01','857.01','1025.01','1092.01','1283.01','1292.01','1431.01','1924.01','1963.01','1976.01','2020.01','2140.01','3460.01','4606.01','1963.01']
+df.loc[mcmc_list, :][['TOI','st_age','tdamp', 'pl_orbsmax']]

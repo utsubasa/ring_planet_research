@@ -333,11 +333,13 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
                     residuals.errorbar(ax=ax2, color='black', marker='.')
                     ax2.plot(t,np.zeros(len(t)), label='fitting model', color='red')
                     ax2.set_ylabel('residuals')
-                    #os.makedirs(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}', exist_ok=True)
-                    os.makedirs(f'{homedir}/fitting_result/figure/each_lc/catalog_v/{TOInumber}', exist_ok=True)
                     plt.tight_layout()
+                    #os.makedirs(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}', exist_ok=True)
                     #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
-                    plt.savefig(f'{homedir}/fitting_result/figure/each_lc/catalog_v/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
+                    #os.makedirs(f'{homedir}/fitting_result/figure/each_lc/catalog_v/{TOInumber}', exist_ok=True)
+                    #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/catalog_v/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
+                    os.makedirs(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}', exist_ok=True)
+                    plt.savefig(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
                     #ax.set_xlim(-1, 1)
                     #plt.show()
                     plt.close()
@@ -396,7 +398,8 @@ def estimate_period(t0dict, period):
         ax2.set_xlabel('epoch')
         ax2.set_ylabel('residuals')
         plt.tight_layout()
-        plt.savefig(f'{homedir}/fitting_result/figure/estimate_period/{TOInumber}.png')
+        #plt.savefig(f'{homedir}/fitting_result/figure/estimate_period/{TOInumber}.png')
+        plt.savefig(f'{homedir}/fitting_result/figure/estimate_period/bls/{TOInumber}.png')
         plt.close()
         return estimated_period
     else:
@@ -410,8 +413,10 @@ def curve_fitting(each_lc, duration, out, each_lc_list):
     #poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0)
     result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
     result.plot()
-    os.makedirs(f'{homedir}/fitting_result/figure/curvefit/{TOInumber}', exist_ok=True)
-    plt.savefig(f'{homedir}/fitting_result/figure/curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
+    #os.makedirs(f'{homedir}/fitting_result/figure/curvefit/{TOInumber}', exist_ok=True)
+    #plt.savefig(f'{homedir}/fitting_result/figure/curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
+    os.makedirs(f'{homedir}/fitting_result/figure/curvefit/bls/{TOInumber}', exist_ok=True)
+    plt.savefig(f'{homedir}/fitting_result/figure/curvefit/bls/{TOInumber}/{TOInumber}_{str(i)}.png')
     #plt.show()
     plt.close()
     poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
@@ -427,8 +432,10 @@ def curve_fitting(each_lc, duration, out, each_lc_list):
     each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
     each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
     each_lc.errorbar()
-    os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}', exist_ok=True)
-    plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
+    #os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}', exist_ok=True)
+    #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
+    os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/bls/{TOInumber}', exist_ok=True)
+    plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/bls/{TOInumber}/{TOInumber}_{str(i)}.png')
     plt.close()
     each_lc_list.append(each_lc)
     return each_lc_list
@@ -513,35 +520,21 @@ df = df.sort_values('Planet SNR', ascending=False)
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
 '''
-plt.scatter(df['Period (days)'],df['Planet Radius (R_Earth)'], color='k')
-plt.xscale('log')
-plt.xlabel('Period[days]')
-plt.ylabel('Radius[Earth Radii]')
-plt.show()
-plt.scatter(df['Period (days)'],df['Planet Eq Temp (K)'], color='k')
-plt.xscale('log')
-plt.xlabel('Period[days]')
-plt.ylabel('Planet Eq Temp (K)')
-plt.show()
-'''
 nasa_df = pd.read_csv('/Users/u_tsubasa/Downloads/PS_2022.04.14_04.34.07.csv')
 nasa_df = nasa_df[nasa_df.index < 124]
 nasa_df['TIC ID'] = nasa_df['tic_id'].apply(lambda x: x[4:])
 nasa_df['TIC ID'] = nasa_df['TIC ID'].astype(int)
 df['log Period'] = np.log10(df['Period (days)'])
 df = df.merge(nasa_df, on='TIC ID')
-sns.pairplot(df[['pl_orbsmax', 'pl_massj']])
-df['log Mass'] = np.log10(df['pl_masse'])
-sns.pairplot(df[['pl_dens', 'pl_eqt', 'log Period']])
-sns.pairplot(df[['Planet Radius (R_Earth)', 'log Mass']])
-pairdf = df[['log Period', 'Planet Radius (R_Earth)', 'Planet SNR', 'Stellar Distance (pc)', 'Stellar Teff (K)', 'Stellar Radius (R_Sun)', 'Stellar Mass (M_Sun)', 'pl_orbsmax']]
-paridf = pairdf[~pairdf['pl_orbsmax'].isnull()]
-sns.pairplot(pairdf)
-plt.show()
 import pdb; pdb.set_trace()
-for TOI in TOIlist:
+'''
+#for TOI in TOIlist:
+#for TOI in ['1148.01']:
+for TOI in ['845.01']:
+    '''
     if f'TOI{TOI}.png' in done_list:
         continue
+    '''
     TOI = str(TOI)
     param_df = df[df['TOI'] == TOI]
     duration = param_df['Duration (hours)'].values[0] / 24
@@ -571,8 +564,7 @@ for TOI in TOIlist:
         lc = lc_collection.stitch().remove_nans() #initialize lc
     except AttributeError:
         continue
-
-    '''
+    
     """bls analysis"""
     bls_period = np.linspace(10, 50, 10000)
     bls = lc.to_periodogram(method='bls',period=bls_period)#oversample_factor=1)\
@@ -583,17 +575,16 @@ for TOI in TOIlist:
     print('bls duration = ', bls.duration_at_max_power)
     print(f'duration = {duration}')
     #duration = bls.duration_at_max_power.value
-    period = bls.period_at_max_power.value
+    #period = bls.period_at_max_power.value
     bls_transit_time = bls.transit_time_at_max_power.value
+    
     catalog_lc = lc.fold(period=period, epoch_time=transit_time)
     bls_lc = lc.fold(period=period, epoch_time=bls_transit_time)
     ax = catalog_lc[np.abs(catalog_lc.time.value)<1.0].scatter(label='catalog t0')
     bls_lc[np.abs(bls_lc.time.value)<1.0].scatter(ax=ax,color='red', label='BLS t0')
     plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/comp_bls/{TOInumber}.png')
     plt.close()
-    continue
-    '''
-    #transit_time = bls_transit_time
+    transit_time = bls_transit_time
 
     """もしもどれかのパラメータがnanだったらそのTIC or TOIを記録して、処理はスキップする。"""
     pdf = pd.Series([duration, period, transit_time], index=['duration', 'period', 'transit_time'])
@@ -626,7 +617,7 @@ for TOI in TOIlist:
                 cliped_lc, _ = clip_transit(cliped_lc, others_duration, others_transit_time_list)
         ax = lc.scatter(color='red', label='Other transit signals' )
         cliped_lc.scatter(ax=ax, color='black')
-        plt.savefig(f'//Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/other_transit_signals/catalog_v/{TOInumber}.png')
+        plt.savefig(f'//Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/other_transit_signals/{TOInumber}.png')
         plt.close()
 
 
@@ -708,10 +699,10 @@ for TOI in TOIlist:
 
     for i, mid_transit_time in enumerate(transit_time_list):
         print(f'epoch: {i}')
-        '''
-        if i == 7 or i == 206:
+        
+        if i == 164:
             continue
-            '''
+            
         epoch_start = mid_transit_time - (duration*2.5)
         epoch_end = mid_transit_time + (duration*2.5)
         tmp = lc[lc.time.value > epoch_start]
@@ -773,18 +764,19 @@ for TOI in TOIlist:
     ax2.set_ylabel('residuals')
     plt.tight_layout()
     #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
-    plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/catalog_v/{TOInumber}.png')
-    #plt.show()
+    #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/catalog_v/{TOInumber}.png')
+    plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/bls/{TOInumber}.png')
     plt.close()
-    #cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/bls/{TOInumber}.csv')
-    cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/catalog_v/{TOInumber}.csv')
+    cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/bls/{TOInumber}.csv')
+    #cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/catalog_v/{TOInumber}.csv')
+    #cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/{TOInumber}.csv')
 
     binned_lc = cleaned_lc.bin(time_bin_size=3*u.minute)
     ax = plt.subplot(1,1,1)
     binned_lc.errorbar(ax=ax, color='black')
     ax.set_title(TOInumber)
     #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/binned_lc/figure/{TOInumber}.png')
-    plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/binned_lc/figure/catalog_v/{TOInumber}.png')
+    #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/binned_lc/figure/catalog_v/{TOInumber}.png')
     #plt.show()
     plt.close()
     #binned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/binned_lc_data/{TOInumber}.csv')
