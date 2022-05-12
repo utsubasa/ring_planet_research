@@ -165,7 +165,7 @@ params_df = pd.DataFrame(list(zip(mins, maxes)), columns=['mins', 'maxes'], inde
 params_df['vary_flags'] = vary_flags
 df_for_mcmc = params_df[params_df['vary_flags']==True]
 
-p_csvlist = ['TOI267.01_735_1.csv','TOI585.01_352_14.csv','TOI615.01_444_2.csv','TOI624.01_847_16.csv',
+mcmc_p_csvlist = ['TOI267.01_735_1.csv','TOI585.01_352_14.csv','TOI615.01_444_2.csv','TOI624.01_847_16.csv',
             'TOI665.01_594_0.csv','TOI857.01_462_14.csv','TOI1025.01_426_12.csv','TOI1092.01_434_19.csv',
             'TOI1283.01_450_7.csv','TOI1292.01_204_16.csv','TOI1431.01_284_19.csv','TOI1924.01_548_11.csv',
             'TOI1976.01_798_5.csv','TOI2020.01_445_6.csv','TOI2140.01_232_9.csv','TOI3460.01_715_7.csv',
@@ -173,13 +173,49 @@ p_csvlist = ['TOI267.01_735_1.csv','TOI585.01_352_14.csv','TOI615.01_444_2.csv',
 #p_csvlist = ['TOI1963.01_665_6.csv']
 #p_csvlist = ['TOI4470.01_0.csv']
 #p_csvlist = ['TOI267.01_735_1.csv']
+
+
+p_csv_list1 = ['TOI3612.01_139_1.csv', 'TOI453.01_593_5.csv', 'TOI157.01_166_10.csv', 'TOI1796.01_143_17.csv', 'TOI1265.01_376_13.csv', 'TOI423.01_320_0.csv', 'TOI1134.01_876_10.csv', 'TOI2126.01_116_0.csv', 
+              'TOI1478.01_241_8.csv', 'TOI1937.01_132_6.csv', 'TOI2131.01_371_9.csv', 'TOI924.01_216_0.csv', 'TOI677.01_221_0.csv', 'TOI1825.01_2750_3.csv']
+p_csv_list2 = ['TOI4059.01_158_0.csv', 'TOI527.01_321_3.csv', 'TOI1456.01_1226_8.csv', 'TOI2579.01_381_8.csv', 'TOI1615.01_252_5.csv', 'TOI1936.01_282_16.csv', 'TOI199.01_674_17.csv', 'TOI4623.01_226_11.csv', 
+              'TOI508.01_398_7.csv', 'TOI818.01_164_8.csv', 'TOI2127.01_693_16.csv', 'TOI1135.01_2505_13.csv', 'TOI1264.01_43612_5.csv', 'TOI820.01_352_10.csv']
+p_csv_list3 = ['TOI1951.01_299_11.csv', 'TOI1833.01_488_12.csv', 'TOI1670.01_1786_3.csv', 'TOI822.01_390_17.csv', 'TOI1454.01_464_0.csv', 'TOI1826.01_125_7.csv', 'TOI212.01_317_7.csv', 'TOI143.01_362_5.csv', 
+              'TOI1150.01_2398_17.csv', 'TOI683.01_207_8.csv', 'TOI418.01_145_2.csv', 'TOI766.01_253_0.csv', 'TOI845.01_530_17.csv', 'TOI1271.01_2046_12.csv']
+p_csv_list4 = ['TOI1934.01_554_14.csv', 'TOI1270.01_141_4.csv', 'TOI1312.01_386_0.csv', 'TOI738.01_196_1.csv', 'TOI767.01_301_10.csv', 'TOI1425.01_321_3.csv', 'TOI1455.01_204_2.csv', 'TOI834.01_315_3.csv', 
+              'TOI4138.01_375_12.csv', 'TOI1151.01_473_2.csv', 'TOI3846.01_171_1.csv', 'TOI2021.01_254_5.csv', 'TOI675.01_755_9.csv', 'TOI1830.01_1305_14.csv']
+p_csv_list5 = ['TOI391.01_213_17.csv', 'TOI4516.01_152_12.csv', 'TOI2154.01_196_3.csv', 'TOI1248.01_158_4.csv', 'TOI349.01_324_9.csv', 'TOI2025.01_304_18.csv', 'TOI671.01_487_4.csv', 'TOI1823.01_5979_3.csv', 
+              'TOI1612.01_223_18.csv','TOI1274.01_245_8.csv', 'TOI121.01_282_9.csv', 'TOI1767.01_545_7.csv', 'TOI1050.01_398_11.csv', 'TOI774.01_120_6.csv']
+p_csv_list6 = ['TOI4470.01_720_7.csv', 'TOI1682.01_453_0.csv', 'TOI1419.01_138_3.csv', 'TOI1909.01_273_6.csv', 'TOI2200.01_261_7.csv', 'TOI201.01_3670_0.csv', 'TOI4486.01_901_11.csv', 'TOI150.01_564_9.csv', 
+              'TOI1845.01_160_4.csv', 'TOI1766.01_499_2.csv', 'TOI1295.01_303_16.csv', 'TOI1300.01_365_6.csv', 'TOI934.01_166_0.csv', 'TOI4449.01_135_2.csv']
+p_csv_list7 = ['TOI1771.01_491_8.csv', 'TOI1420.01_233_2.csv', 'TOI433.01_165_1.csv', 'TOI1019.01_439_6.csv', 'TOI4087.01_283_16.csv', 'TOI4162.01_439_0.csv', 'TOI2119.01_257_7.csv', 'TOI899.01_270_8.csv', 
+              'TOI1069.01_198_0.csv', 'TOI2024.01_381_0.csv', 'TOI147.01_196_7.csv', 'TOI264.01_337_2.csv', 'TOI135.01_452_19.csv', 'TOI1676.01_89_3.csv']
+p_csv_list8 = ['TOI1714.01_394_13.csv', 'TOI758.01_739_5.csv', 'TOI1141.01_5997_10.csv', 'TOI1385.01_3345_3.csv', 'TOI479.01_196_1.csv', 'TOI780.01_205_9.csv', 'TOI1302.01_389_9.csv', 'TOI1297.01_307_10.csv', 
+              'TOI1130.01_280_10.csv', 'TOI781.01_283_2.csv', 'TOI1198.01_1589_14.csv', 'TOI272.01_351_6.csv', 'TOI123.01_194036_14.csv', 'TOI1259.01_157_0.csv']
+p_csv_list9 = ['TOI842.01_128_4.csv', 'TOI182.01_189_3.csv', 'TOI224.01_49685_0.csv', 'TOI1810.01_166_2.csv', 'TOI1651.01_286_4.csv', 'TOI471.01_259_18.csv', 'TOI1268.01_325_2.csv', 'TOI105.01_380_1.csv', 
+              'TOI959.01_181_3.csv', 'TOI3849.01_211_7.csv', 'TOI625.01_259_4.csv', 'TOI112.01_261_15.csv', 'TOI195.01_264_10.csv', 'TOI1186.01_1826_4.csv']
+p_csv_list10 = ['TOI655.01_129_0.csv', 'TOI194.01_421_0.csv', 'TOI232.01_193_3.csv', 'TOI1647.01_1287_3.csv', 'TOI1725.01_146_1.csv', 'TOI163.01_360_0.csv', 'TOI2000.01_330_9.csv', 'TOI769.01_317_1.csv', 
+              'TOI490.01_328_17.csv', 'TOI1012.01_204_12.csv', 'TOI505.01_367_0.csv', 'TOI1251.01_308_6.csv', 'TOI3492.01_334_7.csv', 'TOI4601.01_334_0.csv'] 
+p_csv_list11 = ['TOI1148.01_3492_1.csv', 'TOI1861.01_8245_15.csv', 'TOI368.01_278_0.csv', 'TOI1494.01_136_1.csv', 'TOI1811.01_171_4.csv', 'TOI1236.01_282_2.csv', 'TOI2017.01_438_14.csv', 'TOI1573.01_651_1.csv', 
+              'TOI2403.01_428_11.csv', 'TOI4545.01_216_2.csv', 'TOI159.01_438_7.csv', 'TOI106.01_401_9.csv', 'TOI3960.01_207_0.csv', 'TOI1165.01_181_5.csv']
+p_csv_list12 = ['TOI472.01_112_9.csv', 'TOI4535.01_253_13.csv', 'TOI129.01_95_1.csv', 'TOI1341.01_237_3.csv', 'TOI2197.01_517_10.csv', 'TOI507.01_93_0.csv', 'TOI656.01_92_15.csv', 'TOI2464.01_252_3.csv', 
+              'TOI1874.01_482_8.csv', 'TOI905.01_183_11.csv', 'TOI626.01_403_15.csv', 'TOI744.01_251_3.csv', 'TOI1458.01_352_19.csv', 'TOI241.01_247_0.csv']
+p_csv_list13 = ['TOI1173.01_264_2.csv', 'TOI4381.01_1744_12.csv', 'TOI559.01_527_19.csv', 'TOI231.01_127_12.csv', 'TOI1779.01_106_3.csv', 'TOI511.01_353_4.csv', 'TOI2129.01_94_11.csv', 'TOI2014.01_457_3.csv', 
+              'TOI640.01_336_17.csv', 'TOI1059.01_633_4.csv', 'TOI1970.01_281_14.csv', 'TOI107.01_770_14.csv', 'TOI1076.01_184_1.csv', 'TOI1963.01_665_6.csv']
+p_csv_list14 = ['TOI987.01_265_13.csv', 'TOI1107.01_575_6.csv', 'TOI114.01_332_2.csv', 'TOI1627.01_145550102_15.csv', 'TOI398.01_255_8.csv', 'TOI173.01_902_4.csv', 'TOI1299.01_1070_1.csv', 'TOI477.01_277_11.csv', 
+              'TOI1465.01_81_19.csv', 'TOI185.01_231_2.csv', 'TOI966.01_427_2.csv', 'TOI2222.01_249_8.csv', 'TOI778.01_457_2.csv', 'TOI481.01_642_6.csv']
+p_csv_list15 = ['TOI1161.01_497_1.csv', 'TOI645.01_627_15.csv', 'TOI102.01_403_7.csv', 'TOI622.01_468_14.csv', 'TOI3501.01_195_6.csv', 'TOI573.01_230_1.csv', 'TOI1257.01_526_1.csv', 'TOI192.01_242_0.csv', 
+              'TOI165.01_319_5.csv', 'TOI1176.01_388_17.csv', 'TOI1181.01_297_15.csv', 'TOI4140.01_380_6.csv', 'TOI246.01_440_8.csv', 'TOI2218.01_80_7.csv']
+p_csv_list16 = ['TOI1337.01_511_7.csv', 'TOI413.01_853087145_8.csv', 'TOI1104.01_1077_1.csv', 'TOI811.01_257_7.csv', 'TOI501.01_179_15.csv', 'TOI984.01_633_13.csv', 'TOI1721.01_445_3.csv', 'TOI236.01_586_10.csv', 
+              'TOI190.01_595_5.csv', 'TOI483.01_594_9.csv', 'TOI1163.01_204_0.csv', 'TOI964.01_141_8.csv', 'TOI1815.01_527_1.csv', 'TOI4612.01_768_4.csv']
+p_csv_list17 = ['TOI404.01_255_14.csv', 'TOI101.01_139_8.csv', 'TOI4420.01_367_1.csv', 'TOI250.01_258_9.csv', 'TOI1864.01_219_17.csv', 'TOI567.01_181_0.csv', 'TOI828.01_234_17.csv', 'TOI590.01_13114_6.csv', 
+              'TOI858.01_472_16.csv', 'TOI495.01_356_0.csv', 'TOI1182.01_3849_3.csv', 'TOI116.01_221_10.csv', 'TOI621.01_252_0.csv', 'TOI587.01_824_0.csv']
 df = pd.read_csv('./exofop_tess_tois.csv')
 df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
 
 
 #ここはファイル名を要素にしたリストでfor loop
-for p_csv in p_csvlist:
+for p_csv in p_csvlist1:
     #dataの呼び出し
     TOInumber, _, _ = p_csv.split('_')
     #TOInumber, _ = p_csv.split('_')
@@ -233,7 +269,7 @@ for p_csv in p_csvlist:
         ###mcmc run###
         #sampler.run_mcmc(pos, max_n, progress=True)
         if __name__ ==  '__main__':
-            with Pool(processes=6) as pool:
+            with Pool(processes=4) as pool:
                 sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data.mean(), mcmc_params), pool=pool)
                 sampler.run_mcmc(pos, max_n)
                 #sampler.reset()
@@ -357,3 +393,47 @@ for p_csv in p_csvlist:
                 plot_ring(rp_rs, rin_rp, rout_rin, b, np.pi*2, phi, file_name)
                 os.makedirs(f'./mcmc_result/fit_pdata/{TOInumber}', exist_ok=True)
                 mcmc_res_df.to_csv(f'./mcmc_result/fit_pdata/{TOInumber}/{TOInumber}_{chi_square:.0f}_{try_n}.csv', header=True, index=False)
+
+'''fitting_data/data上で実行し、最もカイ2乗の小さいパラメータcsvを取得
+TOIs = os.listdir()
+list = []
+for TOI in TOIs:
+     os.chdir(TOI)
+     files = os.listdir()
+     file = sorted(files, key=natural_keys)[0]
+     list.append(file)
+     os.chdir('..')
+
+p_full_csv_list = ['TOI3612.01_139_1.csv', 'TOI453.01_593_5.csv', 'TOI157.01_166_10.csv', 'TOI1796.01_143_17.csv', 'TOI1265.01_376_13.csv', 'TOI423.01_320_0.csv', 'TOI1134.01_876_10.csv', 'TOI2126.01_116_0.csv', 
+              'TOI1292.01_185_4.csv', 'TOI1478.01_241_8.csv', 'TOI1937.01_132_6.csv', 'TOI2131.01_371_9.csv', 'TOI924.01_216_0.csv', 'TOI677.01_221_0.csv', 'TOI1825.01_2750_3.csv', 'TOI4059.01_158_0.csv', 
+              'TOI527.01_321_3.csv', 'TOI2140.01_232_9.csv', 'TOI1456.01_1226_8.csv', 'TOI2579.01_381_8.csv', 'TOI1615.01_252_5.csv', 'TOI1936.01_282_16.csv', 'TOI199.01_674_17.csv', 'TOI4623.01_226_11.csv', 
+              'TOI508.01_398_7.csv', 'TOI818.01_164_8.csv', 'TOI1431.01_284_19.csv', 'TOI2127.01_693_16.csv', 'TOI1135.01_2505_13.csv', 'TOI1264.01_43612_5.csv', 'TOI820.01_352_10.csv', 'TOI1951.01_299_11.csv', 
+              'TOI1833.01_488_12.csv', 'TOI1670.01_1786_3.csv', 'TOI822.01_390_17.csv', 'TOI1025.01_426_12.csv', 'TOI1454.01_464_0.csv', 'TOI1826.01_125_7.csv', 'TOI212.01_317_7.csv', 'TOI143.01_362_5.csv', 
+              'TOI2020.01_445_6.csv', 'TOI1150.01_2398_17.csv', 'TOI683.01_207_8.csv', 'TOI418.01_145_2.csv', 'TOI766.01_253_0.csv', 'TOI845.01_530_17.csv', 'TOI1271.01_2046_12.csv', 'TOI1934.01_554_14.csv', 
+              'TOI1270.01_141_4.csv', 'TOI1312.01_386_0.csv', 'TOI738.01_196_1.csv', 'TOI767.01_301_10.csv', 'TOI1425.01_321_3.csv', 'TOI1455.01_204_2.csv', 'TOI834.01_315_3.csv', 'TOI4138.01_375_12.csv', 
+              'TOI1151.01_473_2.csv', 'TOI3846.01_171_1.csv', 'TOI2021.01_254_5.csv', 'TOI675.01_755_9.csv', 'TOI1830.01_1305_14.csv', 'TOI391.01_213_17.csv', 'TOI4516.01_152_12.csv', 'TOI2154.01_196_3.csv', 
+              'TOI1248.01_158_4.csv', 'TOI349.01_324_9.csv', 'TOI2025.01_304_18.csv', 'TOI671.01_487_4.csv', 'TOI1823.01_5979_3.csv', 'TOI267.01_735_1.csv', 'TOI1612.01_223_18.csv', 'TOI1283.01_450_7.csv', 
+              'TOI1274.01_245_8.csv', 'TOI121.01_282_9.csv', 'TOI1767.01_545_7.csv', 'TOI857.01_462_14.csv', 'TOI1050.01_398_11.csv', 'TOI774.01_120_6.csv', 'TOI4470.01_720_7.csv', 'TOI1682.01_453_0.csv', 
+              'TOI1419.01_138_3.csv', 'TOI1909.01_273_6.csv', 'TOI2200.01_261_7.csv', 'TOI201.01_3670_0.csv', 'TOI4486.01_901_11.csv', 'TOI150.01_564_9.csv', 'TOI1845.01_160_4.csv', 'TOI1766.01_499_2.csv', 
+              'TOI1295.01_303_16.csv', 'TOI1300.01_365_6.csv', 'TOI934.01_166_0.csv', 'TOI4449.01_135_2.csv', 'TOI1771.01_491_8.csv', 'TOI1420.01_233_2.csv', 'TOI433.01_165_1.csv', 'TOI1019.01_439_6.csv', 
+              'TOI4087.01_283_16.csv', 'TOI4162.01_439_0.csv', 'TOI2119.01_257_7.csv', 'TOI899.01_270_8.csv', 'TOI1069.01_198_0.csv', 'TOI2024.01_381_0.csv', 'TOI147.01_196_7.csv', 'TOI264.01_337_2.csv', 
+              'TOI135.01_452_19.csv', 'TOI1676.01_89_3.csv', 'TOI1714.01_394_13.csv', 'TOI758.01_739_5.csv', 'TOI1141.01_5997_10.csv', 'TOI665.01_594_5.csv', 'TOI1385.01_3345_3.csv', 'TOI479.01_196_1.csv', 
+              'TOI780.01_205_9.csv', 'TOI1302.01_389_9.csv', 'TOI1297.01_307_10.csv', 'TOI615.01_444_2.csv', 'TOI1130.01_280_10.csv', 'TOI781.01_283_2.csv', 'TOI1198.01_1589_14.csv', 'TOI272.01_351_6.csv', 
+              'TOI1924.01_548_11.csv', 'TOI123.01_194036_14.csv', 'TOI1259.01_157_0.csv', 'TOI842.01_128_4.csv', 'TOI182.01_189_3.csv', 'TOI224.01_49685_0.csv', 'TOI1810.01_166_2.csv', 'TOI1651.01_286_4.csv', 
+              'TOI471.01_259_18.csv', 'TOI1268.01_325_2.csv', 'TOI105.01_380_1.csv', 'TOI959.01_181_3.csv', 'TOI3849.01_211_7.csv', 'TOI625.01_259_4.csv', 'TOI112.01_261_15.csv', 'TOI195.01_264_10.csv', 
+              'TOI1186.01_1826_4.csv', 'TOI655.01_129_0.csv', 'TOI194.01_421_0.csv', 'TOI232.01_193_3.csv', 'TOI1647.01_1287_3.csv', 'TOI1725.01_146_1.csv', 'TOI163.01_360_0.csv', 'TOI2000.01_330_9.csv', 
+              'TOI769.01_317_1.csv', 'TOI490.01_328_17.csv', 'TOI1012.01_204_12.csv', 'TOI505.01_367_0.csv', 'TOI624.01_847_16.csv', 'TOI1251.01_308_6.csv', 'TOI3492.01_334_7.csv', 'TOI4601.01_334_0.csv', 
+              'TOI1148.01_3492_1.csv', 'TOI1861.01_8245_15.csv', 'TOI368.01_278_0.csv', 'TOI1494.01_136_1.csv', 'TOI1811.01_171_4.csv', 'TOI1236.01_282_2.csv', 'TOI2017.01_438_14.csv', 'TOI1573.01_651_1.csv', 
+              'TOI2403.01_428_11.csv', 'TOI4545.01_216_2.csv', 'TOI159.01_438_7.csv', 'TOI106.01_401_9.csv', 'TOI3960.01_207_0.csv', 'TOI1165.01_181_5.csv', 'TOI472.01_112_9.csv', 'TOI4535.01_253_13.csv', 
+              'TOI129.01_95_1.csv', 'TOI1341.01_237_3.csv', 'TOI2197.01_517_10.csv', 'TOI507.01_93_0.csv', 'TOI656.01_92_15.csv', 'TOI2464.01_252_3.csv', 'TOI1874.01_482_8.csv', 'TOI905.01_183_11.csv', 
+              'TOI626.01_403_15.csv', 'TOI744.01_251_3.csv', 'TOI1458.01_352_19.csv', 'TOI241.01_247_0.csv', 'TOI1173.01_264_2.csv', 'TOI4381.01_1744_12.csv', 'TOI559.01_527_19.csv', 'TOI231.01_127_12.csv', 
+              'TOI1779.01_106_3.csv', 'TOI511.01_353_4.csv', 'TOI2129.01_94_11.csv', 'TOI2014.01_457_3.csv', 'TOI640.01_336_17.csv', 'TOI1059.01_633_4.csv', 'TOI1970.01_281_14.csv', 'TOI107.01_770_14.csv', 
+              'TOI1076.01_184_1.csv', 'TOI1963.01_665_6.csv', 'TOI987.01_265_13.csv', 'TOI1092.01_434_19.csv', 'TOI1107.01_575_6.csv', 'TOI585.01_352_14.csv', 'TOI114.01_332_2.csv', 'TOI4606.01_753_12.csv', 
+              'TOI1627.01_145550102_15.csv', 'TOI398.01_255_8.csv', 'TOI173.01_902_4.csv', 'TOI1299.01_1070_1.csv', 'TOI477.01_277_11.csv', 'TOI1465.01_81_19.csv', 'TOI185.01_231_2.csv', 'TOI966.01_427_2.csv', 
+              'TOI2222.01_249_8.csv', 'TOI778.01_457_2.csv', 'TOI481.01_642_6.csv', 'TOI1161.01_497_1.csv', 'TOI645.01_627_15.csv', 'TOI102.01_403_7.csv', 'TOI622.01_468_14.csv', 'TOI3501.01_195_6.csv', 
+              'TOI573.01_230_1.csv', 'TOI1257.01_526_1.csv', 'TOI192.01_242_0.csv', 'TOI165.01_319_5.csv', 'TOI1176.01_388_17.csv', 'TOI1181.01_297_15.csv', 'TOI4140.01_380_6.csv', 'TOI246.01_440_8.csv', 
+              'TOI2218.01_80_7.csv', 'TOI1337.01_511_7.csv', 'TOI413.01_853087145_8.csv', 'TOI1104.01_1077_1.csv', 'TOI811.01_257_7.csv', 'TOI501.01_179_15.csv', 'TOI984.01_633_13.csv', 'TOI1721.01_445_3.csv', 
+              'TOI236.01_586_10.csv', 'TOI190.01_595_5.csv', 'TOI483.01_594_9.csv', 'TOI1163.01_204_0.csv', 'TOI964.01_141_8.csv', 'TOI1815.01_527_1.csv', 'TOI4612.01_768_4.csv', 'TOI404.01_255_14.csv', 
+              'TOI101.01_139_8.csv', 'TOI4420.01_367_1.csv', 'TOI250.01_258_9.csv', 'TOI1864.01_219_17.csv', 'TOI567.01_181_0.csv', 'TOI828.01_234_17.csv', 'TOI590.01_13114_6.csv', 'TOI858.01_472_16.csv', 
+              'TOI1976.01_798_5.csv', 'TOI495.01_356_0.csv', 'TOI1182.01_3849_3.csv', 'TOI116.01_221_10.csv', 'TOI3460.01_715_7.csv', 'TOI621.01_252_0.csv', 'TOI587.01_824_0.csv']
+'''
