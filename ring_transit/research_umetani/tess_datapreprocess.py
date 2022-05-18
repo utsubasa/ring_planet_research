@@ -235,9 +235,9 @@ def transit_params_setting(rp_rs, period):
     """トランジットフィッティングパラメータの設定"""
     names = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
     if np.isnan(rp_rs):
-        values = [0, period, np.random.uniform(0.01,0.1), np.random.uniform(1.01,20.0), 80.0, 0.5, 90.0, np.random.uniform(0.01,1.0), np.random.uniform(0.01,1.0)]
+        values = [np.random.uniform(-0.2,0.2), period, np.random.uniform(0.01,0.1), np.random.uniform(1.01,20.0), 80.0, 0.5, 90.0, np.random.uniform(0.01,1.0), np.random.uniform(0.01,1.0)]
     else:
-        values = [0, period, rp/rs, np.random.uniform(1.01,20.0), 80.0, 0.5, 90.0, np.random.uniform(0.01,1.0), np.random.uniform(0.01,1.0)]
+        values = [np.random.uniform(-0.2,0.2), period, rp/rs, np.random.uniform(1.01,20.0), np.random.uniform(70,110.0), 0.5, 90.0, np.random.uniform(0.01,1.0), np.random.uniform(0.01,1.0)]
     mins = [-0.7, period*0.9, 0.001, 0.1, 70, 0, 90, 0.0, 0.0]
     maxes = [0.7, period*1.1, 1.0, 100, 110, 1.0, 90, 1.0, 1.0]
     vary_flags = [True, True, True, True, True, True, False, True, True]

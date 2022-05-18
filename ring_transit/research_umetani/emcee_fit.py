@@ -201,7 +201,7 @@ p_csvlist = ['TOI3612.01_139_1.csv', 'TOI453.01_593_5.csv', 'TOI157.01_166_10.cs
               'TOI236.01_586_10.csv', 'TOI190.01_595_5.csv', 'TOI483.01_594_9.csv', 'TOI1163.01_204_0.csv', 'TOI964.01_141_8.csv', 'TOI1815.01_527_1.csv', 'TOI4612.01_768_4.csv', 'TOI404.01_255_14.csv', 
               'TOI101.01_139_8.csv', 'TOI4420.01_367_1.csv', 'TOI250.01_258_9.csv', 'TOI1864.01_219_17.csv', 'TOI567.01_181_0.csv', 'TOI828.01_234_17.csv', 'TOI590.01_13114_6.csv', 'TOI858.01_472_16.csv', 
               'TOI1976.01_798_5.csv', 'TOI495.01_356_0.csv', 'TOI1182.01_3849_3.csv', 'TOI116.01_221_10.csv', 'TOI3460.01_715_7.csv', 'TOI621.01_252_0.csv', 'TOI587.01_824_0.csv']
-#p_csvlist = ['TOI4470.01_0.csv']
+p_csvlist = ['TOI267.01_735_1.csv']
 
 df = pd.read_csv('./exofop_tess_tois.csv')
 df = df[df['Planet SNR']>100]
