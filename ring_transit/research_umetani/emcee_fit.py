@@ -262,10 +262,11 @@ for p_csv in p_csvlist[0]:
         #sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), backend=backend)
 
         ###mcmc run###
-        #sampler.run_mcmc(pos, max_n, progress=True)
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data.mean(), mcmc_params))
-        sampler.run_mcmc(pos, max_n)
-        #sampler.reset()
+        with Pool(processes=4) as pool:
+            #sampler.run_mcmc(pos, max_n, progress=True)
+            sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data.mean(), mcmc_params))
+            sampler.run_mcmc(pos, max_n)
+            #sampler.reset()
         '''
         for sample in sampler.sample(pos, iterations=max_n, progress=True):
             # Only check convergence every 100 steps
