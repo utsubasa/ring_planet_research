@@ -149,11 +149,11 @@ p_names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
          "r_out", "norm2", "norm3", "ecosw", "esinw"]
 
 mins = [0.0, 0.0, -0.1, 0.0, 0.003, 1.0,
-        0.0, 0.9, np.pi-0.1, 0.0, 0.0, 1.0,
+        0.0, 0.9, 0, 0.0, 0.0, 1.0,
         1.1, -0.1, -0.1, 0.0, 0.0]
 
 maxes = [1.0, 1.0, 0.1, 100.0, 1.0, 100.0,
-         1.0, 1.1, np.pi+0.1, np.pi, 1.0, 3.0,
+         1.0, 1.1, np.pi, np.pi, 1.0, 3.0,
          3.0, 0.1, 0.1, 0.0, 0.0]
 
 vary_flags = [True, True, False, False, True, True,
@@ -239,13 +239,13 @@ for p_csv in p_csvlist:
     mcmc_params = mcmc_df.index.tolist()
     for try_n in range(5):
         ###generate initial value for theta, phi
-        mcmc_df.at['theta', 'output_value'] = np.pi
+        mcmc_df.at['theta', 'output_value'] = np.arcsin(mcmc_df.at['b', 'output_value']/mcmc_df.at['a_rs', 'output_value'])
         mcmc_df.at['phi', 'output_value'] = np.random.uniform(0.0,np.pi)
         mcmc_pvalues = mcmc_df['output_value'].values
         print('mcmc_params: ', mcmc_params)
         print('mcmc_pvalues: ', mcmc_pvalues)
-        df_for_mcmc.at['theta', 'min'] = np.arcsin(mcmc_df.at['b', 'output_value']/mcmc_df.at['a_rs', 'output_value'])-0.1
-        df_for_mcmc.at['theta', 'max'] = np.arcsin(mcmc_df.at['b', 'output_value']/mcmc_df.at['a_rs', 'output_value'])+0.1
+        df_for_mcmc.at['theta', 'mins'] = np.arcsin(mcmc_df.at['b', 'output_value']/mcmc_df.at['a_rs', 'output_value'])-0.1
+        df_for_mcmc.at['theta', 'maxes'] = np.arcsin(mcmc_df.at['b', 'output_value']/mcmc_df.at['a_rs', 'output_value'])+0.1
         pos = mcmc_pvalues + 1e-5 * np.random.randn(32, len(mcmc_pvalues))
         #pos = np.array([rp_rs, theta, phi, r_in, r_out]) + 1e-8 * np.random.randn(32, 5)
         nwalkers, ndim = pos.shape
@@ -262,11 +262,10 @@ for p_csv in p_csvlist:
         #sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), backend=backend)
 
         ###mcmc run###
-        with Pool(processes=4) as pool:
-            #sampler.run_mcmc(pos, max_n, progress=True)
-            sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data.mean(), mcmc_params))
-            sampler.run_mcmc(pos, max_n)
-            #sampler.reset()
+        #with Pool(processes=4) as pool:
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data.mean(), mcmc_params))
+        sampler.run_mcmc(pos, max_n, progress=True)
+        #sampler.reset()
         '''
         for sample in sampler.sample(pos, iterations=max_n, progress=True):
             # Only check convergence every 100 steps
@@ -288,23 +287,22 @@ for p_csv in p_csvlist:
                 break
             old_tau = tau
 
-            
         ###the autocorrelation time###
         n = 100 * np.arange(1, index + 1)
         y = autocorr[:index]
-        plt.plot(n, n / 100.0, "--k")
+        plt.plot(n, n / 50.0, "--k")
         plt.plot(n, y)
         plt.xlim(0, n.max())
         plt.ylim(0, y.max() + 0.1 * (y.max() - y.min()))
         plt.xlabel("number of steps")
         plt.ylabel(r"mean $\hat{\tau}$")
-        plt.savefig(f'tau_{try_n}.png')\
+        plt.savefig(f'./mcmc_result/figure/{TOInumber}/tau_{try_n}.png')\
         ##plt.show()
         plt.close()
-        print(tau)
-        '''
-
+        print(tau)'''
         os.makedirs(f'./mcmc_result/figure/{TOInumber}', exist_ok=True)
+
+    
 
         ###step visualization###
         fig, axes = plt.subplots(ndim, figsize=(10, 7), sharex=True)
