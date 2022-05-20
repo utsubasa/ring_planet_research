@@ -298,7 +298,9 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
             params = transit_params_setting(rp_rs, period)
             out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, flux_err, names),max_nfev=1000)
             #best_res_dict[out.redchi] = out
-            best_res_dict[out.chisqr] = out
+            #isfinite = np.isfinite(out.params['t0'].stderr)
+            if out.params['t0'].stderr != None:
+                best_res_dict[out.chisqr] = out
         out = sorted(best_res_dict.items())[0][1]
         #lc.time = lc.time - out.params['t0'].value #t0を補正する場合に使う
         #print(lmfit.fit_report(out))
