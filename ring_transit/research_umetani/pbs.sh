@@ -1,7 +1,7 @@
 #! /bin/sh
 #PBS -r y
 #PBS -m abe
-#PBS -q openmp -l ncpus=4
+#PBS -q mid
 #PBS -o Log.out
 #PBS -e Log.err
 #PBS -N MyPBSjob

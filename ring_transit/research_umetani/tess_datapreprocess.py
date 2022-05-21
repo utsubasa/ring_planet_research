@@ -293,14 +293,17 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
         flux = lc.flux.value
         flux_err = lc.flux_err.value
         best_res_dict = {}
-        
-        for n in range(30):
-            params = transit_params_setting(rp_rs, period)
-            out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, flux_err, names),max_nfev=1000)
-            #best_res_dict[out.redchi] = out
-            #isfinite = np.isfinite(out.params['t0'].stderr)
-            if out.params['t0'].stderr != None:
-                best_res_dict[out.chisqr] = out
+        while len(best_res_dict) == 0:
+            for n in range(30):
+                params = transit_params_setting(rp_rs, period)
+                out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, flux_err, names),max_nfev=1000)
+                #best_res_dict[out.redchi] = out
+                print(out.redchi)
+                if out.params['t0'].stderr != None:
+                #if out.params['t0'].stderr != None:
+                    red_redchi = abs(out.redchi-1)
+                    best_res_dict[red_redchi] = out
+                    print(out.redchi)
         out = sorted(best_res_dict.items())[0][1]
         #lc.time = lc.time - out.params['t0'].value #t0を補正する場合に使う
         #print(lmfit.fit_report(out))
@@ -345,11 +348,8 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
                     #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
                     #ax.set_xlim(-1, 1)
                     #plt.show()
-                    '''
-                    if out.chisqr > 1000:
-                        print('out.chisqr > 1000')
-                        import pdb;pdb.set_trace()'''
                     plt.close()
+                    t0dict[i] = [mid_transit_time+out.params["t0"].value, out.params["t0"].stderr]
                 else:
                     #pass
                     ###epoch ベースの場合
@@ -407,6 +407,7 @@ def estimate_period(t0dict, period):
         plt.tight_layout()
         plt.savefig(f'{homedir}/fitting_result/figure/estimate_period/{TOInumber}.png')
         #plt.savefig(f'{homedir}/fitting_result/figure/estimate_period/bls/{TOInumber}.png')
+        #plt.show()
         plt.close()
         return estimated_period
     else:
@@ -514,7 +515,10 @@ no_perioddata_list = [1134.01,1897.01,2423.01,2666.01,4465.01]#exofopの表にpe
 no_signal_list = [2218.01,212.01,1823.01] #トランジットのsignalが無いか、ノイズに埋もれて見えない
 
 #done_list = [4470.01,495.01,423.01,398.01,165.01,1148.01,157.01,1682.01,1612.01,112.01,656.01]
-done_list = os.listdir('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/each_lc')
+done_list = os.listdir('/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure')
+done_list = [s for s in done_list if 'TOI' in s]
+done_list = [s.lstrip('TOI') for s in done_list ]
+done_list = [float(s.strip('.png')) for s in done_list]
 df = df.set_index(['TOI'])
 df = df.drop(index=each_lc_anomalylist)
 df = df.drop(index=mtt_shiftlist, errors='ignore')
@@ -535,9 +539,9 @@ df['log Period'] = np.log10(df['Period (days)'])
 df = df.merge(nasa_df, on='TIC ID')
 import pdb; pdb.set_trace()
 '''
-#for TOI in TOIlist:
+for TOI in TOIlist:
 #for TOI in ['645.01']:
-for TOI in ['112.01']:
+#for TOI in ['4470.01']:
     '''
     if f'TOI{TOI}.png' in done_list:
         continue
@@ -663,7 +667,7 @@ for TOI in ['112.01']:
     import pdb; pdb.set_trace()
     '''
 
-    
+    '''
     #print('fixing t0...')
     print('checking TTV...')
     time.sleep(1)
@@ -691,7 +695,7 @@ for TOI in ['112.01']:
         _, _, _, t0dict, t0list, _ = transit_fit_and_remove_outliers(each_lc, t0dict, t0list, outliers, estimate_period=True, lc_type='each')
     #transit_time_list = t0list
     _ = estimate_period(t0dict, period) #TTVを調べる。
-    
+    '''
 
     '''
     ax = lc.scatter()
@@ -715,7 +719,6 @@ for TOI in ['112.01']:
         tmp = lc[lc.time.value > epoch_start]
         each_lc = tmp[tmp.time.value < epoch_end]
         each_lc = each_lc.fold(period=period, epoch_time=mid_transit_time).remove_nans()
-
         #解析中断条件を満たさないかチェック
         if len(each_lc) == 0:
             print('no data in this epoch')
@@ -726,11 +729,13 @@ for TOI in ['112.01']:
         else:
             print('Satisfies the analysis interruption condition')
             continue
-        each_lc, _, out, _, _, no_use_lc = transit_fit_and_remove_outliers(each_lc, t0dict, t0list, outliers, estimate_period=False, lc_type='each')
+        each_lc, _, out, t0dict, _, no_use_lc = transit_fit_and_remove_outliers(each_lc, t0dict, t0list, outliers, estimate_period=False, lc_type='each')
         if no_use_lc == True:
             continue
         else:
             each_lc_list = curve_fitting(each_lc, duration, out, each_lc_list)
+    _ = estimate_period(t0dict, period) #TTVを調べる
+
     """folded_lcに対してtransitfit & remove outliers. folded_lcを描画する"""
     print('refolding...')
     time.sleep(1)
