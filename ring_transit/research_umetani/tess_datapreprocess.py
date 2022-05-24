@@ -129,7 +129,7 @@ def no_ring_residual_transitfit(params, x, data, eps_data, names):
     model = m.light_curve(params_batman)         #calculates light curve
     chi_square = np.sum(((data-model)/eps_data)**2)
     #print(params)
-    #print(chi_square)
+    print(chi_square)
     return (data-model) / eps_data
 
 def ring_model_transitfit_from_lmparams(params, x):
@@ -237,9 +237,9 @@ def transit_params_setting(rp_rs, period):
     if np.isnan(rp_rs):
         values = [np.random.uniform(-0.2,0.2), period, np.random.uniform(0.01,0.1), np.random.uniform(0.01,20.0), np.random.uniform(70,110.0), np.random.uniform(0.1,0.8), 90.0, np.random.uniform(0.01,1.0), np.random.uniform(0.01,1.0)]
     else:
-        values = [np.random.uniform(-0.15,0.15), period, rp/rs, np.random.uniform(0.01,20.0), np.random.uniform(87,93), np.random.uniform(0.1,0.8), 90.0, np.random.uniform(0.1,1.0), np.random.uniform(0.1,1.0)]
-    mins = [-0.7, period*0.9, 0.001, 0.01, 70, 0, 90, 0.0, 0.0]
-    maxes = [0.7, period*1.1, 0.9, 100, 110, 0.95, 90, 1.0, 1.0]
+        values = [np.random.uniform(-0.15,0.15), period, rp/rs, np.random.uniform(0.01,20.0), np.random.uniform(70,110), np.random.uniform(0.1,0.8), 90.0, np.random.uniform(0.1,1.0), np.random.uniform(0.1,1.0)]
+    mins = [-0.7, period*0.9, 0.001, 0.01, 40, 0, 90, 0.0, 0.0]
+    maxes = [0.7, period*1.1, 0.9, 100, 180, 0.95, 90, 1.0, 1.0]
     vary_flags = [True, True, True, True, True, True, False, True, True]
     return set_params_lm(names, values, mins, maxes, vary_flags)
 
@@ -297,6 +297,7 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
             for n in range(30):
                 params = transit_params_setting(rp_rs, period)
                 out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, flux_err, names),max_nfev=1000)
+                import pdb;pdb.set_trace()
                 #best_res_dict[out.redchi] = out
                 print(out.redchi)
                 if out.params['t0'].stderr != None:
@@ -307,8 +308,6 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
         out = sorted(best_res_dict.items())[0][1]
         #lc.time = lc.time - out.params['t0'].value #t0を補正する場合に使う
         #print(lmfit.fit_report(out))
-        #if i == 558 or i == 559:
-            #import pdb; pdb.set_trace()
 
         """remove outliers"""
         if lc_type == 'each':
@@ -539,9 +538,9 @@ df['log Period'] = np.log10(df['Period (days)'])
 df = df.merge(nasa_df, on='TIC ID')
 import pdb; pdb.set_trace()
 '''
-for TOI in TOIlist:
+#for TOI in TOIlist:
 #for TOI in ['645.01']:
-#for TOI in ['4470.01']:
+for TOI in ['413.01']:
     '''
     if f'TOI{TOI}.png' in done_list:
         continue
@@ -711,14 +710,14 @@ for TOI in TOIlist:
     for i, mid_transit_time in enumerate(transit_time_list):
         print(f'epoch: {i}')
         
-        #if i == 164:
+     #if i == 164:
         #    continue
             
         epoch_start = mid_transit_time - (duration*2.5)
         epoch_end = mid_transit_time + (duration*2.5)
         tmp = lc[lc.time.value > epoch_start]
         each_lc = tmp[tmp.time.value < epoch_end]
-        each_lc = each_lc.fold(period=period, epoch_time=mid_transit_time).remove_nans()
+        each_lc = each_lc.fold(period=period, epoch_time=mid_transit_time).remove_nans().normalize()
         #解析中断条件を満たさないかチェック
         if len(each_lc) == 0:
             print('no data in this epoch')
