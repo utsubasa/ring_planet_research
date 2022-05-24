@@ -297,7 +297,6 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
             for n in range(30):
                 params = transit_params_setting(rp_rs, period)
                 out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, flux_err, names),max_nfev=1000)
-                import pdb;pdb.set_trace()
                 #best_res_dict[out.redchi] = out
                 print(out.redchi)
                 if out.params['t0'].stderr != None:
