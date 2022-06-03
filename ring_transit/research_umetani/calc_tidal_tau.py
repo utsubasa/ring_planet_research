@@ -102,6 +102,11 @@ df['log Period'] = np.log10(df['Period (days)'])
 df = pd.merge(df, nasa_df, how='left')
 df['log Mass'] = np.log10(df['pl_masse'])
 
+'''planet density vs semimajor axis'''
+axises = df[['pl_dens', 'pl_orbsmax']]
+sns.pairplot(axises)
+plt.show()
+import pdb;pdb.set_trace()
 #lmfit(mcmc)のフィッティングパラメータを読み込む。
 homedir='/Users/u_tsubasa/Dropbox/ring_planet_research/fitting_result/data'
 

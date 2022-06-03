@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import pdb
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -18,9 +19,9 @@ from astropy.table import Table, vstack
 import astropy.units as u
 from decimal import Decimal, ROUND_HALF_UP
 import os
-import celerite
-from celerite import terms
-from scipy.optimize import minimize
+#import celerite
+#from celerite import terms
+#from scipy.optimize import minimize
 
 warnings.filterwarnings('ignore')
 
@@ -48,8 +49,10 @@ def set_params_batman(params_lm, names, limb_type ="quadratic"):
             params.rp = value
         if name=="a":
             params.a = value
-        if name=="inc":
-            params.inc = value
+        #if name=="inc":
+            #params.inc = value
+        if name=="b":
+            params.inc =  np.degrees(np.arccos( value / params.a ))
         if name=="ecc":
             params.ecc = value
         if name=="w":
@@ -112,7 +115,7 @@ def ring_model(x, pdic, v=None):
 
 #リングありモデルをfitting
 def ring_residual_transitfit(params, x, data, eps_data, names):
-    start =time.time()
+    #start =time.time()
     model = ring_model(x, params.valuesdict())
     chi_square = np.sum(((data-model)/eps_data)**2)
     #print(params)
@@ -129,7 +132,7 @@ def no_ring_residual_transitfit(params, x, data, eps_data, names):
     model = m.light_curve(params_batman)         #calculates light curve
     chi_square = np.sum(((data-model)/eps_data)**2)
     #print(params)
-    print(chi_square)
+    #print(chi_square)
     return (data-model) / eps_data
 
 def ring_model_transitfit_from_lmparams(params, x):
@@ -233,13 +236,13 @@ def detect_transit_epoch(folded_lc, transit_time, period):
 def transit_params_setting(rp_rs, period):
     global names
     """トランジットフィッティングパラメータの設定"""
-    names = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
+    names = ["t0", "per", "rp", "a", "b", "ecc", "w", "q1", "q2"]
     if np.isnan(rp_rs):
-        values = [np.random.uniform(-0.2,0.2), period, np.random.uniform(0.01,0.1), np.random.uniform(0.01,20.0), np.random.uniform(70,110.0), np.random.uniform(0.1,0.8), 90.0, np.random.uniform(0.01,1.0), np.random.uniform(0.01,1.0)]
+        values = [np.random.uniform(-0.15,0.15), np.random.uniform(period*0.9, period*1.1), np.random.uniform(0.01,0.1), np.random.uniform(0.01,1.0), np.random.uniform(-0.2,0.2), np.random.uniform(0.1,0.8), 90.0, np.random.uniform(0.1,0.9), np.random.uniform(0.1,0.9)]
     else:
-        values = [np.random.uniform(-0.15,0.15), period, rp/rs, np.random.uniform(0.01,20.0), np.random.uniform(70,110), np.random.uniform(0.1,0.8), 90.0, np.random.uniform(0.1,1.0), np.random.uniform(0.1,1.0)]
-    mins = [-0.7, period*0.9, 0.001, 0.01, 40, 0, 90, 0.0, 0.0]
-    maxes = [0.7, period*1.1, 0.9, 100, 180, 0.95, 90, 1.0, 1.0]
+        values = [np.random.uniform(-0.15,0.15), np.random.uniform(period*0.9, period*1.1), rp_rs, np.random.uniform(0.01,1.0), np.random.uniform(-0.2,0.2), np.random.uniform(0.1,0.8), 90.0, np.random.uniform(0.1,0.9), np.random.uniform(0.1,0.9)]
+    mins = [-0.2, period*0.8, 0.001, 0.01, -1.1, 0, 90, 0.0, 0.0]
+    maxes = [0.2, period*1.2, 0.9, 10, 1.1, 0.95, 90, 1.0, 1.0]
     vary_flags = [True, True, True, True, True, True, False, True, True]
     return set_params_lm(names, values, mins, maxes, vary_flags)
 
@@ -296,7 +299,10 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
         while len(best_res_dict) == 0:
             for n in range(30):
                 params = transit_params_setting(rp_rs, period)
-                out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, flux_err, names),max_nfev=1000)
+                try:
+                    out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, flux_err, names),max_nfev=1000)
+                except ValueError:
+                    print("ValueError")
                 #best_res_dict[out.redchi] = out
                 print(out.redchi)
                 if out.params['t0'].stderr != None:
@@ -365,7 +371,44 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
                 lc = lc[~mask]
         else:
             break
+        
     return lc, outliers, out, t0dict, t0list, no_use_lc
+
+def curve_fitting(each_lc, duration, out, each_lc_list):
+    out_transit = each_lc[(each_lc['time'].value < out.params["t0"].value - (duration*0.7)) | (each_lc['time'].value > out.params["t0"].value + (duration*0.7))]
+    model = lmfit.models.PolynomialModel()
+    poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
+    #poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0)
+    result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
+    result.plot()
+    os.makedirs(f'{homedir}/fitting_result/figure/curvefit/{TOInumber}', exist_ok=True)
+    plt.savefig(f'{homedir}/fitting_result/figure/curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
+    #os.makedirs(f'{homedir}/fitting_result/figure/curvefit/bls/{TOInumber}', exist_ok=True)
+    #plt.savefig(f'{homedir}/fitting_result/figure/curvefit/bls/{TOInumber}/{TOInumber}_{str(i)}.png')
+    #plt.show()
+    plt.close()
+    poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
+                    result.params.valuesdict()['c1'],\
+                    result.params.valuesdict()['c2'],\
+                    result.params.valuesdict()['c3'],\
+                    result.params.valuesdict()['c4'],\
+                    result.params.valuesdict()['c5'],\
+                    result.params.valuesdict()['c6'],\
+                    result.params.valuesdict()['c7']])
+
+    #normalization
+    each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
+    each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
+    each_lc.errorbar()
+    os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}', exist_ok=True)
+    plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
+    #os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/bls/{TOInumber}', exist_ok=True)
+    #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/bls/{TOInumber}/{TOInumber}_{str(i)}.png')
+    plt.close()
+    os.makedirs(f'{homedir}/fitting_result/data/each_lc/{TOInumber}', exist_ok=True)
+    each_lc.write(f'{homedir}/fitting_result/data/each_lc/{TOInumber}/{TOInumber}_{str(i)}.csv')
+    each_lc_list.append(each_lc)
+    return each_lc_list
 
 def estimate_period(t0dict, period):
     """return estimated period or cleaned light curve"""
@@ -373,6 +416,7 @@ def estimate_period(t0dict, period):
     x = t0df.index.values
     y = t0df['t0']
     yerr = t0df['t0err']
+    pd.DataFrame({'x':x, 'y':y, 'yerr':yerr}).to_csv(f'{homedir}/fitting_result/figure/estimate_period/{TOInumber}.csv')
     try:
         res = linregress(x, y)
     except ValueError:
@@ -412,83 +456,6 @@ def estimate_period(t0dict, period):
         estimated_period = period
         return estimated_period
 
-def curve_fitting(each_lc, duration, out, each_lc_list):
-    out_transit = each_lc[(each_lc['time'].value < out.params["t0"].value - (duration*0.7)) | (each_lc['time'].value > out.params["t0"].value + (duration*0.7))]
-    model = lmfit.models.PolynomialModel()
-    poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
-    #poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0)
-    result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
-    result.plot()
-    os.makedirs(f'{homedir}/fitting_result/figure/curvefit/{TOInumber}', exist_ok=True)
-    plt.savefig(f'{homedir}/fitting_result/figure/curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
-    #os.makedirs(f'{homedir}/fitting_result/figure/curvefit/bls/{TOInumber}', exist_ok=True)
-    #plt.savefig(f'{homedir}/fitting_result/figure/curvefit/bls/{TOInumber}/{TOInumber}_{str(i)}.png')
-    #plt.show()
-    plt.close()
-    poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
-                    result.params.valuesdict()['c1'],\
-                    result.params.valuesdict()['c2'],\
-                    result.params.valuesdict()['c3'],\
-                    result.params.valuesdict()['c4'],\
-                    result.params.valuesdict()['c5'],\
-                    result.params.valuesdict()['c6'],\
-                    result.params.valuesdict()['c7']])
-
-    #normalization
-    each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
-    each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
-    each_lc.errorbar()
-    os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}', exist_ok=True)
-    plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
-    #os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/bls/{TOInumber}', exist_ok=True)
-    #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/bls/{TOInumber}/{TOInumber}_{str(i)}.png')
-    plt.close()
-    each_lc_list.append(each_lc)
-    return each_lc_list
-
-def remove_GP(lc): #remove the gaussian process from lc.stitch
-    def neg_log_like(params, y, gp):
-        gp.set_parameter_vector(params)
-        return -gp.log_likelihood(y)
-
-    y = lc.flux.value
-    yerr = lc.flux_err.value
-    t = lc.time.value
-
-    # A non-periodic component
-    Q = 1.0 / np.sqrt(2.0)
-    w0 = 3.0
-    S0 = np.var(y) / (w0 * Q)
-    bounds = dict(log_S0=(-15, 15), log_Q=(-15, 15), log_omega0=(-15, 15))
-    kernel = terms.SHOTerm(log_S0=np.log(S0), log_Q=np.log(Q), log_omega0=np.log(w0),
-                           bounds=bounds)
-    kernel.freeze_parameter("log_Q")  # We don't want to fit for "Q" in this term
-
-    # A periodic component
-    Q = 1.0
-    w0 = 3.0
-    S0 = np.var(y) / (w0 * Q)
-    kernel += terms.SHOTerm(log_S0=np.log(S0), log_Q=np.log(Q), log_omega0=np.log(w0),
-                            bounds=bounds)
-    gp = celerite.GP(kernel, mean=np.mean(y))
-    gp.compute(t, yerr)
-
-    initial_params = gp.get_parameter_vector()
-    bounds = gp.get_parameter_bounds()
-    r = minimize(neg_log_like, initial_params, method="L-BFGS-B", bounds=bounds, args=(y, gp))
-    gp.set_parameter_vector(r.x)
-    print(r)
-    pred_mean, pred_var = gp.predict(y, t, return_var=True)
-    pred_std = np.sqrt(pred_var)
-    color = "#ff7f0e"
-    plt.errorbar(t, y, yerr=yerr, fmt=".k", capsize=0)
-    plt.plot(t, pred_mean, color=color)
-    plt.fill_between(t, pred_mean+pred_std, pred_mean-pred_std, color=color, alpha=0.3,
-                     edgecolor="none")
-    plt.xlabel("x")
-    plt.ylabel("y")
-    plt.show()
-
 
 #if __name__ ==  '__main__':
 homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
@@ -517,10 +484,11 @@ done_list = os.listdir('/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/
 done_list = [s for s in done_list if 'TOI' in s]
 done_list = [s.lstrip('TOI') for s in done_list ]
 done_list = [float(s.strip('.png')) for s in done_list]
+
 df = df.set_index(['TOI'])
 df = df.drop(index=each_lc_anomalylist)
 df = df.drop(index=mtt_shiftlist, errors='ignore')
-df = df.drop(index=done_list, errors='ignore')
+#df = df.drop(index=done_list, errors='ignore')
 df = df.drop(index=no_data_list, errors='ignore')
 df = df.drop(index=no_signal_list, errors='ignore')
 df = df.reset_index()
@@ -528,7 +496,7 @@ df = df.reset_index()
 #df = df.sort_values('Planet SNR', ascending=False)
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
-'''
+"""
 nasa_df = pd.read_csv('/Users/u_tsubasa/Downloads/PS_2022.04.14_04.34.07.csv')
 nasa_df = nasa_df[nasa_df.index < 124]
 nasa_df['TIC ID'] = nasa_df['tic_id'].apply(lambda x: x[4:])
@@ -536,10 +504,10 @@ nasa_df['TIC ID'] = nasa_df['TIC ID'].astype(int)
 df['log Period'] = np.log10(df['Period (days)'])
 df = df.merge(nasa_df, on='TIC ID')
 import pdb; pdb.set_trace()
-'''
+"""
 #for TOI in TOIlist:
-#for TOI in ['645.01']:
-for TOI in ['413.01']:
+for TOI in ['645.01']:
+#for TOI in ['101.01']:
     '''
     if f'TOI{TOI}.png' in done_list:
         continue
@@ -573,6 +541,7 @@ for TOI in ['413.01']:
         lc = lc_collection.stitch().remove_nans() #initialize lc
     except AttributeError:
         continue
+    
     '''
     """bls analysis"""
     bls_period = np.linspace(10, 50, 10000)
@@ -647,62 +616,7 @@ for TOI in ['413.01']:
     t0dict = {}
     each_lc_list = []
     t0list =[]
-    '''
-    """
-    この部分はどのエポックナンバーがどのエポックか見るときに使う。
-    """
-    ax = lc.scatter()
-    for i, mid_transit_time in enumerate(transit_time_list):
-        print(f'epoch: {i}')
-        epoch_start = mid_transit_time - (duration*2.5)
-        epoch_end = mid_transit_time + (duration*2.5)
-        tmp = lc[lc.time.value > epoch_start]
-        each_lc = tmp[tmp.time.value < epoch_end]
-        #ax = lc.scatter()
-        #if i == 9:
-            #ax.axvline(mid_transit_time)
-    plt.show()
-    import pdb; pdb.set_trace()
-    '''
-
-    '''
-    #print('fixing t0...')
-    print('checking TTV...')
-    time.sleep(1)
-    for i, mid_transit_time in enumerate(transit_time_list):
-        print(f'epoch: {i}')
-        epoch_start = mid_transit_time - (duration*2.5)
-        epoch_end = mid_transit_time + (duration*2.5)
-        tmp = lc[lc.time.value > epoch_start]
-        each_lc = tmp[tmp.time.value < epoch_end]
-        #ax = lc.scatter()
-        #ax.axvline(mid_transit_time)
-        #plt.show()
-        each_lc = each_lc.fold(period=period, epoch_time=mid_transit_time).remove_nans()
-
-        """解析中断条件を満たさないかチェック"""
-        if len(each_lc) == 0:
-            print('no data in this epoch')
-            continue
-        abort_list = np.array([transit_case_is4(each_lc, duration, period), aroud_midtransitdata_isexist(each_lc), nospace_in_transit(each_lc, transit_start, transit_end)])
-        if np.all(abort_list) == True:
-            pass
-        else:
-            print('Satisfies the analysis interruption condition')
-            continue
-        _, _, _, t0dict, t0list, _ = transit_fit_and_remove_outliers(each_lc, t0dict, t0list, outliers, estimate_period=True, lc_type='each')
-    #transit_time_list = t0list
-    _ = estimate_period(t0dict, period) #TTVを調べる。
-    '''
-
-    '''
-    ax = lc.scatter()
-    for i, mid_transit_time in enumerate(transit_time_list):
-        ax.axvline(mid_transit_time, alpha=0.3)
-    plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/check_transit_timing/catalog_v/{TOI}.png')
-    plt.close()
-    '''
-
+    
     print('preprocessing...')
     time.sleep(1)
 
@@ -756,16 +670,7 @@ for TOI in ['413.01']:
     ax2 = fig.add_subplot(2,1,2) #for plotting residuals
     cleaned_lc.errorbar(ax=ax1, color='black', marker='.', zorder=1, label='data')
     ax1.plot(cleaned_lc.time.value, flux_model, label='fitting model', color='red', zorder=2)
-    '''
-    try:
-        outliers_fold = vstack(outliers_fold)
-        outliers_fold.errorbar(ax=ax1, label='outliers(folded_lc)', color='blue', marker='.')
-    except AttributeError:
-        pass
-    except ValueError:
-        print('no outliers in folded_lc')
-        pass
-    '''
+
     ax1.legend()
     ax1.set_title(TOInumber)
     residuals = cleaned_lc - flux_model
@@ -791,3 +696,110 @@ for TOI in ['413.01']:
     plt.close()
     #binned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/binned_lc_data/{TOInumber}.csv')
     print(f'Analysis completed: {TOInumber}')
+
+'''
+"""この部分はどのエポックナンバーがどのエポックか見るときに使う。"""
+ax = lc.scatter()
+for i, mid_transit_time in enumerate(transit_time_list):
+    print(f'epoch: {i}')
+    epoch_start = mid_transit_time - (duration*2.5)
+    epoch_end = mid_transit_time + (duration*2.5)
+    tmp = lc[lc.time.value > epoch_start]
+    each_lc = tmp[tmp.time.value < epoch_end]
+    #ax = lc.scatter()
+    #if i == 9:
+        #ax.axvline(mid_transit_time)
+plt.show()
+import pdb; pdb.set_trace()
+'''
+'''
+#print('fixing t0...')
+print('checking TTV...')
+time.sleep(1)
+for i, mid_transit_time in enumerate(transit_time_list):
+    print(f'epoch: {i}')
+    epoch_start = mid_transit_time - (duration*2.5)
+    epoch_end = mid_transit_time + (duration*2.5)
+    tmp = lc[lc.time.value > epoch_start]
+    each_lc = tmp[tmp.time.value < epoch_end]
+    #ax = lc.scatter()
+    #ax.axvline(mid_transit_time)
+    #plt.show()
+    each_lc = each_lc.fold(period=period, epoch_time=mid_transit_time).remove_nans()
+
+    """解析中断条件を満たさないかチェック"""
+    if len(each_lc) == 0:
+        print('no data in this epoch')
+        continue
+    abort_list = np.array([transit_case_is4(each_lc, duration, period), aroud_midtransitdata_isexist(each_lc), nospace_in_transit(each_lc, transit_start, transit_end)])
+    if np.all(abort_list) == True:
+        pass
+    else:
+        print('Satisfies the analysis interruption condition')
+        continue
+    _, _, _, t0dict, t0list, _ = transit_fit_and_remove_outliers(each_lc, t0dict, t0list, outliers, estimate_period=True, lc_type='each')
+#transit_time_list = t0list
+_ = estimate_period(t0dict, period) #TTVを調べる。
+'''
+
+'''
+ax = lc.scatter()
+for i, mid_transit_time in enumerate(transit_time_list):
+    ax.axvline(mid_transit_time, alpha=0.3)
+plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/check_transit_timing/catalog_v/{TOI}.png')
+plt.close()
+'''
+
+'''
+try:
+    outliers_fold = vstack(outliers_fold)
+    outliers_fold.errorbar(ax=ax1, label='outliers(folded_lc)', color='blue', marker='.')
+except AttributeError:
+    pass
+except ValueError:
+    print('no outliers in folded_lc')
+    pass
+'''
+
+"""def remove_GP(lc): #remove the gaussian process from lc.stitch
+    def neg_log_like(params, y, gp):
+        gp.set_parameter_vector(params)
+        return -gp.log_likelihood(y)
+
+    y = lc.flux.value
+    yerr = lc.flux_err.value
+    t = lc.time.value
+
+    # A non-periodic component
+    Q = 1.0 / np.sqrt(2.0)
+    w0 = 3.0
+    S0 = np.var(y) / (w0 * Q)
+    bounds = dict(log_S0=(-15, 15), log_Q=(-15, 15), log_omega0=(-15, 15))
+    kernel = terms.SHOTerm(log_S0=np.log(S0), log_Q=np.log(Q), log_omega0=np.log(w0),
+                           bounds=bounds)
+    kernel.freeze_parameter("log_Q")  # We don't want to fit for "Q" in this term
+
+    # A periodic component
+    Q = 1.0
+    w0 = 3.0
+    S0 = np.var(y) / (w0 * Q)
+    kernel += terms.SHOTerm(log_S0=np.log(S0), log_Q=np.log(Q), log_omega0=np.log(w0),
+                            bounds=bounds)
+    gp = celerite.GP(kernel, mean=np.mean(y))
+    gp.compute(t, yerr)
+
+    initial_params = gp.get_parameter_vector()
+    bounds = gp.get_parameter_bounds()
+    r = minimize(neg_log_like, initial_params, method="L-BFGS-B", bounds=bounds, args=(y, gp))
+    gp.set_parameter_vector(r.x)
+    print(r)
+    pred_mean, pred_var = gp.predict(y, t, return_var=True)
+    pred_std = np.sqrt(pred_var)
+    color = "#ff7f0e"
+    plt.errorbar(t, y, yerr=yerr, fmt=".k", capsize=0)
+    plt.plot(t, pred_mean, color=color)
+    plt.fill_between(t, pred_mean+pred_std, pred_mean-pred_std, color=color, alpha=0.3,
+                     edgecolor="none")
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.show()"""
