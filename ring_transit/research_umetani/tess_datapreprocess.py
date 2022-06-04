@@ -22,6 +22,7 @@ import os
 #import celerite
 #from celerite import terms
 #from scipy.optimize import minimize
+from astropy.io import ascii
 
 warnings.filterwarnings('ignore')
 
@@ -488,7 +489,7 @@ done_list = [float(s.strip('.png')) for s in done_list]
 df = df.set_index(['TOI'])
 df = df.drop(index=each_lc_anomalylist)
 df = df.drop(index=mtt_shiftlist, errors='ignore')
-#df = df.drop(index=done_list, errors='ignore')
+df = df.drop(index=done_list, errors='ignore')
 df = df.drop(index=no_data_list, errors='ignore')
 df = df.drop(index=no_signal_list, errors='ignore')
 df = df.reset_index()
@@ -505,8 +506,8 @@ df['log Period'] = np.log10(df['Period (days)'])
 df = df.merge(nasa_df, on='TIC ID')
 import pdb; pdb.set_trace()
 """
-#for TOI in TOIlist:
-for TOI in ['645.01']:
+for TOI in TOIlist:
+#for TOI in ['645.01']:
 #for TOI in ['101.01']:
     '''
     if f'TOI{TOI}.png' in done_list:
@@ -524,6 +525,7 @@ for TOI in ['645.01']:
     rs = param_df['Stellar Radius (R_Sun)'].values[0]
     rp_rs = rp/rs
     #tpf = lk.search_targetpixelfile('TIC {}'.format(TIC), mission='TESS', cadence="short").download()
+    '''
     while True:
         try:
             search_result = lk.search_lightcurve(f'TOI{TOI}', mission='TESS', cadence="short", author='SPOC')
@@ -535,6 +537,8 @@ for TOI in ['645.01']:
             print('HTTPError, retry.')
         else:
             break
+    '''
+    search_result = lk.search_lightcurve(f'TOI{TOI}', mission='TESS', cadence="short", author='SPOC')
 
     lc_collection = search_result.download_all()
     try:
@@ -653,9 +657,16 @@ for TOI in ['645.01']:
     time.sleep(1)
     #outliers = []
     try:
-        cleaned_lc = vstack(each_lc_list)
+        each_lc_list=[]
+        total_lc_csv = os.listdir(f'{homedir}/fitting_result/data/each_lc/{TOInumber}/')
+        total_lc_csv = [i for i in total_lc_csv if 'TOI' in i]
+        for each_lc_csv in total_lc_csv:
+            each_table = ascii.read(f'{homedir}/fitting_result/data/each_lc/{TOInumber}/{each_lc_csv}')
+            each_lc = lk.LightCurve(data=each_table)
+            each_lc_list.append(each_lc)
     except ValueError:
         pass
+    cleaned_lc = vstack(each_lc_list)
     cleaned_lc.sort('time')
     try:
         cleaned_lc, outliers_fold, out, _, _, _ = transit_fit_and_remove_outliers(cleaned_lc, t0dict, t0list, outliers, estimate_period=False)
