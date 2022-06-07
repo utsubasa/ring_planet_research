@@ -54,7 +54,7 @@ nasa_df['TIC ID'] = nasa_df['TIC ID'].astype(int)
 df['log Period'] = np.log10(df['Period (days)'])
 df = pd.merge(df, nasa_df, how='left')
 df['log Mass'] = np.log10(df['pl_masse'])
-
+import pdb;pdb.set_trace()
 #lmfit(mcmc)のフィッティングパラメータを読み込む。
 homedir='/Users/u_tsubasa/Dropbox/ring_planet_research/fitting_result/data'
 

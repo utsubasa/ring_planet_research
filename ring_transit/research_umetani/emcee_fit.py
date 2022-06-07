@@ -37,7 +37,7 @@ def ring_model(t, pdic, mcmc_pvalues=None):
     q1, q2, t0, porb, rp_rs, a_rs, b, norm \
             = pdic['q1'], pdic['q2'], pdic['t0'], pdic['porb'], pdic['rp_rs'], pdic['a_rs'], pdic['b'], pdic['norm']
     theta, phi, tau, r_in, r_out \
-            = np.arcsin(pdic['b']/pdic['a_rs']), pdic['phi'], pdic['tau'], pdic['r_in'], pdic['r_out']
+            = np.arcsin( (pdic['b']/pdic['a_rs']) +0.5), pdic['phi'], pdic['tau'], pdic['r_in'], pdic['r_out']
     norm2, norm3 = pdic['norm2'], pdic['norm3']
     cosi = b/a_rs
     u = [2*np.sqrt(q1)*q2, np.sqrt(q1)*(1-2*q2)]
@@ -207,185 +207,184 @@ df = pd.read_csv('./exofop_tess_tois.csv')
 df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
 #ここはファイル名を要素にしたリストでfor loop
-for p_csv in p_csvlist[251:]:
-    #p_csv = p_csvlist[190]
-    #dataの呼び出し
-    TOInumber, _, _ = p_csv.split('_')
-    #TOInumber, _ = p_csv.split('_')
-    param_df = df[df['TOI'] == TOInumber[3:]]
-    duration = param_df['Duration (hours)'].values / 24
-    csvfile = f'./folded_lc_data/{TOInumber}.csv'
-    try:
-        folded_table = ascii.read(csvfile)
-    except FileNotFoundError:
-        sys.exit()
-    folded_lc = lk.LightCurve(data=folded_table)
-    folded_lc = folded_lc[(folded_lc.time.value < duration*0.8) & (folded_lc.time.value > -duration*0.8)]
-    import astropy.units as u
-    #binned_lc = folded_lc.bin(time_bin_size=1*u.minute).remove_nans()
-    binned_lc = folded_lc.bin(bins=500).remove_nans()
-    t = binned_lc.time.value
-    flux_data = binned_lc.flux.value
-    flux_err_data = binned_lc.flux_err.value
+p_csv = p_csvlist[0]
+#dataの呼び出し
+TOInumber, _, _ = p_csv.split('_')
+#TOInumber, _ = p_csv.split('_')
+param_df = df[df['TOI'] == TOInumber[3:]]
+duration = param_df['Duration (hours)'].values / 24
+csvfile = f'./folded_lc_data/{TOInumber}.csv'
+try:
+    folded_table = ascii.read(csvfile)
+except FileNotFoundError:
+    sys.exit()
+folded_lc = lk.LightCurve(data=folded_table)
+folded_lc = folded_lc[(folded_lc.time.value < duration*0.8) & (folded_lc.time.value > -duration*0.8)]
+import astropy.units as u
+#binned_lc = folded_lc.bin(time_bin_size=1*u.minute).remove_nans()
+binned_lc = folded_lc.bin(bins=500).remove_nans()
+t = binned_lc.time.value
+flux_data = binned_lc.flux.value
+flux_err_data = binned_lc.flux_err.value
 
-    ###mcmc setting###
-    mcmc_df = pd.read_csv(f'./fitting_result/data/{TOInumber}/{p_csv}')
-    #mcmc_df = pd.read_csv(f'./mcmc_result/fit_pdata/{p_csv}')
-    mcmc_df.index = p_names
-    pdic = mcmc_df['input_value'].to_dict()
-    #pdic['theta'] = np.pi
-    #mcmc_df.at['theta', 'vary_flags'] = False
-    mcmc_df = mcmc_df[mcmc_df['vary_flags']==True]
-    mcmc_params = mcmc_df.index.tolist()
-    for try_n in range(5):
-        ###generate initial value for theta, phi
-        mcmc_df.at['theta', 'output_value'] = np.arcsin(mcmc_df.at['b', 'output_value']/mcmc_df.at['a_rs', 'output_value'])
-        mcmc_df.at['phi', 'output_value'] = np.random.uniform(0.0,np.pi)
-        mcmc_pvalues = mcmc_df['output_value'].values
-        print('mcmc_params: ', mcmc_params)
-        print('mcmc_pvalues: ', mcmc_pvalues)
-        df_for_mcmc.at['theta', 'mins'] = np.arcsin(mcmc_df.at['b', 'output_value']/mcmc_df.at['a_rs', 'output_value'])-0.1
-        df_for_mcmc.at['theta', 'maxes'] = np.arcsin(mcmc_df.at['b', 'output_value']/mcmc_df.at['a_rs', 'output_value'])+0.1
-        pos = mcmc_pvalues + 1e-5 * np.random.randn(32, len(mcmc_pvalues))
-        #pos = np.array([rp_rs, theta, phi, r_in, r_out]) + 1e-8 * np.random.randn(32, 5)
-        nwalkers, ndim = pos.shape
-        #filename = "emcee_{0}.h5".format(datetime.datetime.now().strftime('%y%m%d%H%M'))
-        #backend = emcee.backends.HDFBackend(filename)
-        #backend.reset(nwalkers, ndim)
-        max_n = 10000
-        discard = 2500
-        index = 0
-        autocorr = np.empty(max_n)
-        old_tau = np.inf
-        #sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), pool=pool)
+###mcmc setting###
+mcmc_df = pd.read_csv(f'./fitting_result/data/{TOInumber}/{p_csv}')
+#mcmc_df = pd.read_csv(f'./mcmc_result/fit_pdata/{p_csv}')
+mcmc_df.index = p_names
+pdic = mcmc_df['input_value'].to_dict()
+#pdic['theta'] = np.pi
+#mcmc_df.at['theta', 'vary_flags'] = False
+mcmc_df = mcmc_df[mcmc_df['vary_flags']==True]
+mcmc_params = mcmc_df.index.tolist()
+for try_n in range(5):
+    ###generate initial value for theta, phi
+    mcmc_df.at['theta', 'output_value'] = np.arcsin(mcmc_df.at['b', 'output_value']/mcmc_df.at['a_rs', 'output_value'])
+    mcmc_df.at['phi', 'output_value'] = np.random.uniform(0.0,np.pi)
+    mcmc_pvalues = mcmc_df['output_value'].values
+    print('mcmc_params: ', mcmc_params)
+    print('mcmc_pvalues: ', mcmc_pvalues)
+    df_for_mcmc.at['theta', 'mins'] = np.arcsin(mcmc_df.at['b', 'output_value']/mcmc_df.at['a_rs', 'output_value'])-0.6
+    df_for_mcmc.at['theta', 'maxes'] = np.arcsin(mcmc_df.at['b', 'output_value']/mcmc_df.at['a_rs', 'output_value'])+0.6
+    pos = mcmc_pvalues + 1e-5 * np.random.randn(32, len(mcmc_pvalues))
+    #pos = np.array([rp_rs, theta, phi, r_in, r_out]) + 1e-8 * np.random.randn(32, 5)
+    nwalkers, ndim = pos.shape
+    #filename = "emcee_{0}.h5".format(datetime.datetime.now().strftime('%y%m%d%H%M'))
+    #backend = emcee.backends.HDFBackend(filename)
+    #backend.reset(nwalkers, ndim)
+    max_n = 10000
+    discard = 2500
+    index = 0
+    autocorr = np.empty(max_n)
+    old_tau = np.inf
+    #sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), pool=pool)
 
-        #sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), backend=backend)
+    #sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), backend=backend)
 
-        ###mcmc run###
-        with Pool(processes=4) as pool:
-            sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data.mean(), mcmc_params), pool=pool)
-            sampler.run_mcmc(pos, max_n, progress=True)
-            
-        #sampler.reset()
-        '''
-        for sample in sampler.sample(pos, iterations=max_n, progress=True):
-            # Only check convergence every 100 steps
-            if sampler.iteration % 100:
-                continue
-
-            # Compute the autocorrelation time so far
-            # Using tol=0 means that we'll always get an estimate even
-            # if it isn't trustworthy
-
-            tau = sampler.get_autocorr_time(tol=0)
-            autocorr[index] = np.mean(tau)
-            index += 1
-
-            # Check convergence
-            converged = np.all(tau * 100 < sampler.iteration)
-            converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
-            if converged:
-                break
-            old_tau = tau
-
-        ###the autocorrelation time###
-        n = 100 * np.arange(1, index + 1)
-        y = autocorr[:index]
-        plt.plot(n, n / 50.0, "--k")
-        plt.plot(n, y)
-        plt.xlim(0, n.max())
-        plt.ylim(0, y.max() + 0.1 * (y.max() - y.min()))
-        plt.xlabel("number of steps")
-        plt.ylabel(r"mean $\hat{\tau}$")
-        plt.savefig(f'./mcmc_result/figure/{TOInumber}/tau_{try_n}.png')\
-        ##plt.show()
-        plt.close()
-        print(tau)'''
-        os.makedirs(f'./mcmc_result/figure/{TOInumber}', exist_ok=True)
-
-
-
-        ###step visualization###
-        fig, axes = plt.subplots(ndim, figsize=(10, 7), sharex=True)
-        samples = sampler.get_chain()
-        #labels = ['rp_rs', 'theta', 'phi', 'r_in', 'r_out']
-        #labels = ['theta', 'phi']
-        labels = mcmc_params
-        for i in range(ndim):
-            ax = axes[i]
-            ax.plot(samples[:, :, i], "k", alpha=0.3)
-            ax.set_xlim(0, len(samples))
-            ax.set_ylabel(labels[i])
-            ax.yaxis.set_label_coords(-0.1, 0.5)
-        axes[-1].set_xlabel("step number");
-        plt.savefig(f'./mcmc_result/figure/{TOInumber}/step_{try_n}.png')
-        ##plt.show()
-        plt.close()
-        ##plt.show()
-
-        ###corner visualization###
-        samples = sampler.flatchain
-        flat_samples = sampler.get_chain(discard=discard, thin=15, flat=True)
-        print(flat_samples.shape)
-        """
-        truths = []
-        for param in labels:
-            truths.append(pdic_saturnlike[param])
-        fig = corner.corner(flat_samples, labels=labels, truths=truths);
-        """
-        fig = corner.corner(flat_samples, labels=labels);
-        plt.savefig(f'./mcmc_result/figure/{TOInumber}/corner_{try_n}.png')
-        ##plt.show()
-        plt.close()
-
-        """
-        tau = sampler.get_autocorr_time()
-        burnin = int(2 * np.max(tau))
-        thin = int(0.5 * np.min(tau))
-        samples = sampler.get_chain(discard=burnin, flat=True, thin=thin)
-
-        print("burn-in: {0}".format(burnin))
-        print("thin: {0}".format(thin))
-        print("flat chain shape: {0}".format(samples.shape))
-        """
-        inds = np.random.randint(len(flat_samples), size=100)
-        ###ライトカーブとモデルのプロット
-        plt.errorbar(t, flux_data, yerr=flux_err_data, fmt=".k", capsize=0, alpha=0.1)
-        for ind in inds:
-            sample = flat_samples[ind]
-            flux_model = ring_model(t, pdic, sample)
-            plt.plot(t, flux_model, "C1", alpha=0.5)
-            #fit_report = lmfit.fit_report(ring_res)
-            #print(fit_report)
-        #plt.plot(t, ymodel, "k", label="truth")
-        plt.legend(fontsize=14)
-        #plt.xlim(0, 10)
-        plt.xlabel("orbital phase")
-        plt.ylabel("flux")
-        plt.title(f'n_bins: {len(binned_lc)}')
-        plt.savefig(f"./mcmc_result/figure/{TOInumber}/fit_result_{try_n}.png")
-        ##plt.show()
-        plt.close()
+    ###mcmc run###
+    with Pool(processes=1) as pool:
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data.mean(), mcmc_params), pool=pool)
+        sampler.run_mcmc(pos, max_n, progress=True)
         
+    #sampler.reset()
+    '''
+    for sample in sampler.sample(pos, iterations=max_n, progress=True):
+        # Only check convergence every 100 steps
+        if sampler.iteration % 100:
+            continue
 
-        ###ポンチ絵の作成とcsvへの保存
-        for ind in inds:
-            sample = flat_samples[ind]
-            flux_model = ring_model(t, pdic, sample)
-            ###csvに書き出し###
-            mcmc_res_df = mcmc_df
-            mcmc_res_df['output_value'] = sample
-            rp_rs = mcmc_res_df.at['rp_rs', 'output_value']
-            rin_rp = mcmc_res_df.at['r_in', 'output_value']
-            rout_rin = mcmc_res_df.at['r_out', 'output_value']
-            b = mcmc_res_df.at['b', 'output_value']
-            theta = mcmc_res_df.at['theta', 'output_value']
-            phi = mcmc_res_df.at['phi', 'output_value']
-            chi_square = np.sum(((flux_model-flux_data)/flux_err_data)**2)
-            file_name = f'{TOInumber}_{chi_square:.0f}_{try_n}.pdf'
-            plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name)
-            os.makedirs(f'./mcmc_result/fit_pdata/{TOInumber}', exist_ok=True)
-            mcmc_res_df.to_csv(f'./mcmc_result/fit_pdata/{TOInumber}/{TOInumber}_{chi_square:.0f}_{try_n}.csv', header=True, index=False)
+        # Compute the autocorrelation time so far
+        # Using tol=0 means that we'll always get an estimate even
+        # if it isn't trustworthy
+
+        tau = sampler.get_autocorr_time(tol=0)
+        autocorr[index] = np.mean(tau)
+        index += 1
+
+        # Check convergence
+        converged = np.all(tau * 100 < sampler.iteration)
+        converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
+        if converged:
+            break
+        old_tau = tau
+
+    ###the autocorrelation time###
+    n = 100 * np.arange(1, index + 1)
+    y = autocorr[:index]
+    plt.plot(n, n / 50.0, "--k")
+    plt.plot(n, y)
+    plt.xlim(0, n.max())
+    plt.ylim(0, y.max() + 0.1 * (y.max() - y.min()))
+    plt.xlabel("number of steps")
+    plt.ylabel(r"mean $\hat{\tau}$")
+    plt.savefig(f'./mcmc_result/figure/{TOInumber}/tau_{try_n}.png')\
+    ##plt.show()
+    plt.close()
+    print(tau)'''
+    os.makedirs(f'./mcmc_result/figure/{TOInumber}', exist_ok=True)
+
+
+
+    ###step visualization###
+    fig, axes = plt.subplots(ndim, figsize=(10, 7), sharex=True)
+    samples = sampler.get_chain()
+    #labels = ['rp_rs', 'theta', 'phi', 'r_in', 'r_out']
+    #labels = ['theta', 'phi']
+    labels = mcmc_params
+    for i in range(ndim):
+        ax = axes[i]
+        ax.plot(samples[:, :, i], "k", alpha=0.3)
+        ax.set_xlim(0, len(samples))
+        ax.set_ylabel(labels[i])
+        ax.yaxis.set_label_coords(-0.1, 0.5)
+    axes[-1].set_xlabel("step number");
+    plt.savefig(f'./mcmc_result/figure/{TOInumber}/step_{try_n}.png')
+    ##plt.show()
+    plt.close()
+    ##plt.show()
+
+    ###corner visualization###
+    samples = sampler.flatchain
+    flat_samples = sampler.get_chain(discard=discard, thin=15, flat=True)
+    print(flat_samples.shape)
+    """
+    truths = []
+    for param in labels:
+        truths.append(pdic_saturnlike[param])
+    fig = corner.corner(flat_samples, labels=labels, truths=truths);
+    """
+    fig = corner.corner(flat_samples, labels=labels);
+    plt.savefig(f'./mcmc_result/figure/{TOInumber}/corner_{try_n}.png')
+    ##plt.show()
+    plt.close()
+
+    """
+    tau = sampler.get_autocorr_time()
+    burnin = int(2 * np.max(tau))
+    thin = int(0.5 * np.min(tau))
+    samples = sampler.get_chain(discard=burnin, flat=True, thin=thin)
+
+    print("burn-in: {0}".format(burnin))
+    print("thin: {0}".format(thin))
+    print("flat chain shape: {0}".format(samples.shape))
+    """
+    inds = np.random.randint(len(flat_samples), size=100)
+    ###ライトカーブとモデルのプロット
+    plt.errorbar(t, flux_data, yerr=flux_err_data, fmt=".k", capsize=0, alpha=0.1)
+    for ind in inds:
+        sample = flat_samples[ind]
+        flux_model = ring_model(t, pdic, sample)
+        plt.plot(t, flux_model, "C1", alpha=0.5)
+        #fit_report = lmfit.fit_report(ring_res)
+        #print(fit_report)
+    #plt.plot(t, ymodel, "k", label="truth")
+    plt.legend(fontsize=14)
+    #plt.xlim(0, 10)
+    plt.xlabel("orbital phase")
+    plt.ylabel("flux")
+    plt.title(f'n_bins: {len(binned_lc)}')
+    plt.savefig(f"./mcmc_result/figure/{TOInumber}/fit_result_{try_n}.png")
+    ##plt.show()
+    plt.close()
+    
+
+    ###ポンチ絵の作成とcsvへの保存
+    for ind in inds:
+        sample = flat_samples[ind]
+        flux_model = ring_model(t, pdic, sample)
+        ###csvに書き出し###
+        mcmc_res_df = mcmc_df
+        mcmc_res_df['output_value'] = sample
+        rp_rs = mcmc_res_df.at['rp_rs', 'output_value']
+        rin_rp = mcmc_res_df.at['r_in', 'output_value']
+        rout_rin = mcmc_res_df.at['r_out', 'output_value']
+        b = mcmc_res_df.at['b', 'output_value']
+        theta = mcmc_res_df.at['theta', 'output_value']
+        phi = mcmc_res_df.at['phi', 'output_value']
+        chi_square = np.sum(((flux_model-flux_data)/flux_err_data)**2)
+        file_name = f'{TOInumber}_{chi_square:.0f}_{try_n}.pdf'
+        plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name)
+        os.makedirs(f'./mcmc_result/fit_pdata/{TOInumber}', exist_ok=True)
+        mcmc_res_df.to_csv(f'./mcmc_result/fit_pdata/{TOInumber}/{TOInumber}_{chi_square:.0f}_{try_n}.csv', header=True, index=False)
 
 '''fitting_data/data上で実行し、最もカイ2乗の小さいパラメータcsvを取得
 TOIs = os.listdir()
