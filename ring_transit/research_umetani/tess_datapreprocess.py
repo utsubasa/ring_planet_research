@@ -239,11 +239,11 @@ def transit_params_setting(rp_rs, period):
     """トランジットフィッティングパラメータの設定"""
     names = ["t0", "per", "rp", "a", "b", "ecc", "w", "q1", "q2"]
     if np.isnan(rp_rs):
-        values = [np.random.uniform(-0.15,0.15), np.random.uniform(period*0.9, period*1.1), np.random.uniform(0.01,0.1), np.random.uniform(0.01,1.0), np.random.uniform(-0.2,0.2), np.random.uniform(0.1,0.8), 90.0, np.random.uniform(0.1,0.9), np.random.uniform(0.1,0.9)]
+        values = [np.random.uniform(-0.15,0.15), np.random.uniform(period*0.9, period*1.1), np.random.uniform(0.01,0.011), np.random.uniform(0.01,0.5), np.random.uniform(-0.2,0.2), np.random.uniform(0.1,0.8), 90.0, np.random.uniform(0.4,0.6), np.random.uniform(0.4,0.6)]
     else:
-        values = [np.random.uniform(-0.15,0.15), np.random.uniform(period*0.9, period*1.1), rp_rs, np.random.uniform(0.01,1.0), np.random.uniform(-0.2,0.2), np.random.uniform(0.1,0.8), 90.0, np.random.uniform(0.1,0.9), np.random.uniform(0.1,0.9)]
+        values = [np.random.uniform(-0.15,0.15), np.random.uniform(period*0.9, period*1.1), rp_rs, np.random.uniform(0.01,0.5), np.random.uniform(-0.2,0.2), np.random.uniform(0.1,0.8), 90.0, np.random.uniform(0.4,0.6), np.random.uniform(0.4,0.6)]
     mins = [-0.2, period*0.8, 0.001, 0.01, -1.1, 0, 90, 0.0, 0.0]
-    maxes = [0.2, period*1.2, 0.9, 10, 1.1, 0.95, 90, 1.0, 1.0]
+    maxes = [0.2, period*1.2, 0.9, 1, 1.1, 0.95, 90, 1.0, 1.0]
     vary_flags = [True, True, True, True, True, True, False, True, True]
     return set_params_lm(names, values, mins, maxes, vary_flags)
 
@@ -301,12 +301,12 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
             for n in range(30):
                 params = transit_params_setting(rp_rs, period)
                 try:
-                    out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, flux_err, names),max_nfev=1000)
+                    out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, flux_err, names),max_nfev=10000)
                 except ValueError:
                     print("ValueError")
                 #best_res_dict[out.redchi] = out
                 print(out.redchi)
-                if out.params['t0'].stderr != None:
+                if out.params['t0'].stderr != None and abs(out.params['t0'].stderr) < abs(out.params['t0'].value):
                 #if out.params['t0'].stderr != None:
                     red_redchi = abs(out.redchi-1)
                     best_res_dict[red_redchi] = out
@@ -346,7 +346,9 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
                     ax2.set_ylabel('residuals')
                     plt.tight_layout()
                     os.makedirs(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}', exist_ok=True)
-                    plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
+                    #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
+                    plt.show()
+                    import pdb;pdb.set_trace()
                     #os.makedirs(f'{homedir}/fitting_result/figure/each_lc/catalog_v/{TOInumber}', exist_ok=True)
                     #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/catalog_v/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
                     #os.makedirs(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}', exist_ok=True)
@@ -457,6 +459,63 @@ def estimate_period(t0dict, period):
         estimated_period = period
         return estimated_period
 
+def folding_lc_from_csv(homedir, TOInumber):
+    print('refolding...')
+    time.sleep(1)
+    outliers = []
+    t0dict = {}
+    each_lc_list = []
+    t0list =[]
+    try:
+        each_lc_list=[]
+        total_lc_csv = os.listdir(f'{homedir}/fitting_result/data/each_lc/{TOInumber}/')
+        total_lc_csv = [i for i in total_lc_csv if 'TOI' in i]
+        for each_lc_csv in total_lc_csv:
+            each_table = ascii.read(f'{homedir}/fitting_result/data/each_lc/{TOInumber}/{each_lc_csv}')
+            each_lc = lk.LightCurve(data=each_table)
+            each_lc_list.append(each_lc)
+    except ValueError:
+        pass
+    cleaned_lc = vstack(each_lc_list)
+    cleaned_lc.sort('time')
+    try:
+        cleaned_lc, outliers_fold, out, _, _, _ = transit_fit_and_remove_outliers(cleaned_lc, t0dict, t0list, outliers, estimate_period=False)
+        flux_model = no_ring_model_transitfit_from_lmparams(out.params, cleaned_lc.time.value, names)
+    except ValueError:
+        print('no transit!')
+        with open('error_tic.dat', 'a') as f:
+            f.write('no transit!: ' + 'str(TOI)' + '\n')
+    fig = plt.figure()
+    ax1 = fig.add_subplot(2,1,1) #for plotting transit model and data
+    ax2 = fig.add_subplot(2,1,2) #for plotting residuals
+    cleaned_lc.errorbar(ax=ax1, color='black', marker='.', zorder=1, label='data')
+    ax1.plot(cleaned_lc.time.value, flux_model, label='fitting model', color='red', zorder=2)
+
+    ax1.legend()
+    ax1.set_title(TOInumber)
+    residuals = cleaned_lc - flux_model
+    residuals.errorbar(ax=ax2, color='black', ecolor='gray', alpha=0.3,  marker='.', zorder=1)
+    ax2.plot(cleaned_lc.time.value, np.zeros(len(cleaned_lc.time)), color='red', zorder=2)
+    ax2.set_ylabel('residuals')
+    plt.tight_layout()
+    plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
+    #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/catalog_v/{TOInumber}.png')
+    #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/bls/{TOInumber}.png')
+    plt.close()
+    #cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/bls/{TOInumber}.csv')
+    #cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/catalog_v/{TOInumber}.csv')
+    cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/{TOInumber}.csv')
+
+    binned_lc = cleaned_lc.bin(time_bin_size=3*u.minute)
+    ax = plt.subplot(1,1,1)
+    binned_lc.errorbar(ax=ax, color='black')
+    ax.set_title(TOInumber)
+    plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/binned_lc/figure/{TOInumber}.png')
+    #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/binned_lc/figure/catalog_v/{TOInumber}.png')
+    #plt.show()
+    plt.close()
+    #binned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/binned_lc_data/{TOInumber}.csv')
+    
 
 #if __name__ ==  '__main__':
 homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani'
@@ -487,9 +546,9 @@ done_list = [s.lstrip('TOI') for s in done_list ]
 done_list = [float(s.strip('.png')) for s in done_list]
 
 df = df.set_index(['TOI'])
-df = df.drop(index=each_lc_anomalylist)
+#df = df.drop(index=each_lc_anomalylist)
 df = df.drop(index=mtt_shiftlist, errors='ignore')
-df = df.drop(index=done_list, errors='ignore')
+#df = df.drop(index=done_list, errors='ignore')
 df = df.drop(index=no_data_list, errors='ignore')
 df = df.drop(index=no_signal_list, errors='ignore')
 df = df.reset_index()
@@ -506,9 +565,9 @@ df['log Period'] = np.log10(df['Period (days)'])
 df = df.merge(nasa_df, on='TIC ID')
 import pdb; pdb.set_trace()
 """
-for TOI in TOIlist:
+#for TOI in TOIlist:
 #for TOI in ['645.01']:
-#for TOI in ['101.01']:
+for TOI in ['147.01']:
     '''
     if f'TOI{TOI}.png' in done_list:
         continue
@@ -538,6 +597,9 @@ for TOI in TOIlist:
         else:
             break
     '''
+    #folding_lc_from_csv(homedir, TOInumber)
+    #print(f'Analysis completed: {TOInumber}')
+    #import pdb;pdb.set_trace()
     search_result = lk.search_lightcurve(f'TOI{TOI}', mission='TESS', cadence="short", author='SPOC')
 
     lc_collection = search_result.download_all()
@@ -627,8 +689,8 @@ for TOI in TOIlist:
     for i, mid_transit_time in enumerate(transit_time_list):
         print(f'epoch: {i}')
         
-     #if i == 164:
-        #    continue
+        if i == 25 or i ==52:
+            continue
             
         epoch_start = mid_transit_time - (duration*2.5)
         epoch_end = mid_transit_time + (duration*2.5)
@@ -653,6 +715,7 @@ for TOI in TOIlist:
     _ = estimate_period(t0dict, period) #TTVを調べる
 
     """folded_lcに対してtransitfit & remove outliers. folded_lcを描画する"""
+    
     print('refolding...')
     time.sleep(1)
     #outliers = []
