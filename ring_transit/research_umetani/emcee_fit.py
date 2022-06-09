@@ -220,7 +220,7 @@ except FileNotFoundError:
     sys.exit()
 folded_lc = lk.LightCurve(data=folded_table)
 folded_lc = folded_lc[(folded_lc.time.value < duration*0.8) & (folded_lc.time.value > -duration*0.8)]
-import astropy.units as u
+#import astropy.units as u
 #binned_lc = folded_lc.bin(time_bin_size=1*u.minute).remove_nans()
 binned_lc = folded_lc.bin(bins=500).remove_nans()
 t = binned_lc.time.value
