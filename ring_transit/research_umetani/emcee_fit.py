@@ -150,11 +150,11 @@ p_names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
 
 mins = [0.0, 0.0, -0.1, 0.0, 0.003, 1.0,
         0.0, 0.9, 0, 0.0, 0.0, 1.0,
-        1.1, -0.1, -0.1, 0.0, 0.0]
+        1.01, -0.1, -0.1, 0.0, 0.0]
 
 maxes = [1.0, 1.0, 0.1, 100.0, 1.0, 100.0,
-         1.0, 1.1, np.pi, np.pi, 1.0, 3.0,
-         3.0, 0.1, 0.1, 0.0, 0.0]
+         1.0, 1.1, np.pi, np.pi, 1.0, 2.3,
+         2.3, 0.1, 0.1, 0.0, 0.0]
 
 vary_flags = [True, True, False, False, True, True,
               True, False, True, True, False, True,
@@ -207,7 +207,7 @@ df = pd.read_csv('./exofop_tess_tois.csv')
 df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
 #ここはファイル名を要素にしたリストでfor loop
-p_csv = p_csvlist[1]
+p_csv = p_csvlist[43]
 #dataの呼び出し
 TOInumber, _, _ = p_csv.split('_')
 #TOInumber, _ = p_csv.split('_')
@@ -235,16 +235,16 @@ pdic = mcmc_df['input_value'].to_dict()
 #pdic['theta'] = np.pi
 #mcmc_df.at['theta', 'vary_flags'] = False
 mcmc_df = mcmc_df[mcmc_df['vary_flags']==True]
-mcmc_params = mcmc_df.index.tolist()
 for try_n in range(5):
     ###generate initial value for theta, phi
-    mcmc_df.at['theta', 'output_value'] = np.arcsin(mcmc_df.at['b', 'output_value']/mcmc_df.at['a_rs', 'output_value'])+0.5
+    mcmc_df.at['theta', 'output_value'] = np.arcsin(mcmc_df.at['b', 'output_value']/mcmc_df.at['a_rs', 'output_value'])+1.57
     mcmc_df.at['phi', 'output_value'] = np.random.uniform(0.0,np.pi)
+    mcmc_params = mcmc_df.index.tolist()
     mcmc_pvalues = mcmc_df['output_value'].values
     print('mcmc_params: ', mcmc_params)
     print('mcmc_pvalues: ', mcmc_pvalues)
-    df_for_mcmc.at['theta', 'mins'] = np.arcsin(mcmc_df.at['b', 'output_value']/mcmc_df.at['a_rs', 'output_value'])+0.49
-    df_for_mcmc.at['theta', 'maxes'] = np.arcsin(mcmc_df.at['b', 'output_value']/mcmc_df.at['a_rs', 'output_value'])+0.51
+    df_for_mcmc.at['theta', 'mins'] = np.arcsin(mcmc_df.at['b', 'output_value']/mcmc_df.at['a_rs', 'output_value'])+1.56
+    df_for_mcmc.at['theta', 'maxes'] = np.arcsin(mcmc_df.at['b', 'output_value']/mcmc_df.at['a_rs', 'output_value'])+1.58
     pos = mcmc_pvalues + 1e-5 * np.random.randn(32, len(mcmc_pvalues))
     #pos = np.array([rp_rs, theta, phi, r_in, r_out]) + 1e-8 * np.random.randn(32, 5)
     nwalkers, ndim = pos.shape
@@ -261,7 +261,7 @@ for try_n in range(5):
     #sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux, error_scale), backend=backend)
 
     ###mcmc run###
-    with Pool(processes=4) as pool:
+    with Pool(processes=1) as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(t, flux_data, flux_err_data.mean(), mcmc_params), pool=pool)
         sampler.run_mcmc(pos, max_n, progress=True)
         

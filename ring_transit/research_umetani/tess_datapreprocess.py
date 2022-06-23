@@ -538,7 +538,7 @@ df = df.merge(nasa_df, on='TIC ID')
 import pdb; pdb.set_trace()
 '''
 for TOI in TOIlist:
-#for TOI in ['645.01']:
+#for TOI in ['112.01']:
 #for TOI in ['4470.01']:
     '''
     if f'TOI{TOI}.png' in done_list:
@@ -571,6 +571,9 @@ for TOI in TOIlist:
     lc_collection = search_result.download_all()
     try:
         lc = lc_collection.stitch().remove_nans() #initialize lc
+        lc.scatter()
+        plt.show()
+        import pdb;pdb.set_trace()
     except AttributeError:
         continue
     '''
