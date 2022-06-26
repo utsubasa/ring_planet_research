@@ -347,12 +347,12 @@ def transit_fit_and_remove_outliers(lc, t0dict, t0list, outliers, estimate_perio
                     plt.tight_layout()
                     os.makedirs(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}', exist_ok=True)
                     #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
-                    plt.show()
-                    import pdb;pdb.set_trace()
+                    #plt.show()
+                    #import pdb;pdb.set_trace()
                     #os.makedirs(f'{homedir}/fitting_result/figure/each_lc/catalog_v/{TOInumber}', exist_ok=True)
                     #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/catalog_v/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
-                    #os.makedirs(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}', exist_ok=True)
-                    #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
+                    os.makedirs(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}', exist_ok=True)
+                    plt.savefig(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
                     #ax.set_xlim(-1, 1)
                     #plt.show()
                     plt.close()
@@ -385,9 +385,9 @@ def curve_fitting(each_lc, duration, out, each_lc_list):
     result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
     result.plot()
     os.makedirs(f'{homedir}/fitting_result/figure/curvefit/{TOInumber}', exist_ok=True)
-    plt.savefig(f'{homedir}/fitting_result/figure/curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
-    #os.makedirs(f'{homedir}/fitting_result/figure/curvefit/bls/{TOInumber}', exist_ok=True)
-    #plt.savefig(f'{homedir}/fitting_result/figure/curvefit/bls/{TOInumber}/{TOInumber}_{str(i)}.png')
+    #plt.savefig(f'{homedir}/fitting_result/figure/curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
+    os.makedirs(f'{homedir}/fitting_result/figure/curvefit/bls/{TOInumber}', exist_ok=True)
+    plt.savefig(f'{homedir}/fitting_result/figure/curvefit/bls/{TOInumber}/{TOInumber}_{str(i)}.png')
     #plt.show()
     plt.close()
     poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
@@ -404,9 +404,9 @@ def curve_fitting(each_lc, duration, out, each_lc_list):
     each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
     each_lc.errorbar()
     os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}', exist_ok=True)
-    plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
-    #os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/bls/{TOInumber}', exist_ok=True)
-    #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/bls/{TOInumber}/{TOInumber}_{str(i)}.png')
+    #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
+    os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/bls/{TOInumber}', exist_ok=True)
+    plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/bls/{TOInumber}/{TOInumber}_{str(i)}.png')
     plt.close()
     os.makedirs(f'{homedir}/fitting_result/data/each_lc/{TOInumber}', exist_ok=True)
     each_lc.write(f'{homedir}/fitting_result/data/each_lc/{TOInumber}/{TOInumber}_{str(i)}.csv')
@@ -450,8 +450,8 @@ def estimate_period(t0dict, period):
         ax2.set_xlabel('epoch')
         ax2.set_ylabel('residuals')
         plt.tight_layout()
-        plt.savefig(f'{homedir}/fitting_result/figure/estimate_period/{TOInumber}.png')
-        #plt.savefig(f'{homedir}/fitting_result/figure/estimate_period/bls/{TOInumber}.png')
+        #plt.savefig(f'{homedir}/fitting_result/figure/estimate_period/{TOInumber}.png')
+        plt.savefig(f'{homedir}/fitting_result/figure/estimate_period/bls/{TOInumber}.png')
         #plt.show()
         plt.close()
         return estimated_period
@@ -498,13 +498,13 @@ def folding_lc_from_csv(homedir, TOInumber):
     ax2.plot(cleaned_lc.time.value, np.zeros(len(cleaned_lc.time)), color='red', zorder=2)
     ax2.set_ylabel('residuals')
     plt.tight_layout()
-    plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
+    #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
     #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/catalog_v/{TOInumber}.png')
-    #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/bls/{TOInumber}.png')
+    plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/bls/{TOInumber}.png')
     plt.close()
-    #cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/bls/{TOInumber}.csv')
+    cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/bls/{TOInumber}.csv')
     #cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/catalog_v/{TOInumber}.csv')
-    cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/{TOInumber}.csv')
+    #cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/{TOInumber}.csv')
 
     binned_lc = cleaned_lc.bin(time_bin_size=3*u.minute)
     ax = plt.subplot(1,1,1)
@@ -608,7 +608,7 @@ for TOI in ['147.01']:
     except AttributeError:
         continue
     
-    '''
+    
     """bls analysis"""
     bls_period = np.linspace(10, 50, 10000)
     bls = lc.to_periodogram(method='bls',period=bls_period)#oversample_factor=1)\
@@ -629,7 +629,7 @@ for TOI in ['147.01']:
     plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/comp_bls/{TOInumber}.png')
     plt.close()
     transit_time = bls_transit_time
-    '''
+    
     """もしもどれかのパラメータがnanだったらそのTIC or TOIを記録して、処理はスキップする。"""
     pdf = pd.Series([duration, period, transit_time], index=['duration', 'period', 'transit_time'])
     if np.sum(pdf.isnull()) != 0:
@@ -689,9 +689,8 @@ for TOI in ['147.01']:
     for i, mid_transit_time in enumerate(transit_time_list):
         print(f'epoch: {i}')
         
-        if i == 25 or i ==52:
-            continue
-            
+        #if i != 116:
+            #continue  
         epoch_start = mid_transit_time - (duration*2.5)
         epoch_end = mid_transit_time + (duration*2.5)
         tmp = lc[lc.time.value > epoch_start]
@@ -713,62 +712,11 @@ for TOI in ['147.01']:
         else:
             each_lc_list = curve_fitting(each_lc, duration, out, each_lc_list)
     _ = estimate_period(t0dict, period) #TTVを調べる
-
     """folded_lcに対してtransitfit & remove outliers. folded_lcを描画する"""
     
     print('refolding...')
     time.sleep(1)
-    #outliers = []
-    try:
-        each_lc_list=[]
-        total_lc_csv = os.listdir(f'{homedir}/fitting_result/data/each_lc/{TOInumber}/')
-        total_lc_csv = [i for i in total_lc_csv if 'TOI' in i]
-        for each_lc_csv in total_lc_csv:
-            each_table = ascii.read(f'{homedir}/fitting_result/data/each_lc/{TOInumber}/{each_lc_csv}')
-            each_lc = lk.LightCurve(data=each_table)
-            each_lc_list.append(each_lc)
-    except ValueError:
-        pass
-    cleaned_lc = vstack(each_lc_list)
-    cleaned_lc.sort('time')
-    try:
-        cleaned_lc, outliers_fold, out, _, _, _ = transit_fit_and_remove_outliers(cleaned_lc, t0dict, t0list, outliers, estimate_period=False)
-        flux_model = no_ring_model_transitfit_from_lmparams(out.params, cleaned_lc.time.value, names)
-    except ValueError:
-        print('no transit!')
-        with open('error_tic.dat', 'a') as f:
-            f.write('no transit!: ' + 'str(TOI)' + '\n')
-        continue
-    fig = plt.figure()
-    ax1 = fig.add_subplot(2,1,1) #for plotting transit model and data
-    ax2 = fig.add_subplot(2,1,2) #for plotting residuals
-    cleaned_lc.errorbar(ax=ax1, color='black', marker='.', zorder=1, label='data')
-    ax1.plot(cleaned_lc.time.value, flux_model, label='fitting model', color='red', zorder=2)
-
-    ax1.legend()
-    ax1.set_title(TOInumber)
-    residuals = cleaned_lc - flux_model
-    residuals.errorbar(ax=ax2, color='black', ecolor='gray', alpha=0.3,  marker='.', zorder=1)
-    ax2.plot(cleaned_lc.time.value, np.zeros(len(cleaned_lc.time)), color='red', zorder=2)
-    ax2.set_ylabel('residuals')
-    plt.tight_layout()
-    plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
-    #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/catalog_v/{TOInumber}.png')
-    #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/bls/{TOInumber}.png')
-    plt.close()
-    #cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/bls/{TOInumber}.csv')
-    #cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/catalog_v/{TOInumber}.csv')
-    cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/{TOInumber}.csv')
-
-    binned_lc = cleaned_lc.bin(time_bin_size=3*u.minute)
-    ax = plt.subplot(1,1,1)
-    binned_lc.errorbar(ax=ax, color='black')
-    ax.set_title(TOInumber)
-    plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/binned_lc/figure/{TOInumber}.png')
-    #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/binned_lc/figure/catalog_v/{TOInumber}.png')
-    #plt.show()
-    plt.close()
-    #binned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/binned_lc_data/{TOInumber}.csv')
+    folding_lc_from_csv(homedir, TOInumber)
     print(f'Analysis completed: {TOInumber}')
 
 '''
