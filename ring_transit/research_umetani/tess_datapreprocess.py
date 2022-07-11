@@ -20,12 +20,56 @@ from astropy.table import Table, vstack
 import astropy.units as u
 from decimal import Decimal, ROUND_HALF_UP
 import os
-#import celerite
-#from celerite import terms
-#from scipy.optimize import minimize
+import celerite
+from celerite import terms
+from scipy.optimize import minimize
 from astropy.io import ascii
 
 warnings.filterwarnings('ignore')
+
+def remove_GP(lc): #remove the gaussian process from lc.stitch
+    def neg_log_like(params, y, gp):
+        gp.set_parameter_vector(params)
+        return -gp.log_likelihood(y)
+
+    y = lc.flux.value
+    yerr = lc.flux_err.value
+    t = lc.time.value
+
+    # A non-periodic component
+    Q = 1.0 / np.sqrt(2.0)
+    w0 = 3.0
+    S0 = np.var(y) / (w0 * Q)
+    bounds = dict(log_S0=(-15, 15), log_Q=(-15, 15), log_omega0=(-15, 15))
+    kernel = terms.SHOTerm(log_S0=np.log(S0), log_Q=np.log(Q), log_omega0=np.log(w0),
+                           bounds=bounds)
+    kernel.freeze_parameter("log_Q")  # We don't want to fit for "Q" in this term
+
+    # A periodic component
+    Q = 1.0
+    w0 = 3.0
+    S0 = np.var(y) / (w0 * Q)
+    kernel += terms.SHOTerm(log_S0=np.log(S0), log_Q=np.log(Q), log_omega0=np.log(w0),
+                            bounds=bounds)
+    gp = celerite.GP(kernel, mean=np.mean(y))
+    gp.compute(t, yerr)
+
+    initial_params = gp.get_parameter_vector()
+    bounds = gp.get_parameter_bounds()
+    r = minimize(neg_log_like, initial_params, method="L-BFGS-B", bounds=bounds, args=(y, gp))
+    gp.set_parameter_vector(r.x)
+    print(r)
+    import pdb;pdb.set_trace()
+    pred_mean, pred_var = gp.predict(y, t, return_var=True)
+    pred_std = np.sqrt(pred_var)
+    color = "#ff7f0e"
+    plt.errorbar(t, y, yerr=yerr, fmt=".k", capsize=0)
+    plt.plot(t, pred_mean, color=color)
+    plt.fill_between(t, pred_mean+pred_std, pred_mean-pred_std, color=color, alpha=0.3,
+                     edgecolor="none")
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.show()
 
 def bls_analysis(lc, period, transit_time, duration):
     print('bls analysis...')
@@ -271,33 +315,38 @@ def ring_model(x, pdic, v=None):
             norm + norm2*(times-t0) + norm3*(times-t0)**2)
 
 #リングありモデルをfitting
-def ring_residual_transitfit(params, x, data, eps_data, p_names):
+def ring_residual_transitfit(params, x, data, eps_data, p_names, return_model=False):
     #start =time.time()
     model = ring_model(x, params.valuesdict())
     chi_square = np.sum(((data-model)/eps_data)**2)
     #print(params)
     #print(chi_square)
     #print(np.max(((data-model)/eps_data)**2))
-
-    return (data-model) / eps_data
+    if return_model==True:
+        return model
+    else:
+        return (data-model) / eps_data
 
 #リングなしモデルをfitting
-def no_ring_residual_transitfit(params, x, data, eps_data, p_names):
+def no_ring_transitfit(params, x, data, eps_data, p_names, return_model=False):
     global chi_square
     params_batman = set_params_batman(params, p_names)
     m = batman.TransitModel(params_batman, x)    #initializes model
     model = m.light_curve(params_batman)         #calculates light curve
     chi_square = np.sum(((data-model)/eps_data)**2)
     #print(params)
-    print(chi_square)
-    return (data-model) / eps_data
+    #print(chi_square)
+    if return_model==True:
+        return model
+    else:
+        return (data-model) / eps_data
 
-def no_ring_residual_transit_and_polynomialfit(curvefit_res, transitfit_res, x, data, eps_data, p_names):
+def no_ring_transit_and_polynomialfit(params, x, data, eps_data, p_names, return_model=False):
     global chi_square
-    params_batman = set_params_batman(transitfit_res.params, p_names)
+    params_batman = set_params_batman(params, p_names)
     m = batman.TransitModel(params_batman, x)    #initializes model
     transit_model = m.light_curve(params_batman)         #calculates light curve
-    poly_params =curvefit_res.params.valuesdict()
+    poly_params = params.valuesdict()
     poly_model = np.polynomial.Polynomial([poly_params['c0'],\
                     poly_params['c1'],\
                     poly_params['c2'],\
@@ -307,21 +356,15 @@ def no_ring_residual_transit_and_polynomialfit(curvefit_res, transitfit_res, x, 
                     poly_params['c6'],\
                     poly_params['c7']])
     polynomialmodel = poly_model(x)
-    model = transit_model + polynomialmodel
+    model = transit_model + polynomialmodel -1
     chi_square = np.sum(((data-model)/eps_data)**2)
     #print(params)
-    #print(chi_square)
-    return (data-model) / eps_data
+    print(chi_square)
+    if return_model==True:
+        return model
+    else:
+        return (data-model) / eps_data
 
-def ring_model_transitfit_from_lmparams(params, x):
-    model = ring_model(x, params.valuesdict())         #calculates light curve
-    return model
-
-def no_ring_model_transitfit_from_lmparams(params, x, p_names):
-    params_batman = set_params_batman(params, p_names)
-    m = batman.TransitModel(params_batman, x)    #initializes model
-    model = m.light_curve(params_batman)
-    return model
 
 def transit_params_setting(rp_rs, period):
     global p_names
@@ -381,7 +424,7 @@ def estimate_period(t0dict, period):
         estimated_period = period
         return estimated_period
 
-def transit_fitting(lc, rp_rs, period, fit_model=no_ring_residual_transitfit):
+def transit_fitting(lc, rp_rs, period, fit_model=no_ring_transitfit, transitfit_params=None, curvefit_params=None):
     """transit fitting"""
     flag_time = np.abs(lc.time.value)<1.0
     lc = lc[flag_time]
@@ -390,12 +433,25 @@ def transit_fitting(lc, rp_rs, period, fit_model=no_ring_residual_transitfit):
     flux_err = lc.flux_err.value
     best_res_dict = {} #最も良いreduced chi-squareを出した結果を選別し保存するための辞書
     while len(best_res_dict) == 0:
+        params = transit_params_setting(rp_rs, period)
+        if transitfit_params != None:
+            for p_name in p_names:
+                params[p_name].set(value=transitfit_params[p_name].value)
+        if curvefit_params != None:
+            params.add_many(curvefit_params['c0'],
+                            curvefit_params['c1'], 
+                            curvefit_params['c2'],
+                            curvefit_params['c3'],
+                            curvefit_params['c4'],
+                            curvefit_params['c5'],
+                            curvefit_params['c6'],
+                            curvefit_params['c7'])
         for n in range(30):
-            params = transit_params_setting(rp_rs, period)
+            print(f'{n}th model fitting')
             try:
-                res = lmfit.minimize(fit_model, params, args=(t, flux, flux_err, p_names), max_nfev=10000)
+                res = lmfit.minimize(fit_model, params, args=(t, flux, flux_err, p_names), max_nfev=5000)
                 #if res.params['t0'].stderr != None:
-                if res.params['t0'].stderr != None and abs(res.params['t0'].stderr) < abs(res.params['t0'].value) and res.redchi<5:
+                if res.params['t0'].stderr != None and abs(res.params['t0'].stderr) < abs(res.params['t0'].value):
                     red_redchi = abs(res.redchi-1)
                     best_res_dict[red_redchi] = res
                     print(res.redchi)
@@ -406,9 +462,13 @@ def transit_fitting(lc, rp_rs, period, fit_model=no_ring_residual_transitfit):
 
 def remove_outliers(res, lc, outliers: list, t0dict):
     t = lc.time.value
-    flux_model = no_ring_model_transitfit_from_lmparams(res.params, t, p_names)
+    flux = lc.flux.value
+    flux_err = lc.flux_err.value
+    flux_model = no_ring_transit_and_polynomialfit(res.params, t, flux, flux_err, p_names, return_model=True)
     residual_lc = lc.copy()
     residual_lc.flux = np.sqrt(np.square(flux_model - lc.flux))
+    residual_lc.scatter()
+    plt.show()
     _, mask = residual_lc.remove_outliers(sigma=5.0, return_mask=True)
     inverse_mask = np.logical_not(mask)
 
@@ -434,7 +494,7 @@ def remove_outliers(res, lc, outliers: list, t0dict):
         #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
         os.makedirs(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}', exist_ok=True)
         #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
-        #plt.show()
+        plt.show()
         plt.close()
         t0dict[i] = [mid_transit_time+res.params["t0"].value, res.params["t0"].stderr]
         outliers = []
@@ -445,12 +505,12 @@ def remove_outliers(res, lc, outliers: list, t0dict):
     
     return lc, outliers, t0dict
 
-def curve_fitting(each_lc, duration, res=None, each_lc_list=None):
+def curve_fitting(each_lc, duration, each_lc_list=None, res=None):
     if res != None:
         out_transit = each_lc[(each_lc['time'].value < res.params["t0"].value - (duration*0.7)) | (each_lc['time'].value > res.params["t0"].value + (duration*0.7))]
     else:
         out_transit = each_lc[(each_lc['time'].value < -(duration*0.7)) | (each_lc['time'].value > (duration*0.7))]
-    model = lmfit.models.PolynomialModel(degree=2)
+    model = lmfit.models.PolynomialModel(degree=7)
     poly_params = model.make_params(c0=0, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
     #poly_params = model.make_params(c0=1, c1=0, c2=0)
     result = model.fit(out_transit.flux.value, poly_params, x=out_transit.time.value)
@@ -463,10 +523,10 @@ def curve_fitting(each_lc, duration, res=None, each_lc_list=None):
     plt.close()
     
     if each_lc_list != None:
-        
-        poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
-                    result.params.valuesdict()['c1'],\
-                    result.params.valuesdict()['c2']])
+        '''
+        poly_model = np.polynomial.Polynomial([result.params['c0'].value,\
+                    result.params['c1'].value,\
+                    result.params['c2'].value])
         '''
         poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
                         result.params.valuesdict()['c1'],\
@@ -476,18 +536,18 @@ def curve_fitting(each_lc, duration, res=None, each_lc_list=None):
                         result.params.valuesdict()['c5'],\
                         result.params.valuesdict()['c6'],\
                         result.params.valuesdict()['c7']])
-        '''
+        
         #normalization
         each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
         each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
         each_lc.errorbar()
         os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}', exist_ok=True)
-        plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
+        #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
         os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/bls/{TOInumber}', exist_ok=True)
         #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/bls/{TOInumber}/{TOInumber}_{str(i)}.png')
         plt.close()
         os.makedirs(f'{homedir}/fitting_result/data/each_lc/{TOInumber}', exist_ok=True)
-        each_lc.write(f'{homedir}/fitting_result/data/each_lc/{TOInumber}/{TOInumber}_{str(i)}.csv')
+        #each_lc.write(f'{homedir}/fitting_result/data/each_lc/{TOInumber}/{TOInumber}_{str(i)}.csv')
         each_lc_list.append(each_lc)
 
         return each_lc_list
@@ -515,13 +575,13 @@ def folding_lc_from_csv(homedir, TOInumber):
     import pdb;pdb.set_trace()
     try:
         while True:
-            res = transit_fitting(cleaned_lc, rp_rs, period, fit_model=no_ring_residual_transitfit)
+            res = transit_fitting(cleaned_lc, rp_rs, period, fit_model=no_ring_transitfit)
             cleaned_lc, outliers, t0dict = remove_outliers(res, each_lc, outliers, t0dict)
             if len(outliers) == 0:
                 break 
             else:
                 pass
-        flux_model = no_ring_model_transitfit_from_lmparams(res.params, cleaned_lc.time.value, p_names)
+        flux_model = no_ring_transit_and_polynomialfit(res.params, cleaned_lc.time.value, p_names, return_model=True)
     except ValueError:
         print('no transit!')
         with open('error_tic.dat', 'a') as f:
@@ -588,8 +648,8 @@ df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
 
 #for TOI in TOIlist:
-for TOI in ['1796.01']:
-#for TOI in ['1385.01']:
+#for TOI in ['1796.01']:
+for TOI in ['1385.01']:
     '''
     if f'TOI{TOI}.png' in done_list:
         continue
@@ -619,6 +679,8 @@ for TOI in ['1796.01']:
 
     lc = lc_collection.stitch().remove_nans() #initialize lc
     #lc = lc_collection.remove_nans().normalize() #initialize lc
+    remove_GP(lc)
+    import pdb;pdb.set_trace()
     '''
     lc.scatter()
     plt.show()
@@ -626,7 +688,7 @@ for TOI in ['1796.01']:
     '''
 
     """bls analysis"""
-    transit_time, period = bls_analysis(lc, period, transit_time, duration)
+    #transit_time, period = bls_analysis(lc, period, transit_time, duration)
 
     """他の惑星がある場合、データにそのトランジットが含まれているかを判断し、与えているならその信号を除去する。"""
     print('judging whether other planet transit is included in the data...')
@@ -671,15 +733,17 @@ for TOI in ['1796.01']:
         curvefit_params = curve_fitting(each_lc, duration)
 
         while True:
-            res = transit_fitting(each_lc, rp_rs, period, fit_model=no_ring_residual_transitfit)
+            res = transit_fitting(each_lc, rp_rs, period)
+            res = transit_fitting(each_lc, rp_rs, period, fit_model=no_ring_transit_and_polynomialfit, transitfit_params=res.params, curvefit_params=curvefit_params)
             each_lc, outliers, t0dict = remove_outliers(res, each_lc, outliers, t0dict)
+            import pdb;pdb.set_trace()
             if len(outliers) == 0:
                 break 
             else:
                 pass
 
         
-        each_lc_list = curve_fitting(each_lc, duration, res, each_lc_list)
+        each_lc_list = curve_fitting(each_lc, duration, each_lc_list, res)
 
     _ = estimate_period(t0dict, period) #TTVを調べる
 
@@ -750,7 +814,8 @@ except ValueError:
     pass
 '''
 
-'''def remove_GP(lc): #remove the gaussian process from lc.stitch
+'''
+def remove_GP(lc): #remove the gaussian process from lc.stitch
     def neg_log_like(params, y, gp):
         gp.set_parameter_vector(params)
         return -gp.log_likelihood(y)
@@ -807,7 +872,7 @@ def transit_fit_and_remove_outliers(lc, t0dict, outliers, estimate_period=False,
             for n in range(30):
                 params = transit_params_setting(rp_rs, period)
                 try:
-                    out = lmfit.minimize(no_ring_residual_transitfit, params, args=(t, flux, flux_err, p_names),max_nfev=10000)
+                    out = lmfit.minimize(no_ring_transitfit, params, args=(t, flux, flux_err, p_names),max_nfev=10000)
                     #if out.params['t0'].stderr != None:
                     if out.params['t0'].stderr != None and abs(out.params['t0'].stderr) < abs(out.params['t0'].value) and out.redchi<5:
                         red_redchi = abs(out.redchi-1)
@@ -891,4 +956,10 @@ def transit_fit_and_remove_outliers(lc, t0dict, outliers, estimate_period=False,
     else:
         pass
     return folded_lc, epoch_all_list
+
+def no_ring_model_transitfit_from_lmparams(params, x, p_names):
+    params_batman = set_params_batman(params, p_names)
+    m = batman.TransitModel(params_batman, x)    #initializes model
+    model = m.light_curve(params_batman)
+    return model
 '''
