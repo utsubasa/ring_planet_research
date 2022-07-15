@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 #import seaborn as sns
 import lmfit
+from lmfit.model import save_modelresult
 import lightkurve as lk
 from fit_model import model
 import warnings
@@ -398,7 +399,7 @@ def clip_outliers(res, lc, outliers, t0dict, folded_lc=False, transit_and_poly_f
         lc = lc[~mask]
     return lc, outliers, t0dict
 
-def curve_fitting(each_lc, duration, each_lc_list=None, res=None):
+def curve_fitting(each_lc, duration, res=None):
     if res != None:
         out_transit = each_lc[(each_lc['time'].value < res.params["t0"].value - (duration*0.7)) | (each_lc['time'].value > res.params["t0"].value + (duration*0.7))]
     else:
@@ -414,39 +415,34 @@ def curve_fitting(each_lc, duration, each_lc_list=None, res=None):
     #plt.savefig(f'{homedir}/fitting_result/figure/curvefit/bls/{TOInumber}/{TOInumber}_{str(i)}.png')
     #plt.show()
     plt.close()
-    
-    if each_lc_list != None:
-        
-        poly_model = np.polynomial.Polynomial([result.params['c0'].value,\
-                    result.params['c1'].value,\
-                    result.params['c2'].value])
-        '''
-        poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
-                        result.params.valuesdict()['c1'],\
-                        result.params.valuesdict()['c2'],\
-                        result.params.valuesdict()['c3'],\
-                        result.params.valuesdict()['c4'],\
-                        result.params.valuesdict()['c5'],\
-                        result.params.valuesdict()['c6'],\
-                        result.params.valuesdict()['c7']])
-        '''
-        
-        #normalization
-        each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
-        each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
-        each_lc.errorbar()
-        os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}', exist_ok=True)
-        plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
-        os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/bls/{TOInumber}', exist_ok=True)
-        #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/bls/{TOInumber}/{TOInumber}_{str(i)}.png')
-        plt.close()
-        os.makedirs(f'{homedir}/fitting_result/data/each_lc/{TOInumber}', exist_ok=True)
-        each_lc.write(f'{homedir}/fitting_result/data/each_lc/{TOInumber}/{TOInumber}_{str(i)}.csv')
-        each_lc_list.append(each_lc)
 
-        return each_lc_list
-    else:
-        return result.params
+    return result
+
+def polynomial_normalize(each_lc, poly_params):
+    poly_model = np.polynomial.Polynomial([poly_params['c0'].value,\
+                poly_params['c1'].value,\
+                poly_params['c2'].value])
+    '''
+    poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
+                    result.params.valuesdict()['c1'],\
+                    result.params.valuesdict()['c2'],\
+                    result.params.valuesdict()['c3'],\
+                    result.params.valuesdict()['c4'],\
+                    result.params.valuesdict()['c5'],\
+                    result.params.valuesdict()['c6'],\
+                    result.params.valuesdict()['c7']])
+    '''
+    #normalization
+    each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
+    each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
+    each_lc.errorbar()
+    os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}', exist_ok=True)
+    plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
+    os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/bls/{TOInumber}', exist_ok=True)
+    #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/bls/{TOInumber}/{TOInumber}_{str(i)}.png')
+    plt.close()
+    os.makedirs(f'{homedir}/fitting_result/data/each_lc/{TOInumber}', exist_ok=True)
+    each_lc.write(f'{homedir}/fitting_result/data/each_lc/{TOInumber}/{TOInumber}_{str(i)}.csv')
 
 def folding_lc_from_csv(homedir, TOInumber, transit_and_poly_fit=False):
     print('refolding...')
@@ -595,8 +591,6 @@ for TOI in ['413.01']:
     #値を格納するリストの定義
     outliers = []
     t0dict = {}
-    each_lc_list = []
-    '''
     print('preprocessing...')
     time.sleep(1)
     for i, mid_transit_time in enumerate(transit_time_list):
@@ -624,28 +618,34 @@ for TOI in ['413.01']:
         while True:
             res = transit_fitting(each_lc, rp_rs, period)
             #res = transit_fitting(each_lc, rp_rs, period, fitting_model=no_ring_transit_and_polynomialfit, transitfit_params=res.params, curvefit_params=curvefit_params)
-            each_lc, outliers, t0dict = remove_outliers(res, each_lc, outliers, t0dict)
+            os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/transit/{TOInumber}', exist_ok=True)
+            save_modelresult(res, f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/transit/{TOInumber}/{TOInumber}_{str(i)}.sav')
+            each_lc, outliers, t0dict = clip_outliers(res, each_lc, outliers, t0dict)
             if len(outliers) == 0:
                 break 
             else:
                 pass
-        each_lc_list = curve_fitting(each_lc, duration, each_lc_list, res)
-    '''
+        curvefit_res = curve_fitting(each_lc, duration, res)
+        os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/curvefit/{TOInumber}', exist_ok=True)
+        save_modelresult(res, f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/curvefit/{TOInumber}/{TOInumber}_{str(i)}.sav')
+        _ = polynomial_normalize(each_lc, curvefit_res.params, lc_type='each')
+         
+    
     """folded_lcに対してtransitfit & remove outliers. folded_lcを描画する"""
     fold_res = folding_lc_from_csv(homedir, TOInumber)
+    os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/transit/{TOInumber}', exist_ok=True)
+    save_modelresult(res, f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/transit/{TOInumber}/{TOInumber}_folded.sav')
     a_rs = fold_res.params['a'].value
     b = fold_res.params['b'].value
     inc = np.degrees(np.arccos( b / a_rs ))
     duration = (period/np.pi)*np.arcsin( (1/a_rs)*( np.sqrt(np.square(1+rp_rs) - np.square(b))/np.sin(np.radians(inc)) ) )
 
     """durationの値、惑星パラメータをfixして、各トランジットエポックでベースライン（多項式フィッティング）とt0を動かしてフィッティングする。"""
-    print('reprocessing...')
-    time.sleep(1)
     #値を格納するリストの定義
     outliers = []
     t0dict = {}
-    each_lc_list = []
-
+    print('reprocessing...')
+    time.sleep(1)
     for i, mid_transit_time in enumerate(transit_time_list):
         print(f'epoch: {i}')
         #if i == 203:
@@ -655,6 +655,7 @@ for TOI in ['413.01']:
         tmp = lc[lc.time.value > epoch_start]
         each_lc = tmp[tmp.time.value < epoch_end]
         each_lc = each_lc.fold(period=period, epoch_time=mid_transit_time).normalize().remove_nans()
+        
         """解析中断条件を満たさないかチェック"""
         abort_flag = calc_data_survival_rate(each_lc, duration)
         if abort_flag == True:
@@ -669,28 +670,22 @@ for TOI in ['413.01']:
         curvefit_params = curve_fitting(each_lc, duration)
         while True:
             res = transit_fitting(each_lc, rp_rs, period, fitting_model=no_ring_transit_and_polynomialfit, transitfit_params=fold_res.params, curvefit_params=curvefit_params)
+            os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/2ndloop/transit&poly/{TOInumber}', exist_ok=True)
+            save_modelresult(res, f'{homedir}/fitting_result/data/each_lc/modelresult/2ndloop/transit&poly/{TOInumber}/{TOInumber}_{str(i)}.sav')
             each_lc, outliers, t0dict = clip_outliers(res, each_lc, outliers, t0dict, transit_and_poly_fit=True)
             if len(outliers) == 0:
                 break 
             else:
                 pass
-        poly_model = np.polynomial.Polynomial([curvefit_params['c0'].value,\
-                    curvefit_params['c1'].value,\
-                    curvefit_params['c2'].value])
-        
-        #normalization
-        each_lc.flux = each_lc.flux.value/poly_model(each_lc.time.value)
-        each_lc.flux_err = each_lc.flux_err.value/poly_model(each_lc.time.value)
-        each_lc.errorbar()
-        os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}', exist_ok=True)
-        plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
-        os.makedirs(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/bls/{TOInumber}', exist_ok=True)
-        #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/after_curvefit/bls/{TOInumber}/{TOInumber}_{str(i)}.png')
-        plt.close()
-        os.makedirs(f'{homedir}/fitting_result/data/each_lc/{TOInumber}', exist_ok=True)
-        each_lc.write(f'{homedir}/fitting_result/data/each_lc/{TOInumber}/{TOInumber}_{str(i)}.csv')
-        each_lc_list.append(each_lc)
+        polynomial_normalize(each_lc, res.params)
+
     _ = estimate_period(t0dict, period) #TTVを調べる
 
-    _ = folding_lc_from_csv(homedir, TOInumber, transit_and_poly_fit=True)
+    """最終的なfolded_lcを生成する。"""
+    fold_res = folding_lc_from_csv(homedir, TOInumber, transit_and_poly_fit=True)
+    os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/2ndloop/transit&poly/{TOInumber}', exist_ok=True)
+    save_modelresult(res, f'{homedir}/fitting_result/data/each_lc/modelresult/2ndloop/transit&poly/{TOInumber}/{TOInumber}_folded.sav')
     print(f'Analysis completed: {TOInumber}')
+    import pdb;pdb.set_trace()
+
+    
