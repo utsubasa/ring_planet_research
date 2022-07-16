@@ -483,7 +483,7 @@ def folding_lc_from_csv(homedir, TOInumber):
     plt.tight_layout()
     plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
     #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/bls/{TOInumber}.png')
-    plt.show()
+    #plt.show()
     plt.close()
     #cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/bls/{TOInumber}.csv')
     cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/{TOInumber}.csv')
@@ -628,13 +628,15 @@ for TOI in ['413.01']:
     print('folding and calculate duration...')
     time.sleep(1)
     fold_res = folding_lc_from_csv(homedir, TOInumber)
-    os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/transit/{TOInumber}', exist_ok=True)
-    with open(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/transit/{TOInumber}/{TOInumber}_folded.txt', 'a') as f:
-        print(lmfit.fit_report(fold_res), file = f)
     a_rs = fold_res.params['a'].value
     b = fold_res.params['b'].value
     inc = np.degrees(np.arccos( b / a_rs ))
     duration = (period/np.pi)*np.arcsin( (1/a_rs)*( np.sqrt(np.square(1+rp_rs) - np.square(b))/np.sin(np.radians(inc)) ) )
+    os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/transit/{TOInumber}', exist_ok=True)
+    with open(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/transit/{TOInumber}/{TOInumber}_folded.txt', 'a') as f:
+        print(lmfit.fit_report(fold_res), file = f)
+        print(f'calculated duration: {duration}', file = f)
+    
 
     """durationの値、惑星パラメータをfixして、各トランジットエポックでベースライン（多項式フィッティング）とt0を動かしてフィッティングする。"""
     #値を格納するリストの定義
