@@ -6,7 +6,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 #import seaborn as sns
 import lmfit
-from lmfit.model import save_modelresult
 import lightkurve as lk
 from fit_model import model
 import warnings
@@ -251,10 +250,9 @@ def no_ring_transit_and_polynomialfit(params, x, data, eps_data, p_names, return
     #print(params)
     #print(chi_square)
     if return_model==True:
-        return model
+        return model, transit_model, polynomialmodel
     else:
         return (data-model) / eps_data
-
 
 def transit_params_setting(rp_rs, period):
     global p_names
@@ -330,7 +328,6 @@ def transit_fitting(lc, rp_rs, period, fitting_model=no_ring_transitfit, transit
                     params[p_name].set(value=transitfit_params[p_name].value)
                     if p_name != 't0':
                         params[p_name].set(vary=False)
-                import pdb;pdb.set_trace()
             if curvefit_params != None:
                 params.add_many(curvefit_params['c0'],
                                 curvefit_params['c1'], 
@@ -354,7 +351,7 @@ def clip_outliers(res, lc, outliers, t0dict, folded_lc=False, transit_and_poly_f
     flux = lc.flux.value
     flux_err = lc.flux_err.value
     if transit_and_poly_fit == True:
-        flux_model = no_ring_transit_and_polynomialfit(res.params, t, flux, flux_err, p_names, return_model=True)
+        flux_model, transit_model, polynomial_model = no_ring_transit_and_polynomialfit(res.params, t, flux, flux_err, p_names, return_model=True)
     else:
         flux_model = no_ring_transitfit(res.params, t, flux, flux_err, p_names, return_model=True)
 
@@ -372,7 +369,10 @@ def clip_outliers(res, lc, outliers, t0dict, folded_lc=False, transit_and_poly_f
         ax1 = fig.add_subplot(2,1,1) #for plotting transit model and data
         ax2 = fig.add_subplot(2,1,2) #for plotting residuals
         lc.errorbar(ax=ax1, color='black', marker='.')
-        ax1.plot(t,flux_model, label='fitting model', color='red')
+        ax1.plot(t,flux_model, label='fitting model', color='black')
+        if transit_and_poly_fit == True:
+            ax1.plot(t,transit_model, label='transit model', color='blue')
+            ax1.plot(t,polynomial_model, label='polynomial model', color='red')
         try:
             outliers = vstack(outliers)
             outliers.errorbar(ax=ax1, color='cyan', label='outliers(each_lc)', marker='.')
@@ -397,6 +397,7 @@ def clip_outliers(res, lc, outliers, t0dict, folded_lc=False, transit_and_poly_f
         #print('removed bins:', len(each_lc[mask]))
         outliers.append(lc[mask])
         lc = lc[~mask]
+    plt.close()
     return lc, outliers, t0dict
 
 def curve_fitting(each_lc, duration, res=None):
@@ -444,9 +445,7 @@ def polynomial_normalize(each_lc, poly_params):
     os.makedirs(f'{homedir}/fitting_result/data/each_lc/{TOInumber}', exist_ok=True)
     each_lc.write(f'{homedir}/fitting_result/data/each_lc/{TOInumber}/{TOInumber}_{str(i)}.csv')
 
-def folding_lc_from_csv(homedir, TOInumber, transit_and_poly_fit=False):
-    print('refolding...')
-    time.sleep(1)
+def folding_lc_from_csv(homedir, TOInumber):
     outliers = []
     t0dict = {}
     each_lc_list = []
@@ -462,20 +461,14 @@ def folding_lc_from_csv(homedir, TOInumber, transit_and_poly_fit=False):
         pass
     cleaned_lc = vstack(each_lc_list)
     cleaned_lc.sort('time')
-    try:
-        while True:
-            res = transit_fitting(cleaned_lc, rp_rs, period, fitting_model=no_ring_transitfit)
-            cleaned_lc, outliers, t0dict = clip_outliers(res, cleaned_lc, outliers, t0dict, folded_lc=True)
-            if len(outliers) == 0:
-                break 
-        if transit_and_poly_fit == True:
-            flux_model = no_ring_transit_and_polynomialfit(res.params, cleaned_lc.time.value, cleaned_lc.flux.value, cleaned_lc.flux_err.value, p_names, return_model=True)
-        else:
-            flux_model = no_ring_transitfit(res.params, cleaned_lc.time.value, cleaned_lc.flux.value, cleaned_lc.flux_err.value, p_names, return_model=True)
-    except ValueError:
-        print('no transit!')
-        with open('error_tic.dat', 'a') as f:
-            f.write('no transit!: ' + 'str(TOI)' + '\n')
+
+    while True:
+        res = transit_fitting(cleaned_lc, rp_rs, period, fitting_model=no_ring_transitfit)
+        cleaned_lc, outliers, t0dict = clip_outliers(res, cleaned_lc, outliers, t0dict, folded_lc=True)
+        if len(outliers) == 0:
+            break 
+        
+    flux_model = no_ring_transitfit(res.params, cleaned_lc.time.value, cleaned_lc.flux.value, cleaned_lc.flux_err.value, p_names, return_model=True)
     fig = plt.figure()
     ax1 = fig.add_subplot(2,1,1) #for plotting transit model and data
     ax2 = fig.add_subplot(2,1,2) #for plotting residuals
@@ -586,7 +579,6 @@ for TOI in ['413.01']:
     transit_time_list = np.append(np.arange(transit_time, lc.time[-1].value, period), np.arange(transit_time, lc.time[0].value, -period))
     transit_time_list = np.unique(transit_time_list)
     transit_time_list.sort()
-    
     """各エポックで外れ値除去、カーブフィッティング"""
     #値を格納するリストの定義
     outliers = []
@@ -619,7 +611,8 @@ for TOI in ['413.01']:
             res = transit_fitting(each_lc, rp_rs, period)
             #res = transit_fitting(each_lc, rp_rs, period, fitting_model=no_ring_transit_and_polynomialfit, transitfit_params=res.params, curvefit_params=curvefit_params)
             os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/transit/{TOInumber}', exist_ok=True)
-            save_modelresult(res, f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/transit/{TOInumber}/{TOInumber}_{str(i)}.sav')
+            with open(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/transit/{TOInumber}/{TOInumber}_{str(i)}.txt', 'a') as f:
+                print(lmfit.fit_report(res), file = f)
             each_lc, outliers, t0dict = clip_outliers(res, each_lc, outliers, t0dict)
             if len(outliers) == 0:
                 break 
@@ -627,14 +620,17 @@ for TOI in ['413.01']:
                 pass
         curvefit_res = curve_fitting(each_lc, duration, res)
         os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/curvefit/{TOInumber}', exist_ok=True)
-        save_modelresult(res, f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/curvefit/{TOInumber}/{TOInumber}_{str(i)}.sav')
-        _ = polynomial_normalize(each_lc, curvefit_res.params, lc_type='each')
-         
-    
+        with open(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/curvefit/{TOInumber}/{TOInumber}_{str(i)}.txt', 'a') as f:
+            print(lmfit.fit_report(res), file = f)
+        _ = polynomial_normalize(each_lc, curvefit_res.params)   
+
     """folded_lcに対してtransitfit & remove outliers. folded_lcを描画する"""
+    print('folding and calculate duration...')
+    time.sleep(1)
     fold_res = folding_lc_from_csv(homedir, TOInumber)
     os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/transit/{TOInumber}', exist_ok=True)
-    save_modelresult(res, f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/transit/{TOInumber}/{TOInumber}_folded.sav')
+    with open(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/transit/{TOInumber}/{TOInumber}_folded.txt', 'a') as f:
+        print(lmfit.fit_report(fold_res), file = f)
     a_rs = fold_res.params['a'].value
     b = fold_res.params['b'].value
     inc = np.degrees(np.arccos( b / a_rs ))
@@ -667,24 +663,29 @@ for TOI in ['413.01']:
         else:
             pass
 
-        curvefit_params = curve_fitting(each_lc, duration)
+        curvefit_res = curve_fitting(each_lc, duration)
         while True:
-            res = transit_fitting(each_lc, rp_rs, period, fitting_model=no_ring_transit_and_polynomialfit, transitfit_params=fold_res.params, curvefit_params=curvefit_params)
+            res = transit_fitting(each_lc, rp_rs, period, fitting_model=no_ring_transit_and_polynomialfit, transitfit_params=fold_res.params, curvefit_params=curvefit_res.params)
             os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/2ndloop/transit&poly/{TOInumber}', exist_ok=True)
-            save_modelresult(res, f'{homedir}/fitting_result/data/each_lc/modelresult/2ndloop/transit&poly/{TOInumber}/{TOInumber}_{str(i)}.sav')
+            with open(f'{homedir}/fitting_result/data/each_lc/modelresult/2ndloop/transit&poly/{TOInumber}/{TOInumber}_{str(i)}.txt', 'a') as f:
+                print(lmfit.fit_report(res), file = f)
             each_lc, outliers, t0dict = clip_outliers(res, each_lc, outliers, t0dict, transit_and_poly_fit=True)
             if len(outliers) == 0:
                 break 
             else:
                 pass
         polynomial_normalize(each_lc, res.params)
+        #処理したeach_lcは指定されたディレクトリに保存される。
 
     _ = estimate_period(t0dict, period) #TTVを調べる
 
     """最終的なfolded_lcを生成する。"""
-    fold_res = folding_lc_from_csv(homedir, TOInumber, transit_and_poly_fit=True)
+    print('refolding...')
+    time.sleep(1)
+    fold_res = folding_lc_from_csv(homedir, TOInumber)
     os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/2ndloop/transit&poly/{TOInumber}', exist_ok=True)
-    save_modelresult(res, f'{homedir}/fitting_result/data/each_lc/modelresult/2ndloop/transit&poly/{TOInumber}/{TOInumber}_folded.sav')
+    with open(f'{homedir}/fitting_result/data/each_lc/modelresult/2ndloop/transit&poly/{TOInumber}/{TOInumber}_folded.txt', 'a') as f:
+        print(lmfit.fit_report(res), file = f)
     print(f'Analysis completed: {TOInumber}')
     import pdb;pdb.set_trace()
 
