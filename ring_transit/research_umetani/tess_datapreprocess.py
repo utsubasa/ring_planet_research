@@ -52,27 +52,35 @@ def bls_analysis(lc, period, transit_time, duration):
     
     return transit_time, period
 
-def remove_others_transit(lc, oridf, param_df, TOI):
-    other_p_df = oridf[oridf['TIC ID'] == param_df['TIC ID'].values[0]]
+def remove_others_transit(lc, oridf, param_df, other_p_df, TOI):
+    print('removing others planet transit in data...')
+    time.sleep(1)
     cliped_lc = lc
-    if len(other_p_df.index) != 1:
-        print('removing others planet transit in data...')
-        time.sleep(1)
-        for _, item in other_p_df[other_p_df['TOI']!=float(TOI)].iterrows():
-            others_duration = item['Duration (hours)'] / 24
-            others_period = item['Period (days)']
-            others_transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD
-            others_transit_time_list = np.append(np.arange(others_transit_time, lc.time[-1].value, others_period), np.arange(others_transit_time, lc.time[0].value, -others_period))
-            others_transit_time_list.sort()
-            if np.any(np.isnan([others_period, others_duration, others_transit_time])):
-                print('nan parameter of other planet transit exist.')
-                continue
-            else:
-                cliped_lc, _ = clip_transit(cliped_lc, others_duration, others_transit_time_list)
-        ax = lc.scatter(color='red', label='Other transit signals' )
-        cliped_lc.scatter(ax=ax, color='black')
-        plt.savefig(f'//Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/other_transit_signals/{TOInumber}.png')
-        plt.close()
+    for _, item in other_p_df[other_p_df['TOI']!=float(TOI)].iterrows():
+        others_duration = item['Duration (hours)'] / 24
+        others_period = item['Period (days)']
+        others_transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD
+        others_transit_time_list = np.append(np.arange(others_transit_time, lc.time[-1].value, others_period), np.arange(others_transit_time, lc.time[0].value, -others_period))
+        others_transit_time_list.sort()
+        import pdb;pdb.set_trace()
+        if np.any(np.isnan([others_period, others_duration, others_transit_time])):
+            print('nan parameter of other planet transit exist.')
+            continue
+        else:
+            #cliped_lc, _ = clip_transit(cliped_lc, others_duration, others_transit_time_list)
+            ax = lc.scatter()
+            for i, mid_transit_time in enumerate(others_transit_time_list):
+                print(i)
+                ax.axvline(x=mid_transit_time, alpha=0.3)
+            plt.show()
+            import pdb;pdb.set_trace()
+
+
+
+    #ax = lc.scatter(color='red', label='Other transit signals' )
+    #cliped_lc.scatter(ax=ax, color='black')
+    #plt.savefig(f'//Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/other_transit_signals/{TOInumber}.png')
+    #plt.close()
     
     return cliped_lc
 
@@ -116,12 +124,9 @@ def calc_data_survival_rate(lc, duration):
     data_n = len(lc.flux)
     max_data_n = duration*5*60*24/2 #mid_transit_timeからdurationの前後×2.5 [min]/ 2 min cadence
     data_survival_rate = data_n / max_data_n
-    print(data_survival_rate)
+    print(f'{data_survival_rate:2f}% data usable')
     #max_data_n = (lc.time_original[-1]-lc.time_original[0])*24*60/2
-    if data_survival_rate < 0.95:
-        return True
-    else:
-        return False
+    return data_survival_rate
 
 
 def q_to_u_limb(q_arr):
@@ -341,9 +346,12 @@ def transit_fitting(lc, rp_rs, period, fitting_model=no_ring_transitfit, transit
             except ValueError:
                 print("ValueError")
         if len(best_res_dict) == 0:
+            print(TOInumber, i)
+            lc.scatter()
+            plt.show()
             import pdb;pdb.set_trace()
     res = sorted(best_res_dict.items())[0][1]
-    print(res.redchi)
+    print(f'reduced chisquare: {res.redchi:4f}')
     return res
 
 def clip_outliers(res, lc, outliers, t0dict, folded_lc=False, transit_and_poly_fit=False):
@@ -368,31 +376,36 @@ def clip_outliers(res, lc, outliers, t0dict, folded_lc=False, transit_and_poly_f
         fig = plt.figure()
         ax1 = fig.add_subplot(2,1,1) #for plotting transit model and data
         ax2 = fig.add_subplot(2,1,2) #for plotting residuals
-        lc.errorbar(ax=ax1, color='black', marker='.')
+        lc.errorbar(ax=ax1, color='gray', marker='.', alpha=0.3)
         ax1.plot(t,flux_model, label='fitting model', color='black')
         if transit_and_poly_fit == True:
-            ax1.plot(t,transit_model, label='transit model', color='blue')
-            ax1.plot(t,polynomial_model, label='polynomial model', color='red')
+            ax1.plot(t,transit_model, label='transit model', ls="--", color='blue', alpha=0.5)
+            ax1.plot(t,polynomial_model, label='polynomial model', ls="-.", color='red', alpha=0.5)
         try:
             outliers = vstack(outliers)
             outliers.errorbar(ax=ax1, color='cyan', label='outliers(each_lc)', marker='.')
         except ValueError:
             pass
-        else:
-            ax1.legend()
-            ax1.set_title(f'chi square/dof: {int(res.chisqr)}/{res.nfree} ')
-            residuals = lc - flux_model
-            residuals.errorbar(ax=ax2, color='black', marker='.')
-            ax2.plot(t,np.zeros(len(t)), label='fitting model', color='red')
-            ax2.set_ylabel('residuals')
-            plt.tight_layout()
-            os.makedirs(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}', exist_ok=True)
-            plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
-            os.makedirs(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}', exist_ok=True)
+        ax1.legend()
+        ax1.set_title(f'chi square/dof: {int(res.chisqr)}/{res.nfree} ')
+        residuals = lc - flux_model
+        residuals.errorbar(ax=ax2, color='gray', marker='.')
+        ax2.plot(t,np.zeros(len(t)), label='fitting model', color='black')
+        ax2.set_ylabel('residuals')
+        plt.tight_layout()
+        if transit_and_poly_fit == False:
+            os.makedirs(f'{homedir}/fitting_result/figure/each_lc/transit_fit/{TOInumber}', exist_ok=True)
+            plt.savefig(f'{homedir}/fitting_result/figure/each_lc/transit_fit/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
+            os.makedirs(f'{homedir}/fitting_result/figure/each_lc/transit_fit/bls/{TOInumber}', exist_ok=True)
             #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
-            plt.close()
-            t0dict[i] = [mid_transit_time+res.params["t0"].value, res.params["t0"].stderr]
-            outliers = []
+        else:
+            os.makedirs(f'{homedir}/fitting_result/figure/each_lc/transit&poly_fit/{TOInumber}', exist_ok=True)
+            plt.savefig(f'{homedir}/fitting_result/figure/each_lc/transit&poly_fit/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
+            os.makedirs(f'{homedir}/fitting_result/figure/each_lc/transit&poly_fit/bls/{TOInumber}', exist_ok=True)
+            #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
+        plt.close()
+        t0dict[i] = [mid_transit_time+res.params["t0"].value, res.params["t0"].stderr]
+        outliers = []
     else:
         #print('removed bins:', len(each_lc[mask]))
         outliers.append(lc[mask])
@@ -444,6 +457,7 @@ def polynomial_normalize(each_lc, poly_params):
     plt.close()
     os.makedirs(f'{homedir}/fitting_result/data/each_lc/{TOInumber}', exist_ok=True)
     each_lc.write(f'{homedir}/fitting_result/data/each_lc/{TOInumber}/{TOInumber}_{str(i)}.csv')
+    return each_lc
 
 def folding_lc_from_csv(homedir, TOInumber):
     outliers = []
@@ -510,6 +524,9 @@ no_data_list = [4726.01,372.01,352.01,2617.01,2766.01,2969.01,2989.01,2619.01,26
                 1521.01,1123.01, 1519.01, 1427.01, 1371.01, 1365.01, 1397.01] #short がないか、SPOCがないか
 no_perioddata_list = [1134.01,1897.01,2423.01,2666.01,4465.01]#exofopの表にperiodの記載無し。1567.01,1656.01もperiodなかったがこちらはcadence=’short’のデータなし。
 no_signal_list = [2218.01,212.01,1823.01] #トランジットのsignalが無いか、ノイズに埋もれて見えない
+multiplanet_list = [1670.01, 201.01, 822.01, 1130.01]
+startrend_list = [4381.01, 1135.01, 1025.01, 212.01, 1830.01, 2119.01, 224.01]
+flare_list = [212.01, 2119.01, 1779.01]
 
 #done_list = [4470.01,495.01,423.01,398.01,165.01,1148.01,157.01,1682.01,1612.01,112.01,656.01]
 done_list = os.listdir('/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure')
@@ -520,21 +537,21 @@ done_list = [float(s.strip('.png')) for s in done_list]
 df = df.set_index(['TOI'])
 #df = df.drop(index=each_lc_anomalylist)
 #df = df.drop(index=mtt_shiftlist, errors='ignore')
-#df = df.drop(index=done_list, errors='ignore')
+df = df.drop(index=done_list, errors='ignore')
 df = df.drop(index=no_data_list, errors='ignore')
+df = df.drop(index=multiplanet_list, errors='ignore')
+df = df.drop(index=startrend_list, errors='ignore')
+df = df.drop(index=flare_list, errors='ignore')
 #df = df.drop(index=no_signal_list, errors='ignore')
 df = df.reset_index()
 
 #df = df.sort_values('Planet SNR', ascending=False)
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
-#for TOI in TOIlist:
-#for TOI in ['1796.01']:
-for TOI in ['413.01']:
-    '''
-    if f'TOI{TOI}.png' in done_list:
+for TOI in TOIlist:
+#for TOI in ['1670.01']:
+    if TOI=='1823.01' or TOI=='1833.01':
         continue
-    '''
     TOI = str(TOI)
     param_df = df[df['TOI'] == TOI]
     duration = param_df['Duration (hours)'].values[0] / 24
@@ -561,11 +578,11 @@ for TOI in ['413.01']:
     
     lc = lc_collection.stitch().remove_nans() #initialize lc
     #lc = lc_collection.remove_nans().normalize() #initialize lc
-    """
+    '''
     lc.scatter()
     plt.show()
     import pdb;pdb.set_trace()
-    """
+    '''
 
     """bls analysis"""
     #transit_time, period = bls_analysis(lc, period, transit_time, duration)
@@ -573,20 +590,28 @@ for TOI in ['413.01']:
     """他の惑星がある場合、データにそのトランジットが含まれているかを判断し、与えているならその信号を除去する。"""
     print('judging whether other planet transit is included in the data...')
     time.sleep(1)
-    lc = remove_others_transit(lc, oridf, param_df, TOI)
+    other_p_df = oridf[oridf['TIC ID'] == param_df['TIC ID'].values[0]]
+    if len(other_p_df.index) != 1:
+        lc = remove_others_transit(lc, oridf, param_df, other_p_df, TOI)
 
     """ターゲットの惑星のtransit time listを作成"""
     transit_time_list = np.append(np.arange(transit_time, lc.time[-1].value, period), np.arange(transit_time, lc.time[0].value, -period))
     transit_time_list = np.unique(transit_time_list)
     transit_time_list.sort()
+
     """各エポックで外れ値除去、カーブフィッティング"""
     #値を格納するリストの定義
     outliers = []
     t0dict = {}
     print('preprocessing...')
     time.sleep(1)
+    #ax = lc.scatter()
     for i, mid_transit_time in enumerate(transit_time_list):
         print(f'epoch: {i}')
+        '''
+        ax.axvline(x=mid_transit_time)
+        continue
+        '''
         #if i == 203:
             #continue  
         epoch_start = mid_transit_time - (duration*2.5)
@@ -594,19 +619,20 @@ for TOI in ['413.01']:
         tmp = lc[lc.time.value > epoch_start]
         each_lc = tmp[tmp.time.value < epoch_end]
         each_lc = each_lc.fold(period=period, epoch_time=mid_transit_time).normalize().remove_nans()
-
         """解析中断条件を満たさないかチェック"""
-        abort_flag = calc_data_survival_rate(each_lc, duration)
-        if abort_flag == True:
-            ax = each_lc.errorbar()
-            os.makedirs(f'{homedir}/fitting_result/figure/error_lc/under_95%_data/{TOInumber}', exist_ok=True)
-            plt.savefig(f'{homedir}/fitting_result/figure/error_lc/under_95%_data/{TOInumber}/{TOInumber}_{str(i)}.png')
-            plt.close()
+        data_survival_rate = calc_data_survival_rate(each_lc, duration)
+        if data_survival_rate < 0.95:
+            if data_survival_rate != 0.0:
+                ax = each_lc.errorbar()
+                os.makedirs(f'{homedir}/fitting_result/figure/error_lc/under_95%_data/{TOInumber}', exist_ok=True)
+                plt.savefig(f'{homedir}/fitting_result/figure/error_lc/under_95%_data/{TOInumber}/{TOInumber}_{str(i)}.png')
+                plt.close()
             continue
         else:
             pass
 
-
+        #curvefit_res = curve_fitting(each_lc, duration)
+        #each_lc = polynomial_normalize(each_lc, curvefit_res.params) 
         while True:
             res = transit_fitting(each_lc, rp_rs, period)
             #res = transit_fitting(each_lc, rp_rs, period, fitting_model=no_ring_transit_and_polynomialfit, transitfit_params=res.params, curvefit_params=curvefit_params)
@@ -622,8 +648,7 @@ for TOI in ['413.01']:
         os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/curvefit/{TOInumber}', exist_ok=True)
         with open(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/curvefit/{TOInumber}/{TOInumber}_{str(i)}.txt', 'a') as f:
             print(lmfit.fit_report(res), file = f)
-        _ = polynomial_normalize(each_lc, curvefit_res.params)   
-
+        _ = polynomial_normalize(each_lc, curvefit_res.params) 
     """folded_lcに対してtransitfit & remove outliers. folded_lcを描画する"""
     print('folding and calculate duration...')
     time.sleep(1)
@@ -655,12 +680,14 @@ for TOI in ['413.01']:
         each_lc = each_lc.fold(period=period, epoch_time=mid_transit_time).normalize().remove_nans()
         
         """解析中断条件を満たさないかチェック"""
-        abort_flag = calc_data_survival_rate(each_lc, duration)
-        if abort_flag == True:
-            ax = each_lc.errorbar()
-            os.makedirs(f'{homedir}/fitting_result/figure/error_lc/under_95%_data/{TOInumber}', exist_ok=True)
-            plt.savefig(f'{homedir}/fitting_result/figure/error_lc/under_95%_data/{TOInumber}/{TOInumber}_{str(i)}.png')
-            plt.close()
+        data_survival_rate = calc_data_survival_rate(each_lc, duration)
+        if data_survival_rate < 0.95:
+            if data_survival_rate != 0.0:
+                ax = each_lc.errorbar()
+                ax.set_title(data_survival_rate)
+                os.makedirs(f'{homedir}/fitting_result/figure/error_lc/under_95%_data/{TOInumber}', exist_ok=True)
+                plt.savefig(f'{homedir}/fitting_result/figure/error_lc/under_95%_data/{TOInumber}/{TOInumber}_{str(i)}.png')
+                plt.close()
             continue
         else:
             pass
@@ -689,6 +716,5 @@ for TOI in ['413.01']:
     with open(f'{homedir}/fitting_result/data/each_lc/modelresult/2ndloop/transit&poly/{TOInumber}/{TOInumber}_folded.txt', 'a') as f:
         print(lmfit.fit_report(res), file = f)
     print(f'Analysis completed: {TOInumber}')
-    import pdb;pdb.set_trace()
 
     
