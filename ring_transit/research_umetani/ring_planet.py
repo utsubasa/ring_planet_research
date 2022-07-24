@@ -121,7 +121,7 @@ def ring_transitfit(params, x, data, eps_data, p_names, return_model=False):
     model = ring_model(x, params.valuesdict())
     chi_square = np.sum(((data-model)/eps_data)**2)
     #print(params)
-    #print(chi_square)
+    print(chi_square)
     #print(np.max(((data-model)/eps_data)**2))
     if return_model==True:
         return model
@@ -240,7 +240,8 @@ def plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name):
     plt.axis('scaled')
     ax.set_aspect('equal')
     os.makedirs(f'./lmfit_result/illustration/{TOInumber}', exist_ok=True)
-    plt.savefig(f'./lmfit_result/illustration/{TOInumber}/{file_name}', bbox_inches="tight")
+    #plt.savefig(f'./lmfit_result/illustration/{TOInumber}/{file_name}', bbox_inches="tight")
+    plt.show()
 
 #csvfile = './folded_lc_data/TOI2403.01.csv'
 #done_TOIlist = os.listdir('./lmfit_result/transit_fit') #ダブリ解析防止
@@ -301,8 +302,8 @@ df = df.reset_index()
 df = df.sort_values('Planet SNR', ascending=False)
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
-#for TOI in [224.01]:
-for TOI in TOIlist:
+for TOI in [585.01]:
+#for TOI in TOIlist:
     TOI =  str(TOI)
     print(TOI)
     TOInumber = 'TOI' + TOI
@@ -320,7 +321,8 @@ for TOI in TOIlist:
     rp = param_df['Planet Radius (R_Earth)'].values[0] * 0.00916794 #translate to Rsun
     rs = param_df['Stellar Radius (R_Sun)'].values[0]
     rp_rs = rp/rs
-    csvfile = f'./folded_lc_data/{TOInumber}.csv'
+    #csvfile = f'./folded_lc_data/{TOInumber}.csv'
+    csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/{TOInumber}.csv'
     #csvfile = f'./folded_lc_data/bls/{TOInumber}.csv'
     try:
         folded_table = ascii.read(csvfile)
@@ -353,49 +355,50 @@ for TOI in TOIlist:
 
     ###ring model fitting by minimizing chi_square###
     best_res_dict = {}
-    for n in range(20):
-        noringnames = ["t0", "per", "rp", "a", "inc", "ecc", "w", "q1", "q2"]
+    for n in range(30):
+        noringnames = ["t0", "per", "rp", "a", "b", "ecc", "w", "q1", "q2"]
         #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
         #noringvalues = [0, period, rp_rs, a_rs, 83.0, 0.0, 90.0, 0.2, 0.2]
         if np.isnan(rp_rs):
-            noringvalues = [0, period, np.random.uniform(0.01,0.1), np.random.uniform(0.01,20.0), 80.0, 0.5, 90.0, np.random.uniform(0.01,1.0), np.random.uniform(0.01,1.0)]
+            noringvalues = [np.random.uniform(-0.05,0.05), period, np.random.uniform(0.05,0.1), np.random.uniform(1,10), np.random.uniform(0.0,0.5), 0, 90.0, np.random.uniform(0.1,0.9), np.random.uniform(0.1,0.9)]
         else:
-            noringvalues = [0, period, rp/rs, np.random.uniform(1.01,20.0), 80.0, 0.5, 90.0, np.random.uniform(0.01,1.0), np.random.uniform(0.01,1.0)]
-        noringmins = [-0.1, period*0.9, 0.001, 0.01, 70, 0.0, 90, 0.0, 0.0]
-        noringmaxes = [0.1, period*1.1, 0.5, 20, 120, 1.0, 90, 1.0, 1.0]
-        #vary_flags = [True, False, True, True, True, False, False, True, True]
-        noringvary_flags = [True, True, True, True, True, True, False, True, True]
+            noringvalues = [np.random.uniform(-0.05,0.05), period, rp_rs, np.random.uniform(1,10), np.random.uniform(0.0,0.5), 0, 90.0, np.random.uniform(0.1,0.9), np.random.uniform(0.1,0.9)]
+        noringmins = [-0.2, period*0.8, 0.01, 1, 0, 0, 90, 0.0, 0.0]
+        noringmaxes = [0.2, period*1.2, 0.3, 100, 1.0, 0.8, 90, 1.0, 1.0]
+        noringvary_flags = [True, False, True, True, True, False, False, True, True]
         no_ring_params = set_params_lm(noringnames, noringvalues, noringmins, noringmaxes, noringvary_flags)
-        #start = time.time()
-        no_ring_res = lmfit.minimize(no_ring_residual_transitfit, no_ring_params, args=(t, flux_data, flux_err_data, noringnames), max_nfev=1000)
-        best_res_dict[no_ring_res.chisqr] = no_ring_res
+        no_ring_res = lmfit.minimize(no_ring_transitfit, no_ring_params, args=(t, flux_data, flux_err_data, noringnames), max_nfev=1000)
+        if no_ring_res.params['t0'].stderr != None:
+                    if np.isfinite(no_ring_res.params['t0'].stderr) and no_ring_res.redchi < 10:
+                    #if res.redchi < 10:
+                        red_redchi = abs(no_ring_res.redchi-1)
+                        best_res_dict[red_redchi] = no_ring_res
         #print(lmfit.fit_report(no_ring_res))
     no_ring_res = sorted(best_res_dict.items())[0][1]
     best_ring_res_dict = {}
-    for m in range(20):
+    for m in range(30):
         names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
                  "b", "norm", "theta", "phi", "tau", "r_in",
                  "r_out", "norm2", "norm3", "ecosw", "esinw"]
-        values = [no_ring_res.params.valuesdict()['q1'], no_ring_res.params.valuesdict()['q2'], no_ring_res.params.valuesdict()['t0'], no_ring_res.params.valuesdict()['per'], no_ring_res.params.valuesdict()['rp'], no_ring_res.params.valuesdict()['a'],
-                  b, 1, np.random.uniform(1e-5,np.pi-1e-5), np.random.uniform(0.0,np.pi), 1, np.random.uniform(1.01,3.0),
+        values = [no_ring_res.params.valuesdict()['q1'], no_ring_res.params.valuesdict()['q2'], no_ring_res.params.valuesdict()['t0'], period, no_ring_res.params.valuesdict()['rp'], no_ring_res.params.valuesdict()['a'],
+                  no_ring_res.params.valuesdict()['b'], 1, np.random.uniform(1e-5,np.pi-1e-5), np.random.uniform(0.0,np.pi), 1, np.random.uniform(1.01,3.0),
                   np.random.uniform(1.01,3.0), 0.0, 0.0, 0.0, 0.0]
 
         saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
                   1, 1, np.pi/6.74, 0, 1, 1.53,
                   1.95, 0.0, 0.0, 0.0, 0.0]
 
-        mins = [0.0, 0.0, -0.1, 0.0, 0.003, 1.0,
+        mins = [0.0, 0.0, -0.1, 0.0, 0.01, 1.0,
                 0.0, 0.9, 0.0, 0.0, 0.0, 1.0,
                 1.1, -0.1, -0.1, 0.0, 0.0]
 
-        maxes = [1.0, 1.0, 0.1, 100.0, 1.0, 100.0,
+        maxes = [1.0, 1.0, 0.1, 100.0, 0.5, 100.0,
                  1.0, 1.1, np.pi, np.pi, 1.0, 3.0,
                  3.0, 0.1, 0.1, 0.0, 0.0]
 
         vary_flags = [True, True, False, False, True, True,
                       True, False, True, True, False, True,
                       True, False, False, False, False]
-
 
         params = set_params_lm(names, values, mins, maxes, vary_flags)
         params_df = pd.DataFrame(list(zip(values, saturnlike_values, mins, maxes)), columns=['values', 'saturnlike_values', 'mins', 'maxes'], index=names)
@@ -413,7 +416,7 @@ for TOI in TOIlist:
 
         pdic = params_df['values'].to_dict()
         try:
-            ring_res = lmfit.minimize(ring_residual_transitfit, params, args=(t, flux_data, flux_err_data.mean(), names), max_nfev=1000)
+            ring_res = lmfit.minimize(ring_transitfit, params, args=(t, flux_data, flux_err_data.mean(), names), max_nfev=1000)
         except ValueError:
             print('Value Error')
             print(m, TOInumber)
@@ -427,7 +430,7 @@ for TOI in TOIlist:
         output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
         result_df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
         os.makedirs(f'./fitting_result/data/{TOInumber}', exist_ok=True)
-        result_df.to_csv(f'./fitting_result/data/{TOInumber}/{TOInumber}_{ring_res.chisqr:.0f}_{m}.csv', header=True, index=False)
+        #result_df.to_csv(f'./fitting_result/data/{TOInumber}/{TOInumber}_{ring_res.chisqr:.0f}_{m}.csv', header=True, index=False)
         plot_ring(rp_rs=ring_res.params['rp_rs'].value, rin_rp=ring_res.params['r_in'].value, rout_rin=ring_res.params['r_out'].value, b=ring_res.params['b'].value, theta=ring_res.params['theta'].value, phi=ring_res.params['phi'].value, file_name = f"{TOInumber}_{ring_res.chisqr:.0f}_{m}.pdf")
         #ring_res = sorted(best_ring_res_dict.items())[0][1]
         fig = plt.figure()
@@ -435,8 +438,8 @@ for TOI in TOIlist:
         ax_re = fig.add_subplot(2,1,2) #for plotting residuals
         #elapsed_time = time.time() - start
         #print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
-        ring_flux_model = ring_model_transitfit_from_lmparams(ring_res.params, t)
-        noring_flux_model = no_ring_model_transitfit_from_lmparams(no_ring_res.params, t, noringnames)
+        ring_flux_model = ring_transitfit(ring_res.params, t, flux_data, flux_err_data, names, return_model=True)
+        noring_flux_model = no_ring_transitfit(no_ring_res.params, t, flux_data, flux_err_data, noringnames, return_model=True)
         binned_lc.errorbar(ax=ax_lc)
         ax_lc.plot(t, ring_flux_model, label='Model w/ ring', color='blue')
         ax_lc.plot(t, noring_flux_model, label='Model w/o ring', color='red')
@@ -451,8 +454,8 @@ for TOI in TOIlist:
         ax_lc.set_title(f'w/ chisq:{chisq_ring:.0f}/{ring_res.nfree:.0f} w/o chisq:{chisq_noring:.0f}/{no_ring_res.nfree:.0f}')
         plt.tight_layout()
         os.makedirs(f'./lmfit_result/transit_fit/{TOInumber}', exist_ok=True)
-        plt.savefig(f'./lmfit_result/transit_fit/{TOInumber}/{TOInumber}_{chisq_ring:.0f}_{m}.png', header=False, index=False)
-        #plt.show()
+        #plt.savefig(f'./lmfit_result/transit_fit/{TOInumber}/{TOInumber}_{chisq_ring:.0f}_{m}.png', header=False, index=False)
+        plt.show()
         plt.close()
         best_ring_res_dict[np.abs(ring_res.redchi-1)] = ring_res
     ring_res = sorted(best_ring_res_dict.items())[0][1]
