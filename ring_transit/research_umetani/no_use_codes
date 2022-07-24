@@ -339,5 +339,72 @@ def judge_outliers(array):
         return True
     else:
         return False
-        
+
+def remove_others_transit(lc, oridf, param_df, other_p_df, TOI):
+    print('removing others planet transit in data...')
+    time.sleep(1)
+    cliped_lc = lc
+    for _, item in other_p_df[other_p_df['TOI']!=float(TOI)].iterrows():
+        others_duration = item['Duration (hours)'] / 24
+        others_period = item['Period (days)']
+        others_transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD
+        others_transit_time_list = np.append(np.arange(others_transit_time, lc.time[-1].value, others_period), np.arange(others_transit_time, lc.time[0].value, -others_period))
+        others_transit_time_list.sort()
+        import pdb;pdb.set_trace()
+        if np.any(np.isnan([others_period, others_duration, others_transit_time])):
+            print('nan parameter of other planet transit exist.')
+            continue
+        else:
+            #cliped_lc, _ = clip_transit(cliped_lc, others_duration, others_transit_time_list)
+            ax = lc.scatter()
+            for i, mid_transit_time in enumerate(others_transit_time_list):
+                print(i)
+                ax.axvline(x=mid_transit_time, alpha=0.3)
+            plt.show()
+            import pdb;pdb.set_trace()
+
+
+
+    #ax = lc.scatter(color='red', label='Other transit signals' )
+    #cliped_lc.scatter(ax=ax, color='black')
+    #plt.savefig(f'//Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/other_transit_signals/{TOInumber}.png')
+    #plt.close()
+    
+    return cliped_lc
+
+def clip_transit(lc, duration, epoch_list):
+    for transit_time in epoch_list:
+        transit_start = transit_time - (duration/2)
+        transit_end = transit_time + (duration/2)
+        case = judge_transit_contain(lc, transit_start, transit_end)
+        #print('case:', case)
+        #他の惑星処理に使う場合は以下の処理を行う。
+        if len(lc[(lc['time'].value > transit_start) & (lc['time'].value < transit_end)]) != 0:
+            lc = remove_transit_signal(case, lc, transit_start, transit_end)
+        else:
+            pass
+            #print("don't need clip because no data around transit")
+
+    return lc, transit_time_list
+
+def remove_transit_signal(case, lc, transit_start, transit_end):
+    if case == 1: # || -----
+        pass
+    elif case == 2: # | --|---
+        lc = lc[~(lc['time'].value < transit_start)]
+    elif case == 3: # | ----- |
+        #with open('huge_transit.csv') as f:
+            #f.write()
+        print('huge !')
+        #記録する
+    elif case == 4: # --|-|--
+        #lc = vstack([lc[lc['time'].value < transit_start], lc[lc['time'].value > transit_end]])
+        lc = lc[(lc['time'].value < transit_start) | (lc['time'].value > transit_end)]
+
+    elif case == 5: # ---|-- |
+        lc = lc[lc['time'].value < transit_start]
+    elif case == 6: # ----- ||
+        pass
+
+    return lc
 '''

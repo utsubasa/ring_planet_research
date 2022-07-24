@@ -32,14 +32,13 @@ def q_to_u_limb(q_arr):
     u2 = np.sqrt(q1) * (1- 2 * q2)
     return np.array([u1, u2])
 
-def set_params_batman(params_lm, names, limb_type ="quadratic"):
-
+def set_params_batman(params_lm, p_names, limb_type ="quadratic"):
     params = batman.TransitParams()       #object to store transit parameters
     params.limb_dark =  limb_type        #limb darkening model
     q_arr = np.zeros(2)
-    for i in range(len(names)):
-        value = params_lm[names[i]]
-        name = names[i]
+    for i in range(len(p_names)):
+        value = params_lm[p_names[i]]
+        name = p_names[i]
         if name=="t0":
             params.t0 = value
         if name=="per":
@@ -48,8 +47,10 @@ def set_params_batman(params_lm, names, limb_type ="quadratic"):
             params.rp = value
         if name=="a":
             params.a = value
-        if name=="inc":
-            params.inc = value
+        #if name=="inc":
+            #params.inc = value
+        if name=="b":
+            params.inc =  np.degrees(np.arccos( value / params.a ))
         if name=="ecc":
             params.ecc = value
         if name=="w":
@@ -58,7 +59,6 @@ def set_params_batman(params_lm, names, limb_type ="quadratic"):
             q_arr[0] = value
         if name=="q2":
             q_arr[1] = value
-
     u_arr = q_to_u_limb(q_arr)
     params.u = u_arr
     return params
@@ -116,27 +116,32 @@ def ring_model(t, pdic, mcmc_pvalues=None):
     return model_flux
 
 #リングありモデルをfitting
-def ring_residual_transitfit(params, x, data, eps_data, names):
+def ring_transitfit(params, x, data, eps_data, p_names, return_model=False):
+    #start =time.time()
     model = ring_model(x, params.valuesdict())
     chi_square = np.sum(((data-model)/eps_data)**2)
     #print(params)
     #print(chi_square)
     #print(np.max(((data-model)/eps_data)**2))
-
-    return (data-model) / eps_data
+    if return_model==True:
+        return model
+    else:
+        return (data-model) / eps_data
 
 #リングなしモデルをfitting
-def no_ring_residual_transitfit(params, x, data, eps_data, names):
-    #global chi_square
-    params_batman = set_params_batman(params, names)
+def no_ring_transitfit(params, x, data, eps_data, p_names, return_model=False):
+    global chi_square
+    params_batman = set_params_batman(params, p_names)
     m = batman.TransitModel(params_batman, x)    #initializes model
     model = m.light_curve(params_batman)         #calculates light curve
     chi_square = np.sum(((data-model)/eps_data)**2)
-    #if chi_square < 290:
     #print(params)
     #print(chi_square)
-    return (data-model)/eps_data
-
+    if return_model==True:
+        return model
+    else:
+        return (data-model) / eps_data
+'''
 def ring_model_transitfit_from_lmparams(params, x):
     model = ring_model(x, params.valuesdict())         #calculates light curve
     return model
@@ -146,6 +151,7 @@ def no_ring_model_transitfit_from_lmparams(params, x, names):
     m = batman.TransitModel(params_batman, x)    #initializes model
     model = m.light_curve(params_batman)
     return model
+'''
 
 def lnlike(mcmc_pvalues, t, y, yerr):
     return -0.5 * np.sum(((y-ring_model(t, pdic, mcmc_pvalues))/yerr) ** 2)
@@ -174,15 +180,6 @@ def lnprob(mcmc_pvalues, t, y, yerr, mcmc_params):
     print(chi_square)
 
     return lp + lnlike(mcmc_pvalues, t, y, yerr)
-
-def folding_each_lc(lc_list):
-    lc = pd.concat(lc_list[:4])
-    lc = lc.reset_index()
-    lc = Table.from_pandas(lc)
-    lc = lk.LightCurve(data=lc)
-    lc = lc.normalize()
-    print('total length: ', len(lc))
-    return lc.fold(period=period, epoch_time=transit_time)
 
 def getNearestRow(list, num):
     # リスト要素と対象値の差分を計算し最小値のインデックスを取得
@@ -247,59 +244,82 @@ def plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name):
 
 #csvfile = './folded_lc_data/TOI2403.01.csv'
 #done_TOIlist = os.listdir('./lmfit_result/transit_fit') #ダブリ解析防止
-df = pd.read_csv('./exofop_tess_tois.csv')
-df = df[df['Planet SNR']>100]
+oridf = pd.read_csv('./exofop_tess_tois.csv')
+df = oridf[oridf['Planet SNR']>100]
+
+each_lc_anomalylist = [102.01,106.01,114.01,123.01,135.01,150.01,163.01,173.01,349.01,471.01,
+                        505.01,625.01,626.01,677.01,738.01,834.01,842.01,845.01,858.01,
+                        934.01,987.01,1019.01,1161.01,1163.01,1176.01,1259.01,1264.01,
+                        1274.01,1341.01,1845.01,1861.01,1924.01,1970.01,2000.01,2014.01,2021.01,2131.01,
+                        2200.01,2222.01,3846.01,4087.01,4486.01]#トランジットが途中で切れてcurvefitによって変なかたちになっているeach_lcを削除したデータ
+mtt_shiftlist = [129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1165.01,1236.01,1265.01,
+                1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift　
+no_data_list = [4726.01,372.01,352.01,2617.01,2766.01,2969.01,2989.01,2619.01,2626.01,2624.01,2625.01,
+                2622.01,3041.01,2889.01,4543.01,3010.01,2612.01,4463.01,4398.01,4283.01,4145.01,3883.01,
+                4153.01,3910.01,3604.01,3972.01,3589.01,3735.01,4079.01,4137.01,3109.01,3321.01,3136.01,
+                3329.01,2826.01,2840.01,3241.01,2724.01,2704.01,2803.01,2799.01,2690.01,2745.01,2645.01,
+                2616.01,2591.01,2580.01,2346.01,2236.01,2047.01,2109.01,2031.01,2040.01,2046.01,1905.01,
+                2055.01,1518.01,1567.01,1355.01,1498.01,1373.01,628.01,1482.01,1580.01,1388.01,1310.01,
+                1521.01,1123.01, 1519.01, 1427.01, 1371.01, 1365.01, 1397.01] #short がないか、SPOCがないか
+no_perioddata_list = [1134.01,1897.01,2423.01,2666.01,4465.01]#exofopの表にperiodの記載無し。1567.01,1656.01もperiodなかったがこちらはcadence=’short’のデータなし。
+no_signal_list = [2218.01,212.01,1823.01] #トランジットのsignalが無いか、ノイズに埋もれて見えない
+multiplanet_list = [1670.01, 201.01, 822.01]#, 1130.01]
+startrend_list = [4381.01, 1135.01, 1025.01, 212.01, 1830.01, 2119.01, 224.01]
+flare_list = [212.01, 2119.01, 1779.01]
+two_epoch_list = [671.01, 1963.01, 1283.01, 758.01, 1478.01, 3501.01, 964.01, 845.01, 121.01,1104.01, 811.01, 3492.01]
+'''
+df['Rjup'] = df['Planet Radius (R_Earth)']/11.209
+plt.scatter(x=df['Period (days)'], y = df['Rjup'], color='k')
+plt.xlabel('Orbital Period(day)')
+plt.ylabel(r'Planet Radius ($R_{J}$)')
+plt.gca().yaxis.set_tick_params(which='both', direction='in',bottom=True, top=True, left=True, right=True)
+plt.gca().xaxis.set_tick_params(which='both', direction='in',bottom=True, top=True, left=True, right=True)
+plt.xscale('log')
+plt.minorticks_on()
+plt.show()
+import pdb;pdb.set_trace()
+'''
+done_list = os.listdir('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/modelresult/2ndloop/transit&poly')
+done_list = [s for s in done_list if 'TOI' in s]
+done_list = [s.lstrip('TOI') for s in done_list ]
+#done_list = [float(s.strip('.png')) for s in done_list]
+done_list = [float(s) for s in done_list]
+
 df['TOI'] = df['TOI'].astype(str)
-#TOIlist = ['1265.01']
 df = df.sort_values('Planet SNR', ascending=False)
 df = df.set_index(['TOI'])
+#df = df.drop(index=each_lc_anomalylist)
 #df = df.drop(index=mtt_shiftlist, errors='ignore')
+df = df.drop(index=done_list, errors='ignore')
+df = df.drop(index=no_data_list, errors='ignore')
+df = df.drop(index=multiplanet_list, errors='ignore')
+#df = df.drop(index=startrend_list, errors='ignore')
+df = df.drop(index=flare_list, errors='ignore')
+df = df.drop(index=two_epoch_list, errors='ignore')
+#df = df.drop(index=no_signal_list, errors='ignore')
 df = df.reset_index()
-mtt_shiftlist = [129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1165.01,1236.01,1265.01,
-                1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift
-#for TOI in df['TOI'].values:
-#for TOI in mtt_shiftlist:
-#for TOI in ['1059.01']:
-for TOI in ['1092.01','1198.01','3612.01','959.01']:
+df = df.sort_values('Planet SNR', ascending=False)
+df['TOI'] = df['TOI'].astype(str)
+TOIlist = df['TOI']
+#for TOI in [224.01]:
+for TOI in TOIlist:
     TOI =  str(TOI)
     print(TOI)
-    '''
-    #ダブり解析防止
-    fname = f'TOI{TOI}'
-    if fname in done_TOIlist:
-        continue
-    else:
-        pass
-    '''
     TOInumber = 'TOI' + TOI
     param_df = df[df['TOI'] == TOI]
 
-    #lm.minimizeのためのparamsのセッティング。これはリングありモデル
+    #lmfit.minimizeのためのparamsのセッティング。これはリングありモデル
     ###parameters setting###
-    for index, item in param_df.iterrows():
-
-        try:
-            duration = item['Duration (hours)'] / 24
-            #period = item['Period (days)']
-            period = 18.69286928692869
-            transit_time = item['Transit Epoch (BJD)'] - 2457000.0 #translate BTJD
-            a_rs=4.602
-            b=0.9
-        except NameError:
-            print(f'error:{TOInumber}')
-            continue
-        #Mp = ?
-        rp = item['Planet Radius (R_Earth)'] * 0.00916794 #translate to Rsun
-        rs = item['Stellar Radius (R_Sun)']
-        rp_rs = rp/rs
-        i=87.21 * 0.0175 #radian
-        au=0.0376 #Orbit Semi-Major Axis [au]
-        au=au*1.496e+13 #cm
-        rstar=rs * 6.9634 * 10**10 #Rstar cm
-        a_rs=au/rstar
-        #rplanet = rp * 6.9634 * 10**10
-        #rmin = np.pow(Mp/(4*np.pi/3)*8.87, 1/3)
-        #rp_rs_min = rmin/rs
+    duration = param_df['Duration (hours)'].values[0] / 24
+    period = param_df['Period (days)'].values[0]
+    transit_time = param_df['Transit Epoch (BJD)'].values[0] - 2457000.0 #translate BTJD
+    transit_time_error = param_df['Transit Epoch error'].values[0]
+    transit_start = transit_time - (duration/2)
+    transit_end = transit_time + (duration/2)
+    TOInumber = 'TOI' + str(param_df['TOI'].values[0])
+    rp = param_df['Planet Radius (R_Earth)'].values[0] * 0.00916794 #translate to Rsun
+    rs = param_df['Stellar Radius (R_Sun)'].values[0]
+    rp_rs = rp/rs
     csvfile = f'./folded_lc_data/{TOInumber}.csv'
     #csvfile = f'./folded_lc_data/bls/{TOInumber}.csv'
     try:
