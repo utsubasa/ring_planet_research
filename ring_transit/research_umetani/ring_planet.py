@@ -302,7 +302,7 @@ df = df.reset_index()
 df = df.sort_values('Planet SNR', ascending=False)
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
-for TOI in [585.01]:
+for TOI in [267.01]:
 #for TOI in TOIlist:
     TOI =  str(TOI)
     print(TOI)
@@ -329,9 +329,8 @@ for TOI in [585.01]:
     except FileNotFoundError:
         continue
     folded_lc = lk.LightCurve(data=folded_table)
-    folded_lc = folded_lc[(folded_lc.time.value < duration*0.8) & (folded_lc.time.value > -duration*0.8)]
-    import astropy.units as u
-    binned_lc = folded_lc.bin(time_bin_size=1*u.minute).remove_nans()
+    #folded_lc = folded_lc[(folded_lc.time.value < duration*0.8) & (folded_lc.time.value > -duration*0.8)]
+    binned_lc = folded_lc.bin(bins=500).remove_nans()
     '''
     for file in files:
         try:
