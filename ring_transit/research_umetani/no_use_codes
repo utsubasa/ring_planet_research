@@ -408,3 +408,46 @@ def remove_transit_signal(case, lc, transit_start, transit_end):
 
     return lc
 '''
+
+'''from rong_planet.py
+def lnlike(mcmc_pvalues, t, y, yerr):
+    return -0.5 * np.sum(((y-ring_model(t, pdic, mcmc_pvalues))/yerr) ** 2)
+
+def log_prior(mcmc_pvalues, mcmc_params):
+    #p_dict = dict(zip(mcmc_params, p))
+    #rp_rs, theta, phi, r_in = p
+    for i, param in enumerate(mcmc_params):
+        if df_for_mcmc['mins'][param] <= mcmc_pvalues[i] <= df_for_mcmc['maxes'][param]:
+            pass
+        else:
+            return -np.inf
+        if param =='r_out' and mcmc_pvalues[i] > 3.0:
+            return -np.inf
+        else:
+            pass
+    #if 0.0 < theta < np.pi/2 and 0.0 < phi < np.pi/2 and 0.0 < rp_rs < 1 and 1.0 < r_in < 7.0:
+    #    return 0.0
+    return 0.0
+
+def lnprob(mcmc_pvalues, t, y, yerr, mcmc_params):
+    lp = log_prior(mcmc_pvalues, mcmc_params)
+    if not np.isfinite(lp):
+        return -np.inf
+    chi_square = np.sum(((y-ring_model(t, pdic, mcmc_pvalues))/yerr)**2)
+    print(chi_square)
+
+    return lp + lnlike(mcmc_pvalues, t, y, yerr)
+
+def getNearestRow(list, num):
+    # リスト要素と対象値の差分を計算し最小値のインデックスを取得
+    idx = np.abs(np.asarray(list) - num).argmin()
+    return idx
+
+def make_rowlist(n_transit, lc, transit_time, period):
+    list = []
+    for n in range(n_transit):
+        target_val = transit_time + (period * n)
+        mid_transit_row = getNearestRow(lc.time.value, target_val)
+        list.append(mid_transit_row)
+    return list
+'''
