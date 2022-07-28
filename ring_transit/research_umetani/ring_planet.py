@@ -214,7 +214,7 @@ no_signal_list = [2218.01,212.01,1823.01] #トランジットのsignalが無い�
 multiplanet_list = [1670.01, 201.01, 822.01]#, 1130.01]
 startrend_list = [4381.01, 1135.01, 1025.01, 212.01, 1830.01, 2119.01, 224.01]
 flare_list = [212.01, 2119.01, 1779.01]
-two_epoch_list = [671.01, 1963.01, 1283.01, 758.01, 1478.01, 3501.01, 964.01, 845.01, 121.01,1104.01, 811.01, 3492.01]
+two_epoch_list = [671.01, 1963.01, 1283.01, 758.01, 1478.01, 3501.01, 964.01, 845.01, 121.01,1104.01, 811.01, 3492.01, 1312.01, ]
 '''
 df['Rjup'] = df['Planet Radius (R_Earth)']/11.209
 plt.scatter(x=df['Period (days)'], y = df['Rjup'], color='k')
@@ -284,8 +284,8 @@ for TOI in TOIlist:
     try:
         folded_table = ascii.read(csvfile)
     except FileNotFoundError:
-        with open('csvfile_FileNotFoundError.txt', 'a') as f:
-            f.write(TOInumber+'\n')
+        #with open('csvfile_FileNotFoundError.txt', 'a') as f:
+            #f.write(TOInumber+'\n')
         continue
     folded_lc = lk.LightCurve(data=folded_table)
     folded_lc = folded_lc[(folded_lc.time.value < duration) & (folded_lc.time.value > -duration)]
