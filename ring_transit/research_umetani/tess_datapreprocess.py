@@ -199,7 +199,7 @@ def transit_params_setting(rp_rs, period):
     else:
         values = [np.random.uniform(-0.05,0.05), period, rp_rs, np.random.uniform(1,10), np.random.uniform(0.0,0.5), 0, 90.0, np.random.uniform(0.1,0.9), np.random.uniform(0.1,0.9)]
     mins = [-0.2, period*0.8, 0.01, 1, 0, 0, 90, 0.0, 0.0]
-    maxes = [0.2, period*1.2, 0.3, 100, 1.0, 0.8, 90, 1.0, 1.0]
+    maxes = [0.2, period*1.2, 0.5, 1000, 1.0, 0.8, 90, 1.0, 1.0]
     vary_flags = [True, False, True, True, True, False, False, True, True]
     return set_params_lm(p_names, values, mins, maxes, vary_flags)
 
@@ -316,44 +316,48 @@ def clip_outliers(res, lc, outliers, t0list, t0errlist, folded_lc=False, transit
     inverse_mask = np.logical_not(mask)
     print(np.all(inverse_mask))
     if np.all(inverse_mask) == True:
-        if folded_lc==True:
+        if folded_lc == True:
+            try:
+                outliers = vstack(outliers)
+                os.makedirs(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/outliers', exist_ok=True)
+                outliers.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/outliers/{TOInumber}.csv')
+            except ValueError:
+                pass
             outliers = []
             return lc, outliers, t0list, t0errlist
-            
-        fig = plt.figure()
-        ax1 = fig.add_subplot(2,1,1) #for plotting transit model and data
-        ax2 = fig.add_subplot(2,1,2) #for plotting residuals
-        lc.errorbar(ax=ax1, color='gray', marker='.', alpha=0.3)
-        ax1.plot(t,flux_model, label='fitting model', color='black')
-        if transit_and_poly_fit == True:
-            ax1.plot(t,transit_model, label='transit model', ls="--", color='blue', alpha=0.5)
-            ax1.plot(t,polynomial_model, label='polynomial model', ls="-.", color='red', alpha=0.5)
-        try:
-            outliers = vstack(outliers)
-            outliers.errorbar(ax=ax1, color='cyan', label='outliers(each_lc)', marker='.')
-        except ValueError:
-            pass
-        ax1.legend()
-        ax1.set_title(f'chi square/dof: {int(res.chisqr)}/{res.nfree} ')
-        residuals = lc - flux_model
-        residuals.errorbar(ax=ax2, color='gray', marker='.')
-        ax2.plot(t,np.zeros(len(t)), label='fitting model', color='black')
-        ax2.set_ylabel('residuals')
-        plt.tight_layout()
-        if transit_and_poly_fit == False:
-            os.makedirs(f'{homedir}/fitting_result/figure/each_lc/transit_fit/{TOInumber}', exist_ok=True)
-            plt.savefig(f'{homedir}/fitting_result/figure/each_lc/transit_fit/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
-            #os.makedirs(f'{homedir}/fitting_result/figure/each_lc/transit_fit/bls/{TOInumber}', exist_ok=True)
-            #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
         else:
-            os.makedirs(f'{homedir}/fitting_result/figure/each_lc/transit&poly_fit/{TOInumber}', exist_ok=True)
-            plt.savefig(f'{homedir}/fitting_result/figure/each_lc/transit&poly_fit/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
-            #os.makedirs(f'{homedir}/fitting_result/figure/each_lc/transit&poly_fit/bls/{TOInumber}', exist_ok=True)
-            #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
-        plt.close()
-        t0list.append(res.params["t0"].value+mid_transit_time)
-        t0errlist.append(res.params["t0"].stderr)
-        outliers = []
+            fig = plt.figure()
+            ax1 = fig.add_subplot(2,1,1) #for plotting transit model and data
+            ax2 = fig.add_subplot(2,1,2) #for plotting residuals
+            lc.errorbar(ax=ax1, color='gray', marker='.', alpha=0.3)
+            ax1.plot(t,flux_model, label='fitting model', color='black')
+            if transit_and_poly_fit == True:
+                ax1.plot(t,transit_model, label='transit model', ls="--", color='blue', alpha=0.5)
+                ax1.plot(t,polynomial_model, label='polynomial model', ls="-.", color='red', alpha=0.5)
+            try:
+                outliers = vstack(outliers)
+                outliers.errorbar(ax=ax1, color='cyan', label='outliers(each_lc)', marker='.')
+            except ValueError:
+                pass
+            ax1.legend()
+            ax1.set_title(f'chi square/dof: {int(res.chisqr)}/{res.nfree} ')
+            residuals = lc - flux_model
+            residuals.errorbar(ax=ax2, color='gray', marker='.')
+            ax2.plot(t,np.zeros(len(t)), label='fitting model', color='black')
+            ax2.set_ylabel('residuals')
+            plt.tight_layout()
+            if transit_and_poly_fit == False:
+                os.makedirs(f'{homedir}/fitting_result/figure/each_lc/transit_fit/{TOInumber}', exist_ok=True)
+                plt.savefig(f'{homedir}/fitting_result/figure/each_lc/transit_fit/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
+                #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
+            else:
+                os.makedirs(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}', exist_ok=True)
+                plt.savefig(f'{homedir}/fitting_result/figure/each_lc/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
+                #plt.savefig(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
+            plt.close()
+            t0list.append(res.params["t0"].value+mid_transit_time)
+            t0errlist.append(res.params["t0"].stderr)
+            outliers = []
     else:
         #print('removed bins:', len(each_lc[mask]))
         outliers.append(lc[mask])
@@ -375,7 +379,6 @@ def curve_fitting(each_lc, duration, res=None):
     plt.savefig(f'{homedir}/fitting_result/figure/curvefit/{TOInumber}/{TOInumber}_{str(i)}.png')
     #os.makedirs(f'{homedir}/fitting_result/figure/curvefit/bls/{TOInumber}', exist_ok=True)
     #plt.savefig(f'{homedir}/fitting_result/figure/curvefit/bls/{TOInumber}/{TOInumber}_{str(i)}.png')
-    #plt.show()
     plt.close()
 
     return result
@@ -405,17 +408,17 @@ def polynomial_normalize(each_lc, poly_params, savedir):
     each_lc.write(f'{homedir}/fitting_result/data/each_lc/{savedir}/{TOInumber}/{TOInumber}_{str(i)}.csv')
     return each_lc
 
-def folding_lc_from_csv(filedir, TOInumber):
+def folding_lc_from_csv(loaddir, TOInumber, savedir):
     outliers = []
     t0list = []
     t0errlist = []
     each_lc_list = []
     try:
         each_lc_list=[]
-        total_lc_csv = os.listdir(f'{filedir}/{TOInumber}/')
+        total_lc_csv = os.listdir(f'{loaddir}/{TOInumber}/')
         total_lc_csv = [i for i in total_lc_csv if 'TOI' in i]
         for each_lc_csv in total_lc_csv:
-            each_table = ascii.read(f'{filedir}/{TOInumber}/{each_lc_csv}')
+            each_table = ascii.read(f'{loaddir}/{TOInumber}/{each_lc_csv}')
             each_lc = lk.LightCurve(data=each_table)
             each_lc_list.append(each_lc)
     except ValueError:
@@ -425,7 +428,7 @@ def folding_lc_from_csv(filedir, TOInumber):
 
     while True:
         res = transit_fitting(cleaned_lc, rp_rs, period, fitting_model=no_ring_transitfit)
-        cleaned_lc, outliers, t0list, t0errlist = clip_outliers(res, cleaned_lc, outliers, t0list, t0errlist, folded_lc=True)
+        cleaned_lc, outliers, _, _ = clip_outliers(res, cleaned_lc, outliers, t0list, t0errlist, folded_lc=True)
         if len(outliers) == 0:
             break 
         
@@ -442,12 +445,14 @@ def folding_lc_from_csv(filedir, TOInumber):
     ax2.plot(cleaned_lc.time.value, np.zeros(len(cleaned_lc.time)), color='red', zorder=2)
     ax2.set_ylabel('residuals')
     plt.tight_layout()
-    plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{TOInumber}.png')
+    os.makedirs(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{savedir}', exist_ok=True)
+    plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/{savedir}/{TOInumber}.png')
     #plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/bls/{TOInumber}.png')
-    #plt.show()
+    plt.show()
     plt.close()
     #cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/bls/{TOInumber}.csv')
-    cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/{TOInumber}.csv')
+    os.makedirs(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/{savedir}', exist_ok=True)
+    cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/{savedir}/{TOInumber}.csv')
 
     return res
 #if __name__ ==  '__main__':
@@ -455,54 +460,53 @@ homedir = '/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umet
 
 oridf = pd.read_csv(f'{homedir}/exofop_tess_tois.csv')
 df = oridf[oridf['Planet SNR']>100]
-each_lc_anomalylist = [102.01,106.01,114.01,123.01,135.01,150.01,163.01,173.01,349.01,471.01,
-                        505.01,625.01,626.01,677.01,738.01,834.01,842.01,845.01,858.01,
-                        934.01,987.01,1019.01,1161.01,1163.01,1176.01,1259.01,1264.01,
-                        1274.01,1341.01,1845.01,1861.01,1924.01,1970.01,2000.01,2014.01,2021.01,2131.01,
-                        2200.01,2222.01,3846.01,4087.01,4486.01]#トランジットが途中で切れてcurvefitによって変なかたちになっているeach_lcを削除したデータ
 mtt_shiftlist = [129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1165.01,1236.01,1265.01,
                 1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift　
-no_data_list = [4726.01,372.01,352.01,2617.01,2766.01,2969.01,2989.01,2619.01,2626.01,2624.01,2625.01,
-                2622.01,3041.01,2889.01,4543.01,3010.01,2612.01,4463.01,4398.01,4283.01,4145.01,3883.01,
-                4153.01,3910.01,3604.01,3972.01,3589.01,3735.01,4079.01,4137.01,3109.01,3321.01,3136.01,
-                3329.01,2826.01,2840.01,3241.01,2724.01,2704.01,2803.01,2799.01,2690.01,2745.01,2645.01,
-                2616.01,2591.01,2580.01,2346.01,2236.01,2047.01,2109.01,2031.01,2040.01,2046.01,1905.01,
-                2055.01,1518.01,1567.01,1355.01,1498.01,1373.01,628.01,1482.01,1580.01,1388.01,1310.01,
-                1521.01,1123.01, 1519.01, 1427.01, 1371.01, 1365.01, 1397.01] #short がないか、SPOCがないか
+no_data_found_list = [2645.01,1518.01,1567.01,2626.01,1905.01,1355.01,1498.01,352.01,2617.01,1123.01,2624.01,2625.01,2046.01,2724.01,2612.01,2622.01,
+                      1373.01,628.01,3109.01,4283.01,3604.01,372.01,2766.01,1371.01,2969.01,3041.01,3321.01,3972.01,1482.01,2889.01,2346.01,2591.01,
+                      2704.01,4543.01,1580.01,2803.01,1388.01,1427.01,2616.01,3589.01,2580.01,1310.01,2236.01,1519.01,3735.01,3136.01,2799.01,4726.01,
+                      3329.01,1521.01,2055.01,2826.01,1656.01,4398.01,4079.01,2690.01,2989.01,3010.01,2619.01,2840.01,3241.01,4463.01,2745.01,1397.01] #short がないか、SPOCがないか
 no_perioddata_list = [1134.01,1897.01,2423.01,2666.01,4465.01]#exofopの表にperiodの記載無し。1567.01,1656.01もperiodなかったがこちらはcadence=’short’のデータなし。
-no_signal_list = [2218.01,212.01,1823.01] #トランジットのsignalが無いか、ノイズに埋もれて見えない
+no_signal_list = [2218.01] #トランジットのsignalが無いか、ノイズに埋もれて見えない
 multiplanet_list = [1670.01, 201.01, 822.01]#, 1130.01]
-startrend_list = [4381.01, 1135.01, 1025.01, 1830.01,224.01]#, 2119.01, 212.01]
-flare_list = [212.01, 2119.01, 1779.01]
-two_epoch_list = [671.01, 1963.01, 1283.01, 758.01, 1478.01, 3501.01, 964.01, 845.01, 121.01,1104.01, 811.01, 3492.01, 224.01]
+startrend_list = [4381.01, 1135.01, 1025.01, 212.01, 1830.01, 2119.01, 224.01]
+flare_list = [212.01, 1779.01, 2119.01]
+two_epoch_list = [671.01, 1963.01, 1283.01, 758.01, 1478.01, 3501.01, 845.01, 121.01,1104.01, 811.01, 3492.01, 1312.01, 1861.01, 665.01, 224.01, 121.01]
 
-#done_list = [4470.01,495.01,423.01,398.01,165.01,1148.01,157.01,1682.01,1612.01,112.01,656.01]
-done_list = os.listdir('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/modelresult/2ndloop/transit&poly')
+done_list = os.listdir('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/modelresult/2ndloop/')
+#done_list = os.listdir('/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/calc_t0_2ndloop')
 done_list = [s for s in done_list if 'TOI' in s]
 done_list = [s.lstrip('TOI') for s in done_list ]
-#done_list = [float(s.strip('.png')) for s in done_list]
+done_list = [float(s.strip('.png')) for s in done_list]
 done_list = [float(s) for s in done_list]
-
+"""
+hole_lc_list = os.listdir('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/hole_lc_plot')
+calc_t0_2ndloop_list = os.listdir('/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/obs_t0')
+sym_diff = set(hole_lc_list) ^ set(calc_t0_2ndloop_list)
+print(list(sym_diff))
+import pdb;pdb.set_trace()
+"""
 df = df.set_index(['TOI'])
-#df = df.drop(index=each_lc_anomalylist)
 #df = df.drop(index=mtt_shiftlist, errors='ignore')
 #df = df.drop(index=done_list, errors='ignore')
-df = df.drop(index=no_data_list, errors='ignore')
-df = df.drop(index=multiplanet_list, errors='ignore')
+df = df.drop(index=no_data_found_list, errors='ignore')
+#df = df.drop(index=multiplanet_list, errors='ignore')
+df = df.drop(index=no_perioddata_list, errors='ignore')
 #df = df.drop(index=startrend_list, errors='ignore')
 #df = df.drop(index=flare_list, errors='ignore')
-df = df.drop(index=two_epoch_list, errors='ignore')
+#df = df.drop(index=two_epoch_list, errors='ignore')
 #df = df.drop(index=no_signal_list, errors='ignore')
 df = df.reset_index()
 df = df.sort_values('Planet SNR', ascending=False)
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
-for TOI in [665.01]:
+for TOI in [1385.01]:
 #for TOI in TOIlist:
+#for TOI in no_perioddata_list:
     print('analysing: ', 'TOI'+str(TOI))
-    if TOI=='1823.01' or TOI=='1833.01' or TOI=='2218.01':
-        continue
     TOI = str(TOI)
+    #if TOI=='1823.01' or TOI=='1833.01' or TOI=='2218.01' or TOI=='224.01':
+        #continue
     param_df = df[df['TOI'] == TOI]
     TOInumber = 'TOI' + str(param_df['TOI'].values[0])
     duration = param_df['Duration (hours)'].values[0] / 24
@@ -515,6 +519,7 @@ for TOI in [665.01]:
     rs = param_df['Stellar Radius (R_Sun)'].values[0]
     rp_rs = rp/rs
 
+    
     """もしもduration, period, transit_timeどれかのパラメータがnanだったらそのTOIを記録して、処理はスキップする"""
     if np.sum(np.isnan([duration, period, transit_time])) != 0:
         #with open('nan3params_toi.dat', 'a') as f:
@@ -527,12 +532,11 @@ for TOI in [665.01]:
     
     lc = lc_collection.stitch().remove_nans() #initialize lc
     #lc = lc_collection.remove_nans().normalize() #initialize lc
-    
+    """
     lc.scatter()
     plt.show()
     import pdb;pdb.set_trace()
-    
-
+    """
     """bls analysis"""
     #transit_time, period = bls_analysis(lc, period, transit_time, duration)
 
@@ -563,10 +567,11 @@ for TOI in [665.01]:
         ax.axvline(x=mid_transit_time)
         continue
         """
-        if i == 138:
+        """
+        if i == 202:
             t0list.append(mid_transit_time)
             t0errlist.append(np.nan)
-            continue
+            continue"""
         epoch_start = mid_transit_time - (duration*2.5)
         epoch_end = mid_transit_time + (duration*2.5)
         tmp = lc[lc.time.value > epoch_start]
@@ -588,13 +593,14 @@ for TOI in [665.01]:
         else:
             num_list.append(i)
 
-        curvefit_res = curve_fitting(each_lc, duration)
-        each_lc = polynomial_normalize(each_lc, curvefit_res.params, 'calc_t0') 
+        #curvefit_res = curve_fitting(each_lc, duration)
+        #each_lc = polynomial_normalize(each_lc, curvefit_res.params, 'calc_t0') 
         while True:
-            res = transit_fitting(each_lc, rp_rs, period)
-            #res = transit_fitting(each_lc, rp_rs, period, fitting_model=no_ring_transit_and_polynomialfit, transitfit_params=res.params, curvefit_params=curvefit_params)
-            os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/transit/{TOInumber}', exist_ok=True)
-            with open(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/transit/{TOInumber}/{TOInumber}_{str(i)}.txt', 'a') as f:
+            curvefit_res = curve_fitting(each_lc, duration)
+            transit_res = transit_fitting(each_lc, rp_rs, period)
+            res = transit_fitting(each_lc, rp_rs, period, fitting_model=no_ring_transit_and_polynomialfit, transitfit_params=transit_res.params, curvefit_params=curvefit_res.params)
+            os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/{TOInumber}', exist_ok=True)
+            with open(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/{TOInumber}/{TOInumber}_{str(i)}.txt', 'a') as f:
                 print(lmfit.fit_report(res), file = f)
             each_lc, outliers, t0list, t0errlist = clip_outliers(res, each_lc, outliers, t0list, t0errlist)
             if len(outliers) == 0:
@@ -602,44 +608,49 @@ for TOI in [665.01]:
             else:
                 pass
         curvefit_res = curve_fitting(each_lc, duration, res)
-        os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/curvefit/{TOInumber}', exist_ok=True)
-        with open(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/curvefit/{TOInumber}/{TOInumber}_{str(i)}.txt', 'a') as f:
+        os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/{TOInumber}', exist_ok=True)
+        with open(f'{homedir}/fitting_result/data/each_lc/modelresult/1stloop/{TOInumber}/{TOInumber}_{str(i)}.txt', 'a') as f:
             print(lmfit.fit_report(res), file = f)
         _ = polynomial_normalize(each_lc, curvefit_res.params, 'calc_t0') 
-    
+    #plt.show()
+    #import pdb;pdb.set_trace()
     if len(t0list) <= 2:
         with open('two_period_toi.dat', 'a') as f:
             f.write(f'{TOI}\n')
-        continue
-    period, period_err = calc_obs_transit_time(t0list, t0errlist, num_list, transit_time_list, transit_time_error) #calc_obs_transit_timeを調べる
+        #continue
 
-    '''
-    with open(f'{homedir}/fitting_result/data/folded_lc/modelresult/1stloop/transit/{TOInumber}/{TOInumber}_folded.txt', 'a') as f:
+    period, period_err = calc_obs_transit_time(t0list, t0errlist, num_list, transit_time_list, transit_time_error) #calc_obs_transit_timeを調べる
+    #_, _ = calc_obs_transit_time(t0list, t0errlist, num_list, transit_time_list, transit_time_error) #calc_obs_transit_timeを調べる
+
+    """
+    with open(f'{homedir}/fitting_result/data/folded_lc/modelresult/1stloop/{TOInumber}/{TOInumber}_folded.txt', 'a') as f:
         _, _, _, periodline, perioderrline = f.readlines()[-5:]
         perioderrline = perioderrline.split(' ')[-1]
         period_err = np.float(perioderrline)
         periodline = periodline.split(' ')[-1]
         period = np.float(periodline)
-    '''
+    """
     """folded_lcに対してtransitfit & remove outliers. folded_lcを描画する"""
     print('folding and calculate duration...')
     time.sleep(1)
-    fold_res = folding_lc_from_csv(f'{homedir}/fitting_result/data/each_lc/calc_t0', TOInumber)
+    fold_res = folding_lc_from_csv(f'{homedir}/fitting_result/data/each_lc/calc_t0', TOInumber, 'calc_t0_1stloop')
     a_rs = fold_res.params['a'].value
     b = fold_res.params['b'].value
     inc = np.arccos( b / a_rs )
     if np.isnan(rp_rs):
         rp_rs = fold_res.params['rp'].value
     duration = (period/np.pi)*np.arcsin( (1/a_rs)*( np.sqrt(np.square(1+rp_rs) - np.square(b))/np.sin(inc) ) )
+    """
     obs_t0_idx = np.abs(np.asarray(t0list) - transit_time).argmin()
-    os.makedirs(f'{homedir}/fitting_result/data/folded_lc/modelresult/1stloop/transit/{TOInumber}', exist_ok=True)
-    with open(f'{homedir}/fitting_result/data/folded_lc/modelresult/1stloop/transit/{TOInumber}/{TOInumber}_folded.txt', 'a') as f:
+    os.makedirs(f'{homedir}/fitting_result/data/folded_lc/modelresult/1stloop/{TOInumber}', exist_ok=True)
+    with open(f'{homedir}/fitting_result/data/folded_lc/modelresult/1stloop/{TOInumber}/{TOInumber}_folded.txt', 'a') as f:
         print(lmfit.fit_report(fold_res), file = f)
         print(f'calculated duration[day]: {duration}', file = f)
         print(f'obs_transit_time[day]: {t0list[obs_t0_idx]}', file = f)
         print(f'obs_transit_time_err[day]: {t0errlist[obs_t0_idx]}', file = f)
         print(f'obs_period[day]: {period}', file = f)
         print(f'obs_period_err[day]: {period_err}', file = f)
+    """
 
 
 
@@ -654,15 +665,13 @@ for TOI in [665.01]:
 
 
 
-
-
-
-
-
-
-
-            
-    """durationの値、惑星パラメータをfixして、各トランジットエポックでベースライン（多項式フィッティング）とt0を動かしてフィッティングする。"""
+    """
+    with open(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/modelresult/1stloop/{TOInumber}/{TOInumber}_folded.txt', 'r') as f:
+        #durationline = f.readlines()[-5:].split(' ')[-1]
+        durationline, _, _, _, _ = f.readlines()[-5:]
+        durationline = durationline.split(' ')[-1]
+        duration = np.float(durationline)
+        """
     obs_t0_list = t0list
     #値を格納するリストの定義
     outliers = []
@@ -671,12 +680,14 @@ for TOI in [665.01]:
     num_list = []
     
     for i, mid_transit_time in enumerate(obs_t0_list):
+    #for i, mid_transit_time in enumerate(transit_time_list):
         print(f'reprocessing...epoch: {i}')
-        
-        if i == 138:
+        """
+        if i == 202:
             t0list.append(mid_transit_time)
             t0errlist.append(np.nan)
             continue
+        """
         
         epoch_start = mid_transit_time - (duration*2.5)
         epoch_end = mid_transit_time + (duration*2.5)
@@ -699,11 +710,11 @@ for TOI in [665.01]:
         else:
             num_list.append(i)
 
-        curvefit_res = curve_fitting(each_lc, duration)
         while True:
+            curvefit_res = curve_fitting(each_lc, duration)
             res = transit_fitting(each_lc, rp_rs, period, fitting_model=no_ring_transit_and_polynomialfit, transitfit_params=fold_res.params, curvefit_params=curvefit_res.params)
-            os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/2ndloop/transit&poly/{TOInumber}', exist_ok=True)
-            with open(f'{homedir}/fitting_result/data/each_lc/modelresult/2ndloop/transit&poly/{TOInumber}/{TOInumber}_{str(i)}.txt', 'a') as f:
+            os.makedirs(f'{homedir}/fitting_result/data/each_lc/modelresult/2ndloop/{TOInumber}', exist_ok=True)
+            with open(f'{homedir}/fitting_result/data/each_lc/modelresult/2ndloop/{TOInumber}/{TOInumber}_{str(i)}.txt', 'a') as f:
                 print(lmfit.fit_report(res), file = f)
             each_lc, outliers, t0list, t0errlist = clip_outliers(res, each_lc, outliers, t0list, t0errlist, transit_and_poly_fit=True)
             if len(outliers) == 0:
@@ -712,15 +723,14 @@ for TOI in [665.01]:
                 pass
         polynomial_normalize(each_lc, res.params, 'obs_t0')
         #処理したeach_lcは指定されたディレクトリに保存される。
-
-    #calc_obs_transit_time(t0list, t0errlist, num_list, transit_time_list, transit_time_error) #calc_obs_transit_timeを調べる
-
+    
     """最終的なfolded_lcを生成する。"""
     print('refolding...')
     time.sleep(1)
-    fold_res = folding_lc_from_csv(f'{homedir}/fitting_result/data/each_lc/obs_t0/', TOInumber)
-    os.makedirs(f'{homedir}/fitting_result/data/folded_lc/modelresult/2ndloop/transit&poly/{TOInumber}', exist_ok=True)
-    with open(f'{homedir}/fitting_result/data/folded_lc/modelresult/2ndloop/transit&poly/{TOInumber}/{TOInumber}_folded.txt', 'a') as f:
+    fold_res = folding_lc_from_csv(f'{homedir}/fitting_result/data/each_lc/obs_t0/', TOInumber, 'obs_t0')
+    #fold_res = folding_lc_from_csv(f'{homedir}/fitting_result/data/each_lc/calc_t0', TOInumber, 'calc_t0_2ndloop')
+    os.makedirs(f'{homedir}/fitting_result/data/folded_lc/modelresult/2ndloop/{TOInumber}', exist_ok=True)
+    with open(f'{homedir}/fitting_result/data/folded_lc/modelresult/2ndloop/{TOInumber}/{TOInumber}_folded.txt', 'a') as f:
         print(lmfit.fit_report(fold_res), file = f)
     print(f'Analysis completed: {TOInumber}')
 
