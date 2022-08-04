@@ -426,11 +426,7 @@ def folding_lc_from_csv(loaddir, TOInumber, savedir):
     cleaned_lc = vstack(each_lc_list)
     cleaned_lc.sort('time')
 
-    while True:
-        res = transit_fitting(cleaned_lc, rp_rs, period, fitting_model=no_ring_transitfit)
-        cleaned_lc, outliers, _, _ = clip_outliers(res, cleaned_lc, outliers, t0list, t0errlist, folded_lc=True)
-        if len(outliers) == 0:
-            break 
+    res = transit_fitting(cleaned_lc, rp_rs, period, fitting_model=no_ring_transitfit)
         
     flux_model = no_ring_transitfit(res.params, cleaned_lc.time.value, cleaned_lc.flux.value, cleaned_lc.flux_err.value, p_names, return_model=True)
     fig = plt.figure()
@@ -500,8 +496,8 @@ df = df.reset_index()
 df = df.sort_values('Planet SNR', ascending=False)
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
-for TOI in [1385.01]:
-#for TOI in TOIlist:
+#for TOI in [1385.01]:
+for TOI in TOIlist:
 #for TOI in no_perioddata_list:
     print('analysing: ', 'TOI'+str(TOI))
     TOI = str(TOI)
