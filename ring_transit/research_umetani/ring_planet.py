@@ -314,8 +314,8 @@ for TOI in TOIlist:
     try:
         folded_table = ascii.read(csvfile)
     except FileNotFoundError:
-        #with open('csvfile_FileNotFoundError.txt', 'a') as f:
-            #f.write(TOInumber+'\n')
+        with open('csvfile_FileNotFoundError.txt', 'a') as f:
+            f.write(TOInumber+'\n')
         continue
     folded_lc = lk.LightCurve(data=folded_table)
     calc_bin_std(folded_lc, TOInumber)
@@ -390,7 +390,11 @@ for TOI in TOIlist:
                   np.random.uniform(1.02,2.44), 0.0, 0.0, 0.0, 0.0]
 
         saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
-                  1, 1, np.pi/6.74, 0, 1, 1.53,
+                1, 1, np.pi/6.74, 0, 1, 1.53,
+                1.95, 0.0, 0.0, 0.0, 0.0]
+
+        wasp121_w_ring_values = [u1=0.364, u2=0.146, 0.0, 1.27, 0.123, 3.81,
+                  0.10, 1, np.pi/6.74, 0, 1, 1.53,
                   1.95, 0.0, 0.0, 0.0, 0.0]
 
         mins = [0.0, 0.0, -0.1, 0.0, 0.01, 1.0,
@@ -412,12 +416,11 @@ for TOI in TOIlist:
         df_for_mcmc = params_df[params_df['vary_flags']==True]
 
         ###土星likeな惑星のパラメータで作成したモデル###
-        '''
         saturnlike_params = set_params_lm(names, saturnlike_values, mins, maxes, vary_flags)
         #pdic_saturnlike = make_dic(names, saturnlike_values)
         pdic_saturnlike = params_df['saturnlike_values'].to_dict()
         ymodel = ring_model(t, pdic_saturnlike)
-        '''
+        
 
         pdic = params_df['values'].to_dict()
         try:

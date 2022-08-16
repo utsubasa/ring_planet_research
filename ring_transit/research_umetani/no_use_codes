@@ -1,4 +1,3 @@
-
 '''
 """この部分はどのエポックナンバーがどのエポックか見るときに使う。"""
 ax = lc.scatter()
@@ -43,15 +42,15 @@ for i, mid_transit_time in enumerate(transit_time_list):
 _ = estimate_period(t0dict, period) #TTVを調べる。
 '''
 
-'''
+"""
 ax = lc.scatter()
 for i, mid_transit_time in enumerate(transit_time_list):
     ax.axvline(mid_transit_time, alpha=0.3)
 plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/check_transit_timing/catalog_v/{TOI}.png')
 plt.close()
-'''
+"""
 
-'''
+"""
 try:
     outliers_fold = vstack(outliers_fold)
     outliers_fold.errorbar(ax=ax1, label='outliers(folded_lc)', color='blue', marker='.')
@@ -60,7 +59,7 @@ except AttributeError:
 except ValueError:
     print('no outliers in folded_lc')
     pass
-'''
+"""
 
 '''
 def remove_GP(lc): #remove the gaussian process from lc.stitch
@@ -409,7 +408,7 @@ def remove_transit_signal(case, lc, transit_start, transit_end):
     return lc
 '''
 
-'''from rong_planet.py
+"""from rong_planet.py
 def lnlike(mcmc_pvalues, t, y, yerr):
     return -0.5 * np.sum(((y-ring_model(t, pdic, mcmc_pvalues))/yerr) ** 2)
 
@@ -450,4 +449,27 @@ def make_rowlist(n_transit, lc, transit_time, period):
         mid_transit_row = getNearestRow(lc.time.value, target_val)
         list.append(mid_transit_row)
     return list
-'''
+"""
+
+"""
+hole_lc_list = os.listdir('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/hole_lc_plot')
+calc_t0_2ndloop_list = os.listdir('/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/obs_t0')
+sym_diff = set(hole_lc_list) ^ set(calc_t0_2ndloop_list)
+print(list(sym_diff))
+import pdb;pdb.set_trace()
+"""
+"""
+with open(f'{homedir}/fitting_result/data/folded_lc/modelresult/1stloop/{TOInumber}/{TOInumber}_folded.txt', 'a') as f:
+    _, _, _, periodline, perioderrline = f.readlines()[-5:]
+    perioderrline = perioderrline.split(' ')[-1]
+    period_err = np.float(perioderrline)
+    periodline = periodline.split(' ')[-1]
+    period = np.float(periodline)
+"""
+"""
+with open(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/modelresult/1stloop/{TOInumber}/{TOInumber}_folded.txt', 'r') as f:
+        #durationline = f.readlines()[-5:].split(' ')[-1]
+        durationline, _, _, _, _ = f.readlines()[-5:]
+        durationline = durationline.split(' ')[-1]
+        duration = np.float(durationline)
+        """
