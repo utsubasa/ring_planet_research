@@ -280,6 +280,7 @@ df = df.sort_values('Planet SNR', ascending=False)
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
 #for TOI in [2129.01]:
+
 for TOI in TOIlist:
     TOI =  str(TOI)
     print(TOI)
@@ -338,10 +339,12 @@ for TOI in TOIlist:
     #folded_lc = folded_lc.bin(bins=300)
     '''
 
-    t = binned_lc.time.value
-    flux_data = binned_lc.flux.value
-    flux_err_data = binned_lc.flux_err.value
-    #t = np.linspace(-0.2, 0.2, 300)
+    
+    
+    
+
+
+
     ###ring model fitting by minimizing chi_square###
     best_res_dict = {}
     for n in range(150):
@@ -392,10 +395,6 @@ for TOI in TOIlist:
         saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
                 1, 1, np.pi/6.74, 0, 1, 1.53,
                 1.95, 0.0, 0.0, 0.0, 0.0]
-
-        wasp121_w_ring_values = [u1=0.364, u2=0.146, 0.0, 1.27, 0.123, 3.81,
-                  0.10, 1, np.pi/6.74, 0, 1, 1.53,
-                  1.95, 0.0, 0.0, 0.0, 0.0]
 
         mins = [0.0, 0.0, -0.1, 0.0, 0.01, 1.0,
                 0.0, 0.9, 0.0, 0.0, 0.0, 1.00,
