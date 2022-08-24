@@ -707,7 +707,6 @@ two_epoch_list = [
     1861.01,
     665.01,
     224.01,
-    121.01,
     2047.01,
 ]
 ignore_list = [
@@ -746,6 +745,11 @@ df = df.sort_values("Planet SNR", ascending=False)
 df["TOI"] = df["TOI"].astype(str)
 TOIlist = df["TOI"]
 
+hole_lc_list = os.listdir('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/hole_lc_plot')
+calc_t0_2ndloop_list = os.listdir('/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/obs_t0')
+sym_diff = set(hole_lc_list) ^ set(calc_t0_2ndloop_list)
+print(list(sym_diff))
+import pdb;pdb.set_trace()
 for TOI in [182.01]:
     # for TOI in TOIlist:
     print("analysing: ", "TOI" + str(TOI))
