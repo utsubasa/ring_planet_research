@@ -321,7 +321,7 @@ def transit_fitting(
                 if np.isfinite(res.params["t0"].stderr):
                     # and res.redchi < 10:
                     # if res.redchi < 10:
-                    red_redchi = abs(res.redchi - 1)
+                    red_redchi = res.redchi - 1
                     best_res_dict[red_redchi] = res
         if len(best_res_dict) == 0:
             print(TOInumber, i)
@@ -605,10 +605,8 @@ def folding_lc_from_csv(TOInumber, loaddir, savedir):
     plt.savefig(
         f"/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/simulation_TOI495.01/{savedir}/{TOInumber}.png"
     )
-    # plt.savefig(f'/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/bls/{TOInumber}.png')
     # plt.show()
     plt.close()
-    # cleaned_lc.write(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/folded_lc_data/bls/{TOInumber}.csv')
     os.makedirs(
         f"/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/folded_lc/{savedir}",
         exist_ok=True,
@@ -626,7 +624,7 @@ def make_simulation_data():
             "b", "norm", "theta", "phi", "tau", "r_in",
             "r_out", "norm2", "norm3", "ecosw", "esinw"]
 
-    saturnlike_values = [0.26, 0.36, 0.0, 1.27, 0.123, 3.81,
+    saturnlike_values = [0.26, 0.36, np.random.uniform(-1e-3,1e-3), 1.27, 0.123, 3.81,
             0.10, 1, np.pi/6.74, 0, 1, 1.53,
             1.95, 0.0, 0.0, 0.0, 0.0]
 
@@ -897,6 +895,7 @@ for TOI in [495.01]:
     transit_time_list.sort()
 
     """各エポックで外れ値除去と多項式フィッティング"""
+    
     # 値を格納するリストの定義
     outliers = []
     t0list = []
@@ -979,12 +978,11 @@ for TOI in [495.01]:
             print(lmfit.fit_report(transit_res), file=f)
     # plt.show()
     # import pdb;pdb.set_trace()
-
     """transit epochが2つ以下のTOIを記録しておく"""
     if len(t0list) <= 2:
         with open("two_period_toi.dat", "a") as f:
             f.write(f"{TOI}\n")
-
+    
     """folded_lcに対してtransit fitting & remove outliers. transit parametersを得る"""
     print("folding and calculate duration...")
     time.sleep(1)

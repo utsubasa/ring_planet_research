@@ -122,6 +122,7 @@ def ring_transitfit(params, x, data, eps_data, p_names, return_model=False):
     chi_square = np.sum(((data-model)/eps_data)**2)
     #print(params)
     print(chi_square)
+    import pdb;pdb.set_trace()
     #print(np.max(((data-model)/eps_data)**2))
     if return_model==True:
         return model
@@ -281,7 +282,7 @@ df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
 #for TOI in [2129.01]:
 
-for TOI in TOIlist:
+for TOI in [495.01]:
     TOI =  str(TOI)
     print(TOI)
     TOInumber = 'TOI' + TOI
@@ -310,7 +311,7 @@ for TOI in TOIlist:
     rp_rs = rp/rs
 
     #csvfile = f'./folded_lc_data/{TOInumber}.csv'
-    csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/obs_t0/{TOInumber}.csv'
+    csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/folded_lc/obs_t0/{TOInumber}.csv'
     #csvfile = f'./folded_lc_data/bls/{TOInumber}.csv'
     try:
         folded_table = ascii.read(csvfile)
@@ -319,10 +320,13 @@ for TOI in TOIlist:
             f.write(TOInumber+'\n')
         continue
     folded_lc = lk.LightCurve(data=folded_table)
-    calc_bin_std(folded_lc, TOInumber)
-    continue
+    #calc_bin_std(folded_lc, TOInumber)
     folded_lc = folded_lc[(folded_lc.time.value < duration) & (folded_lc.time.value > -duration)]
     binned_lc = folded_lc.bin(bins=500).remove_nans()
+    import pdb;pdb.set_trace()
+    t = binned_lc.time.value
+    flux_data = binned_lc.flux.value
+    flux_err_data = binned_lc.flux_err.value
     '''
     for file in files:
         try:
@@ -338,16 +342,9 @@ for TOI in TOIlist:
             pass
     #folded_lc = folded_lc.bin(bins=300)
     '''
-
-    
-    
-    
-
-
-
     ###ring model fitting by minimizing chi_square###
     best_res_dict = {}
-    for n in range(150):
+    for n in range(30):
         noringnames = ["t0", "per", "rp", "a", "b", "ecc", "w", "q1", "q2"]
         #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
         #noringvalues = [0, period, rp_rs, a_rs, 83.0, 0.0, 90.0, 0.2, 0.2]
@@ -367,6 +364,7 @@ for TOI in TOIlist:
                         best_res_dict[red_redchi] = no_ring_res
         #print(lmfit.fit_report(no_ring_res))
     no_ring_res = sorted(best_res_dict.items())[0][1]
+    """
     fig = plt.figure()
     ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
     ax_re = fig.add_subplot(2,1,2) #for plotting residuals
@@ -382,7 +380,8 @@ for TOI in TOIlist:
     plt.tight_layout()
     plt.show()
     print(lmfit.fit_report(no_ring_res))
-    import pdb;pdb.set_trace()
+    """
+    
     best_ring_res_dict = {}
     for m in range(30):
         names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
@@ -395,6 +394,10 @@ for TOI in TOIlist:
         saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
                 1, 1, np.pi/6.74, 0, 1, 1.53,
                 1.95, 0.0, 0.0, 0.0, 0.0]
+
+        saturnlike_values = [0.26, 0.36, 0.0, 1.27, 0.123, 3.81,
+            0.10, 1, np.pi/6.74, 0, 1, 1.53,
+            1.95, 0.0, 0.0, 0.0, 0.0]
 
         mins = [0.0, 0.0, -0.1, 0.0, 0.01, 1.0,
                 0.0, 0.9, 0.0, 0.0, 0.0, 1.00,
@@ -413,13 +416,13 @@ for TOI in TOIlist:
         vary_dic = dict(zip(names, vary_flags))
         params_df = params_df.join(pd.DataFrame.from_dict(vary_dic, orient='index', columns=['vary_flags']))
         df_for_mcmc = params_df[params_df['vary_flags']==True]
-
+        """
         ###土星likeな惑星のパラメータで作成したモデル###
         saturnlike_params = set_params_lm(names, saturnlike_values, mins, maxes, vary_flags)
         #pdic_saturnlike = make_dic(names, saturnlike_values)
         pdic_saturnlike = params_df['saturnlike_values'].to_dict()
         ymodel = ring_model(t, pdic_saturnlike)
-        
+        """
 
         pdic = params_df['values'].to_dict()
         try:
