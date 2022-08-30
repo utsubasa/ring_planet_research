@@ -643,6 +643,7 @@ def make_simulation_data():
     ###土星likeなTOI495.01のパラメータで作成したモデル###
     pdic_saturnlike = dict(zip(names, saturnlike_values))
     import pdb;pdb.set_trace()
+    t = t + np.random.randn(len(t))*0.0001
     ymodel = ring_model(t, pdic_saturnlike) + np.array(t/t) * np.random.randn(len(t))*0.001 + np.sin( (t/0.6 +1.2*np.random.rand()) * np.pi)*0.01
     yerr = np.array(t/t)*1e-3
     each_lc = lk.LightCurve(t, ymodel, yerr)
