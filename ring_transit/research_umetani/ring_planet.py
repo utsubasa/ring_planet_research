@@ -1,28 +1,19 @@
 # -*- coding: utf-8 -*-
-from turtle import color
 import numpy as np
 from numpy.linalg import svd
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-#import seaborn as sns
 import lmfit
 import lightkurve as lk
-#from fit_model import model
 import warnings
 import c_compile_ring
 import batman
-#import datetime
-#import time
-#import emcee
-#import corner
-#from multiprocessing import Pool
-#from lightkurve import search_targetpixelfile
-#from scipy import signal
 from astropy.io import ascii
-#import glob
 import os
 import sys
+from scipy.stats import f
+from scipy import integrate
 warnings.filterwarnings('ignore')
 
 
@@ -122,7 +113,6 @@ def ring_transitfit(params, x, data, eps_data, p_names, return_model=False):
     chi_square = np.sum(((data-model)/eps_data)**2)
     #print(params)
     print(chi_square)
-    import pdb;pdb.set_trace()
     #print(np.max(((data-model)/eps_data)**2))
     if return_model==True:
         return model
@@ -185,45 +175,14 @@ def plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name):
     ax.add_patch(c2)
     ax.add_patch(e)
     ax.add_patch(e2)
-    ax.set_title(f'chisq={str(ring_res.redchi)[:6]}, aic={ring_res.aic:2f}')
+    ax.set_title(f'chisq={str(ring_res.redchi)[:6]}')
     plt.axis('scaled')
     ax.set_aspect('equal')
-    os.makedirs(f'./lmfit_result/illustration/{TOInumber}', exist_ok=True)
+    #os.makedirs(f'./lmfit_result/illustration/{TOInumber}', exist_ok=True)
+    os.makedirs(f'./simulation/illustration/{TOInumber}', exist_ok=True)
     plt.savefig(f'./lmfit_result/illustration/{TOInumber}/{file_name}', bbox_inches="tight")
     #plt.show()
 
-def calc_bin_std(lc, TOInumber):
-    std_list =[]
-    std_err_list =[]
-    phase_list = []
-    min_list = lc.bin(bins=500).remove_nans().time.value
-    for i in range(len(min_list)):
-        try:
-            part_lc = lc[lc.time.value > min_list[i]]
-            part_lc = part_lc[part_lc.time.value < min_list[i+1]]
-            if len(part_lc) == 0:
-                continue
-            std_list.append(part_lc.flux.std())
-            std_err_list.append(part_lc.flux_err.std())
-            phase_list.append(part_lc.time[0].value)    
-        except IndexError:
-            pass
-    #print(len(std_list))
-    #print(len(phase_list))
-    fig = plt.figure()
-    ax2 = fig.add_subplot(2,1,1) #for plotting transit model and data
-    ax1 = fig.add_subplot(2,1,2) #for plotting residuals
-    lc.errorbar(ax=ax1, color='black', marker='.', zorder=1, label='data')
-    ax2.errorbar(x=phase_list, y=std_list, yerr=std_err_list, fmt='.k')
-    #ax2.set_xlabel('orbital phase')
-    ax2.set_ylabel('Flux std')
-    ax2.set_title(TOInumber)
-    plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/bin_std/{TOInumber}.png')
-    #plt.show()
-    d = {'phase':phase_list, 'bin_std':std_list}
-    pd.DataFrame(data=d).to_csv(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/bin_std/{TOInumber}.csv')
-    plt.close()
-    
 #csvfile = './folded_lc_data/TOI2403.01.csv'
 #done_TOIlist = os.listdir('./lmfit_result/transit_fit') #ダブリ解析防止
 oridf = pd.read_csv('./exofop_tess_tois.csv')
@@ -236,16 +195,19 @@ each_lc_anomalylist = [102.01,106.01,114.01,123.01,135.01,150.01,163.01,173.01,3
                         2200.01,2222.01,3846.01,4087.01,4486.01]#トランジットが途中で切れてcurvefitによって変なかたちになっているeach_lcを削除したデータ
 mtt_shiftlist = [129.01,199.01,236.01,758.01,774.01,780.01,822.01,834.01,1050.01,1151.01,1165.01,1236.01,1265.01,
                 1270.01,1292.01,1341.01,1721.01,1963.01,2131.01] #mid_transit_time shift　
-no_data_found_list = [2645.01,1518.01,1567.01,2626.01,1905.01,1355.01,1498.01,352.01,2617.01,1123.01,2624.01,2625.01,2046.01,2724.01,2612.01,2622.01,
-                      1373.01,628.01,3109.01,4283.01,3604.01,372.01,2766.01,1371.01,2969.01,3041.01,3321.01,3972.01,1482.01,2889.01,2346.01,2591.01,
-                      2704.01,4543.01,1580.01,2803.01,1388.01,1427.01,2616.01,3589.01,2580.01,1310.01,2236.01,1519.01,3735.01,3136.01,2799.01,4726.01,
-                      3329.01,1521.01,2055.01,2826.01,1656.01,4398.01,4079.01,2690.01,2989.01,3010.01,2619.01,2840.01,3241.01,4463.01,2745.01,1397.01, 1130.01] #short がないか、SPOCがないか
+no_data_list = [4726.01,372.01,352.01,2617.01,2766.01,2969.01,2989.01,2619.01,2626.01,2624.01,2625.01,
+                2622.01,3041.01,2889.01,4543.01,3010.01,2612.01,4463.01,4398.01,4283.01,4145.01,3883.01,
+                4153.01,3910.01,3604.01,3972.01,3589.01,3735.01,4079.01,4137.01,3109.01,3321.01,3136.01,
+                3329.01,2826.01,2840.01,3241.01,2724.01,2704.01,2803.01,2799.01,2690.01,2745.01,2645.01,
+                2616.01,2591.01,2580.01,2346.01,2236.01,2047.01,2109.01,2031.01,2040.01,2046.01,1905.01,
+                2055.01,1518.01,1567.01,1355.01,1498.01,1373.01,628.01,1482.01,1580.01,1388.01,1310.01,
+                1521.01,1123.01, 1519.01, 1427.01, 1371.01, 1365.01, 1397.01] #short がないか、SPOCがないか
 no_perioddata_list = [1134.01,1897.01,2423.01,2666.01,4465.01]#exofopの表にperiodの記載無し。1567.01,1656.01もperiodなかったがこちらはcadence=’short’のデータなし。
-no_signal_list = [2218.01] #トランジットのsignalが無いか、ノイズに埋もれて見えない
+no_signal_list = [2218.01,212.01,1823.01] #トランジットのsignalが無いか、ノイズに埋もれて見えない
 multiplanet_list = [1670.01, 201.01, 822.01]#, 1130.01]
 startrend_list = [4381.01, 1135.01, 1025.01, 212.01, 1830.01, 2119.01, 224.01]
 flare_list = [212.01, 2119.01, 1779.01]
-two_epoch_list = [671.01, 1963.01, 1283.01, 758.01, 1478.01, 3501.01, 964.01, 845.01, 121.01,1104.01, 811.01, 3492.01, 1312.01, 1861.01, 665.01]
+two_epoch_list = [671.01, 1963.01, 1283.01, 758.01, 1478.01, 3501.01, 964.01, 845.01, 121.01,1104.01, 811.01, 3492.01]
 '''
 df['Rjup'] = df['Planet Radius (R_Earth)']/11.209
 plt.scatter(x=df['Period (days)'], y = df['Rjup'], color='k')
@@ -270,8 +232,8 @@ df = df.set_index(['TOI'])
 #df = df.drop(index=each_lc_anomalylist)
 #df = df.drop(index=mtt_shiftlist, errors='ignore')
 #df = df.drop(index=done_list, errors='ignore')
-df = df.drop(index=no_data_found_list, errors='ignore')
-#df = df.drop(index=multiplanet_list, errors='ignore')
+df = df.drop(index=no_data_list, errors='ignore')
+df = df.drop(index=multiplanet_list, errors='ignore')
 #df = df.drop(index=startrend_list, errors='ignore')
 #df = df.drop(index=flare_list, errors='ignore')
 #df = df.drop(index=two_epoch_list, errors='ignore')
@@ -280,9 +242,8 @@ df = df.reset_index()
 df = df.sort_values('Planet SNR', ascending=False)
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
-#for TOI in [2129.01]:
-
 for TOI in [495.01]:
+#for TOI in TOIlist[330:]:
     TOI =  str(TOI)
     print(TOI)
     TOInumber = 'TOI' + TOI
@@ -310,23 +271,17 @@ for TOI in [495.01]:
     rs = param_df['Stellar Radius (R_Sun)'].values[0]
     rp_rs = rp/rs
 
-    #csvfile = f'./folded_lc_data/{TOInumber}.csv'
     csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/folded_lc/obs_t0/{TOInumber}.csv'
-    #csvfile = f'./folded_lc_data/bls/{TOInumber}.csv'
+    #csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/{TOInumber}.csv'
     try:
         folded_table = ascii.read(csvfile)
     except FileNotFoundError:
-        with open('csvfile_FileNotFoundError.txt', 'a') as f:
-            f.write(TOInumber+'\n')
+        #with open('csvfile_FileNotFoundError.txt', 'a') as f:
+            #f.write(TOInumber+'\n')
         continue
     folded_lc = lk.LightCurve(data=folded_table)
-    #calc_bin_std(folded_lc, TOInumber)
     folded_lc = folded_lc[(folded_lc.time.value < duration) & (folded_lc.time.value > -duration)]
     binned_lc = folded_lc.bin(bins=500).remove_nans()
-    import pdb;pdb.set_trace()
-    t = binned_lc.time.value
-    flux_data = binned_lc.flux.value
-    flux_err_data = binned_lc.flux_err.value
     '''
     for file in files:
         try:
@@ -342,6 +297,11 @@ for TOI in [495.01]:
             pass
     #folded_lc = folded_lc.bin(bins=300)
     '''
+
+    t = binned_lc.time.value
+    flux_data = binned_lc.flux.value
+    flux_err_data = binned_lc.flux_err.value
+    #t = np.linspace(-0.2, 0.2, 300)
     ###ring model fitting by minimizing chi_square###
     best_res_dict = {}
     for n in range(30):
@@ -358,30 +318,11 @@ for TOI in [495.01]:
         no_ring_params = set_params_lm(noringnames, noringvalues, noringmins, noringmaxes, noringvary_flags)
         no_ring_res = lmfit.minimize(no_ring_transitfit, no_ring_params, args=(t, flux_data, flux_err_data, noringnames), max_nfev=1000)
         if no_ring_res.params['t0'].stderr != None:
-                    if np.isfinite(no_ring_res.params['t0'].stderr) and no_ring_res.redchi < 10:
-                    #if res.redchi < 10:
-                        red_redchi = abs(no_ring_res.redchi-1)
-                        best_res_dict[red_redchi] = no_ring_res
-        #print(lmfit.fit_report(no_ring_res))
+            if np.isfinite(no_ring_res.params['t0'].stderr) and no_ring_res.redchi < 10:
+                red_redchi = no_ring_res.redchi-1
+                best_res_dict[red_redchi] = no_ring_res
     no_ring_res = sorted(best_res_dict.items())[0][1]
-    """
-    fig = plt.figure()
-    ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
-    ax_re = fig.add_subplot(2,1,2) #for plotting residuals
-    noring_flux_model = no_ring_transitfit(no_ring_res.params, t, flux_data, flux_err_data, noringnames, return_model=True)
-    binned_lc.errorbar(ax=ax_lc)
-    ax_lc.plot(t, noring_flux_model, label='Model w/o ring', color='red')
-    residuals_no_ring = binned_lc - noring_flux_model
-    residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
-    ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
-    ax_lc.legend()
-    #ax_lc.set_title(f'w/ chisq:{chisq_ring:.0f}/{ring_res.nfree:.0f} w/o chisq:{chisq_noring:.0f}/{no_ring_res.nfree:.0f}')
-    ax_lc.set_title(f'w/o AIC:{no_ring_res.aic:.2f}, w/o chisq:{no_ring_res.chisqr:.0f}/{no_ring_res.nfree:.0f}' )
-    plt.tight_layout()
-    plt.show()
-    print(lmfit.fit_report(no_ring_res))
-    """
-    
+
     best_ring_res_dict = {}
     for m in range(30):
         names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
@@ -392,8 +333,8 @@ for TOI in [495.01]:
                   np.random.uniform(1.02,2.44), 0.0, 0.0, 0.0, 0.0]
 
         saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
-                1, 1, np.pi/6.74, 0, 1, 1.53,
-                1.95, 0.0, 0.0, 0.0, 0.0]
+                  1, 1, np.pi/6.74, 0, 1, 1.53,
+                  1.95, 0.0, 0.0, 0.0, 0.0]
 
         saturnlike_values = [0.26, 0.36, 0.0, 1.27, 0.123, 3.81,
             0.10, 1, np.pi/6.74, 0, 1, 1.53,
@@ -416,13 +357,6 @@ for TOI in [495.01]:
         vary_dic = dict(zip(names, vary_flags))
         params_df = params_df.join(pd.DataFrame.from_dict(vary_dic, orient='index', columns=['vary_flags']))
         df_for_mcmc = params_df[params_df['vary_flags']==True]
-        """
-        ###土星likeな惑星のパラメータで作成したモデル###
-        saturnlike_params = set_params_lm(names, saturnlike_values, mins, maxes, vary_flags)
-        #pdic_saturnlike = make_dic(names, saturnlike_values)
-        pdic_saturnlike = params_df['saturnlike_values'].to_dict()
-        ymodel = ring_model(t, pdic_saturnlike)
-        """
 
         pdic = params_df['values'].to_dict()
         try:
@@ -434,46 +368,57 @@ for TOI in [495.01]:
             continue
 
         ###csvに書き出し###
-        input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
-        output_df = pd.DataFrame.from_dict(ring_res.params.valuesdict(), orient="index",columns=["output_value"])
-        input_df=input_df.applymap(lambda x: '{:.6f}'.format(x))
-        output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
-        result_df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
-        os.makedirs(f'./lmfit_result/fit_p_data/{TOInumber}', exist_ok=True)
-        result_df.to_csv(f'./lmfit_result/fit_p_data/{TOInumber}/{TOInumber}_{ring_res.aic:.0f}_{m}.csv', header=True, index=False)
-        plot_ring(rp_rs=ring_res.params['rp_rs'].value, rin_rp=ring_res.params['r_in'].value, rout_rin=ring_res.params['r_out'].value, b=ring_res.params['b'].value, theta=ring_res.params['theta'].value, phi=ring_res.params['phi'].value, file_name = f"{TOInumber}_{ring_res.aic:.2f}_{m}.png")
-        fig = plt.figure()
-        ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
-        ax_re = fig.add_subplot(2,1,2) #for plotting residuals
-        #elapsed_time = time.time() - start
-        #print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
-        ring_flux_model = ring_transitfit(ring_res.params, t, flux_data, flux_err_data, names, return_model=True)
-        noring_flux_model = no_ring_transitfit(no_ring_res.params, t, flux_data, flux_err_data, noringnames, return_model=True)
-        binned_lc.errorbar(ax=ax_lc)
-        ax_lc.plot(t, ring_flux_model, label='Model w/ ring', color='blue')
-        ax_lc.plot(t, noring_flux_model, label='Model w/o ring', color='red')
-        residuals_ring = binned_lc - ring_flux_model
-        residuals_no_ring = binned_lc - noring_flux_model
-        residuals_ring.plot(ax=ax_re, color='blue', alpha=0.3,  marker='.', zorder=1)
-        residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
-        ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
-        ax_lc.legend()
-        #ax_lc.set_title(f'w/ chisq:{chisq_ring:.0f}/{ring_res.nfree:.0f} w/o chisq:{chisq_noring:.0f}/{no_ring_res.nfree:.0f}')
-        ax_lc.set_title(f'w/ AIC:{ring_res.aic:.2f} w/o AIC:{no_ring_res.aic:.2f}')
-        plt.tight_layout()
-        os.makedirs(f'./lmfit_result/transit_fit/{TOInumber}', exist_ok=True)
-        plt.savefig(f'./lmfit_result/transit_fit/{TOInumber}/{TOInumber}_{ring_res.aic:.0f}_{m}.png', header=False, index=False)
-        #plt.show()
-        plt.close()
-        best_ring_res_dict[ring_res.aic] = ring_res
+        if ring_res.params['t0'].stderr != None:
+            if np.isfinite(ring_res.params['t0'].stderr):
+                red_redchi = ring_res.redchi-1
+                best_ring_res_dict[red_redchi] = ring_res
+                input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
+                output_df = pd.DataFrame.from_dict(ring_res.params.valuesdict(), orient="index",columns=["output_value"])
+                input_df=input_df.applymap(lambda x: '{:.6f}'.format(x))
+                output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
+                result_df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
+                #os.makedirs(f'./lmfit_result/fit_p_data/{TOInumber}', exist_ok=True)
+                os.makedirs(f'./simulation/fit_p_data/{TOInumber}', exist_ok=True)
+                result_df.to_csv(f'./lmfit_result/fit_p_data/{TOInumber}/{TOInumber}_{ring_res.redchi:.2f}_{m}.csv', header=True, index=False)
+                plot_ring(rp_rs=ring_res.params['rp_rs'].value, rin_rp=ring_res.params['r_in'].value, rout_rin=ring_res.params['r_out'].value, b=ring_res.params['b'].value, theta=ring_res.params['theta'].value, phi=ring_res.params['phi'].value, file_name = f"{TOInumber}_{ring_res.redchi:.2f}_{m}.png")
+                fig = plt.figure()
+                ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
+                ax_re = fig.add_subplot(2,1,2) #for plotting residuals
+                #elapsed_time = time.time() - start
+                #print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+                ring_flux_model = ring_transitfit(ring_res.params, t, flux_data, flux_err_data, names, return_model=True)
+                noring_flux_model = no_ring_transitfit(no_ring_res.params, t, flux_data, flux_err_data, noringnames, return_model=True)
+                binned_lc.errorbar(ax=ax_lc)
+                ax_lc.plot(t, ring_flux_model, label='Model w/ ring', color='blue')
+                ax_lc.plot(t, noring_flux_model, label='Model w/o ring', color='red')
+                residuals_ring = binned_lc - ring_flux_model
+                residuals_no_ring = binned_lc - noring_flux_model
+                residuals_ring.plot(ax=ax_re, color='blue', alpha=0.3,  marker='.', zorder=1)
+                residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
+                ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
+                ax_lc.legend()
+                ax_lc.set_title(f'w/ chisq:{ring_res.chisqr:.0f}/{ring_res.nfree:.0f} w/o chisq:{no_ring_res.chisqr:.0f}/{no_ring_res.nfree:.0f}')
+                #ax_lc.set_title(f'w/ AIC:{ring_res.aic:.2f} w/o AIC:{no_ring_res.aic:.2f}')
+                plt.tight_layout()
+                #os.makedirs(f'./lmfit_result/transit_fit/{TOInumber}', exist_ok=True)
+                os.makedirs(f'./simulation/transit_fit/{TOInumber}', exist_ok=True)
+                plt.savefig(f'./lmfit_result/transit_fit/{TOInumber}/{TOInumber}_{ring_res.redchi:.2f}_{m}.png', header=False, index=False)
+                #plt.show()
+                plt.close()
     ring_res = sorted(best_ring_res_dict.items())[0][1]
-    os.makedirs(f'./lmfit_result/fit_report/{TOInumber}', exist_ok=True)
-    with open(f'./lmfit_result/fit_report/{TOInumber}/{TOInumber}_{str(i)}.txt', 'a') as f:
-        print('no ring transit fit report:\n')
+    F_obs = ( (no_ring_res.chisqr-ring_res.chisqr)/ (ring_res.nvarys-no_ring_res.nvarys) ) / ( ring_res.chisqr/(ring_res.ndata-ring_res.nvarys-1) )
+    p_value = 1 - integrate.quad( lambda x:f.pdf(x, ring_res.ndata-ring_res.nvarys-1, ring_res.nvarys-no_ring_res.nvarys), 0, F_obs )
+    with open(f'./lmfit_result/fit_report/{TOInumber}.txt', 'a') as f:
+        print('no ring transit fit report:\n', file = f)
         print(lmfit.fit_report(no_ring_res), file = f)
-        print('ring transit fit report:\n')
+        print('ring transit fit report:\n', file = f)
         print(lmfit.fit_report(ring_res), file = f)
+        print(f'F_obs: {F_obs}', file = f)
+        print(f'p_value: {p_value}', file = f)
 
+    #if abs(ring_res.redchi-1) < abs(no_ring_res.redchi-1):
+        #with open(f'./lmfit_result/ring_hypo.txt', 'a') as f:
+            #print(TOInumber+ '\n', file = f)
     #fit_report = lmfit.fit_report(ring_res)
     #print(fit_report)
 

@@ -617,6 +617,7 @@ def folding_lc_from_csv(TOInumber, loaddir, savedir):
 
     return res
 
+
 def make_simulation_data():
     """make_simulation_data"""
     t = np.linspace(-0.3, 0.3, 430)
@@ -642,12 +643,11 @@ def make_simulation_data():
 
     ###土星likeなTOI495.01のパラメータで作成したモデル###
     pdic_saturnlike = dict(zip(names, saturnlike_values))
-    import pdb;pdb.set_trace()
-    t = t + np.random.randn(len(t))*0.0001
-    ymodel = ring_model(t, pdic_saturnlike) + np.array(t/t) * np.random.randn(len(t))*0.001 + np.sin( (t/0.6 +1.2*np.random.rand()) * np.pi)*0.01
+    t = t + np.random.randn(len(t))*0.001
+    ymodel = ring_model(t, pdic_saturnlike) + np.random.randn(len(t))*0.001 + np.sin( (t/0.6 +1.2*np.random.rand()) * np.pi)*0.01
     yerr = np.array(t/t)*1e-3
     each_lc = lk.LightCurve(t, ymodel, yerr)
-    plt.errorbar(t, ymodel, 2e-3, label='Model w/o ring', fmt='.k')
+    plt.errorbar(t, ymodel, yerr, label='Model w/o ring', fmt='.k')
     os.makedirs(
                 f"{homedir}/fitting_result/figure/simulation_TOI495.01/before_process/each_lc",
                 exist_ok=True,
@@ -874,11 +874,11 @@ for TOI in [495.01]:
     """全てのライトカーブを結合し、fluxがNaNのデータ点は除去する"""
     lc = lc_collection.stitch().remove_nans()  # initialize lc
 
-    
+    """
     lc.scatter()
     plt.show()
     import pdb;pdb.set_trace()
-    
+    """
 
     """多惑星系の場合、ターゲットのトランジットに影響があるかを判断する。
     print('judging whether other planet transit is included in the data...')
