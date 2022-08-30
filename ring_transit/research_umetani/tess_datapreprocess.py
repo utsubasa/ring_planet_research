@@ -642,8 +642,9 @@ def make_simulation_data():
 
     ###土星likeなTOI495.01のパラメータで作成したモデル###
     pdic_saturnlike = dict(zip(names, saturnlike_values))
+    import pdb;pdb.set_trace()
     ymodel = ring_model(t, pdic_saturnlike) + np.array(t/t) * np.random.randn(len(t))*0.001 + np.sin( (t/0.6 +1.2*np.random.rand()) * np.pi)*0.01
-    yerr = np.array(t/t)*2e-3
+    yerr = np.array(t/t)*1e-3
     each_lc = lk.LightCurve(t, ymodel, yerr)
     plt.errorbar(t, ymodel, 2e-3, label='Model w/o ring', fmt='.k')
     os.makedirs(
@@ -872,11 +873,11 @@ for TOI in [495.01]:
     """全てのライトカーブを結合し、fluxがNaNのデータ点は除去する"""
     lc = lc_collection.stitch().remove_nans()  # initialize lc
 
-    """
+    
     lc.scatter()
     plt.show()
     import pdb;pdb.set_trace()
-    """
+    
 
     """多惑星系の場合、ターゲットのトランジットに影響があるかを判断する。
     print('judging whether other planet transit is included in the data...')
