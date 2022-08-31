@@ -279,7 +279,7 @@ df = df.reset_index()
 df = df.sort_values('Planet SNR', ascending=False)
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
-#for TOI in [2129.01]:
+#for TOI in [1292.01]:
 for TOI in TOIlist:
     TOI =  str(TOI)
     print(TOI)
@@ -318,8 +318,8 @@ for TOI in TOIlist:
             f.write(TOInumber+'\n')
         continue
     folded_lc = lk.LightCurve(data=folded_table)
-    calc_bin_std(folded_lc, TOInumber)
-    continue
+    #calc_bin_std(folded_lc, TOInumber)
+    #continue
     folded_lc = folded_lc[(folded_lc.time.value < duration) & (folded_lc.time.value > -duration)]
     binned_lc = folded_lc.bin(bins=500).remove_nans()
     '''
