@@ -12,7 +12,7 @@ import batman
 from astropy.io import ascii
 import os
 import sys
-from scipy.stats import f
+import scipy
 from scipy import integrate
 warnings.filterwarnings('ignore')
 
@@ -180,7 +180,7 @@ def plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name):
     ax.set_aspect('equal')
     #os.makedirs(f'./lmfit_result/illustration/{TOInumber}', exist_ok=True)
     os.makedirs(f'./simulation/illustration/{TOInumber}', exist_ok=True)
-    plt.savefig(f'./lmfit_result/illustration/{TOInumber}/{file_name}', bbox_inches="tight")
+    plt.savefig(f'./simulation/illustration/{TOInumber}/{file_name}', bbox_inches="tight")
     #plt.show()
 
 #csvfile = './folded_lc_data/TOI2403.01.csv'
@@ -372,43 +372,50 @@ for TOI in [495.01]:
             if np.isfinite(ring_res.params['t0'].stderr):
                 red_redchi = ring_res.redchi-1
                 best_ring_res_dict[red_redchi] = ring_res
-                input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
-                output_df = pd.DataFrame.from_dict(ring_res.params.valuesdict(), orient="index",columns=["output_value"])
-                input_df=input_df.applymap(lambda x: '{:.6f}'.format(x))
-                output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
-                result_df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
-                #os.makedirs(f'./lmfit_result/fit_p_data/{TOInumber}', exist_ok=True)
-                os.makedirs(f'./simulation/fit_p_data/{TOInumber}', exist_ok=True)
-                result_df.to_csv(f'./lmfit_result/fit_p_data/{TOInumber}/{TOInumber}_{ring_res.redchi:.2f}_{m}.csv', header=True, index=False)
-                plot_ring(rp_rs=ring_res.params['rp_rs'].value, rin_rp=ring_res.params['r_in'].value, rout_rin=ring_res.params['r_out'].value, b=ring_res.params['b'].value, theta=ring_res.params['theta'].value, phi=ring_res.params['phi'].value, file_name = f"{TOInumber}_{ring_res.redchi:.2f}_{m}.png")
-                fig = plt.figure()
-                ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
-                ax_re = fig.add_subplot(2,1,2) #for plotting residuals
-                #elapsed_time = time.time() - start
-                #print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
-                ring_flux_model = ring_transitfit(ring_res.params, t, flux_data, flux_err_data, names, return_model=True)
-                noring_flux_model = no_ring_transitfit(no_ring_res.params, t, flux_data, flux_err_data, noringnames, return_model=True)
-                binned_lc.errorbar(ax=ax_lc)
-                ax_lc.plot(t, ring_flux_model, label='Model w/ ring', color='blue')
-                ax_lc.plot(t, noring_flux_model, label='Model w/o ring', color='red')
-                residuals_ring = binned_lc - ring_flux_model
-                residuals_no_ring = binned_lc - noring_flux_model
-                residuals_ring.plot(ax=ax_re, color='blue', alpha=0.3,  marker='.', zorder=1)
-                residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
-                ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
-                ax_lc.legend()
-                ax_lc.set_title(f'w/ chisq:{ring_res.chisqr:.0f}/{ring_res.nfree:.0f} w/o chisq:{no_ring_res.chisqr:.0f}/{no_ring_res.nfree:.0f}')
-                #ax_lc.set_title(f'w/ AIC:{ring_res.aic:.2f} w/o AIC:{no_ring_res.aic:.2f}')
-                plt.tight_layout()
-                #os.makedirs(f'./lmfit_result/transit_fit/{TOInumber}', exist_ok=True)
-                os.makedirs(f'./simulation/transit_fit/{TOInumber}', exist_ok=True)
-                plt.savefig(f'./lmfit_result/transit_fit/{TOInumber}/{TOInumber}_{ring_res.redchi:.2f}_{m}.png', header=False, index=False)
-                #plt.show()
-                plt.close()
+                F_obs = ( (no_ring_res.chisqr-ring_res.chisqr)/ (ring_res.nvarys-no_ring_res.nvarys) ) / ( ring_res.chisqr/(ring_res.ndata-ring_res.nvarys-1) )
+                if F_obs > 0:
+                    import pdb;pdb.set_trace()
+                    p_value = 1 - integrate.quad( lambda x:scipy.stats.f.pdf(x, ring_res.ndata-ring_res.nvarys-1, ring_res.nvarys-no_ring_res.nvarys), 0, F_obs )[0]
+                    input_df = pd.DataFrame.from_dict(params.valuesdict(), orient="index",columns=["input_value"])
+                    output_df = pd.DataFrame.from_dict(ring_res.params.valuesdict(), orient="index",columns=["output_value"])
+                    input_df=input_df.applymap(lambda x: '{:.6f}'.format(x))
+                    output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
+                    result_df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
+                    #os.makedirs(f'./lmfit_result/fit_p_data/{TOInumber}', exist_ok=True)
+                    os.makedirs(f'./simulation/fit_p_data/{TOInumber}', exist_ok=True)
+                    result_df.to_csv(f'./simulation/fit_p_data/{TOInumber}/{TOInumber}_{ring_res.redchi:.2f}_{m}.csv', header=True, index=False)
+                    plot_ring(rp_rs=ring_res.params['rp_rs'].value, rin_rp=ring_res.params['r_in'].value, rout_rin=ring_res.params['r_out'].value, b=ring_res.params['b'].value, theta=ring_res.params['theta'].value, phi=ring_res.params['phi'].value, file_name = f"{TOInumber}_{ring_res.redchi:.2f}_{m}.png")
+                    fig = plt.figure()
+                    ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
+                    ax_re = fig.add_subplot(2,1,2) #for plotting residuals
+                    #elapsed_time = time.time() - start
+                    #print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+                    ring_flux_model = ring_transitfit(ring_res.params, t, flux_data, flux_err_data, names, return_model=True)
+                    noring_flux_model = no_ring_transitfit(no_ring_res.params, t, flux_data, flux_err_data, noringnames, return_model=True)
+                    binned_lc.errorbar(ax=ax_lc)
+                    ax_lc.plot(t, ring_flux_model, label='Model w/ ring', color='blue')
+                    ax_lc.plot(t, noring_flux_model, label='Model w/o ring', color='red')
+                    residuals_ring = binned_lc - ring_flux_model
+                    residuals_no_ring = binned_lc - noring_flux_model
+                    residuals_ring.plot(ax=ax_re, color='blue', alpha=0.3,  marker='.', zorder=1)
+                    residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
+                    ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
+                    ax_lc.legend()
+                    ax_lc.set_title(f'w/ chisq:{ring_res.chisqr:.0f}/{ring_res.nfree:.0f} w/o chisq:{no_ring_res.chisqr:.0f}/{no_ring_res.nfree:.0f}')
+                    #ax_lc.set_title(f'w/ AIC:{ring_res.aic:.2f} w/o AIC:{no_ring_res.aic:.2f}')
+                    plt.tight_layout()
+                    #os.makedirs(f'./lmfit_result/transit_fit/{TOInumber}', exist_ok=True)
+                    os.makedirs(f'./simulation/transit_fit/{TOInumber}', exist_ok=True)
+                    plt.savefig(f'./simulation/transit_fit/{TOInumber}/{TOInumber}_{p_value}_{m}.png', header=False, index=False)
+                    #plt.show()
+                    plt.close()
     ring_res = sorted(best_ring_res_dict.items())[0][1]
     F_obs = ( (no_ring_res.chisqr-ring_res.chisqr)/ (ring_res.nvarys-no_ring_res.nvarys) ) / ( ring_res.chisqr/(ring_res.ndata-ring_res.nvarys-1) )
-    p_value = 1 - integrate.quad( lambda x:f.pdf(x, ring_res.ndata-ring_res.nvarys-1, ring_res.nvarys-no_ring_res.nvarys), 0, F_obs )
-    with open(f'./lmfit_result/fit_report/{TOInumber}.txt', 'a') as f:
+    if F_obs > 0:
+        p_value = 1 - integrate.quad( lambda x:scipy.stats.f.pdf(x, ring_res.ndata-ring_res.nvarys-1, ring_res.nvarys-no_ring_res.nvarys), 0, F_obs )[0]
+    else:
+        p_value = 'None'
+    with open(f'./simulation/fit_report/{TOInumber}.txt', 'a') as f:
         print('no ring transit fit report:\n', file = f)
         print(lmfit.fit_report(no_ring_res), file = f)
         print('ring transit fit report:\n', file = f)
