@@ -146,7 +146,7 @@ def no_ring_transit_and_polynomialfit(
     transit_model = m.light_curve(params_batman)  # calculates light curve
     poly_params = params.valuesdict()
     poly_model = np.polynomial.Polynomial(
-        [poly_params["c0"], poly_params["c1"], poly_params["c2"]]
+        [poly_params["c0"], poly_params["c1"], poly_params["c2"], poly_params["c3"], poly_params["c4"]]
     )
     polynomialmodel = poly_model(x)
     model = transit_model + polynomialmodel - 1
@@ -267,7 +267,6 @@ def calc_obs_transit_time(
         plt.savefig(
             f"{homedir}/fitting_result/figure/simulation_TOI495.01/estimate_period/{TOInumber}.png"
         )
-        # plt.savefig(f'{homedir}/fitting_result/figure/calc_/bls/{TOInumber}.png')
         # plt.show()
         plt.close()
         return estimated_period, ts * res.stderr
@@ -310,6 +309,8 @@ def transit_fitting(
                     curvefit_params["c0"],
                     curvefit_params["c1"],
                     curvefit_params["c2"],
+                    curvefit_params["c3"],
+                    curvefit_params["c4"],
                 )
             res = lmfit.minimize(
                 fitting_model,
@@ -469,9 +470,9 @@ def curve_fitting(each_lc, duration, res=None):
             (each_lc["time"].value < -(duration * 0.7))
             | (each_lc["time"].value > (duration * 0.7))
         ]
-    model = lmfit.models.PolynomialModel(degree=2)
+    model = lmfit.models.PolynomialModel(degree=4)
     # poly_params = model.make_params(c0=0, c1=0, c2=0, c3=0, c4=0, c5=0, c6=0, c7=0)
-    poly_params = model.make_params(c0=1, c1=0, c2=0)
+    poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0)
     result = model.fit(
         out_transit.flux.value, poly_params, x=out_transit.time.value
     )
@@ -495,6 +496,8 @@ def curvefit_normalize(each_lc, poly_params, savedir):
             poly_params["c0"].value,
             poly_params["c1"].value,
             poly_params["c2"].value,
+            poly_params["c3"].value,
+            poly_params["c4"].value,
         ]
     )
     """
