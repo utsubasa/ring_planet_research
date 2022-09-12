@@ -210,7 +210,7 @@ def calc_obs_transit_time(
     plt.ylabel("O-C(hrs)")
     plt.tight_layout()
     os.makedirs(
-        f"{homedir}/fitting_result/figure/calc_obs_transit_time/"
+        f"{homedir}/fitting_result/figure/calc_obs_transit_time/", exist_ok=True,
     )
     plt.savefig(
         f"{homedir}/fitting_result/figure/calc_obs_transit_time/{TOInumber}.png"
@@ -256,7 +256,7 @@ def calc_obs_transit_time(
         ax2.set_ylabel("residuals")
         plt.tight_layout()
         os.makedirs(
-            f"{homedir}/fitting_result/figure/estimate_period/"
+            f"{homedir}/fitting_result/figure/estimate_period/", exist_ok=True,
         )
         plt.savefig(
             f"{homedir}/fitting_result/figure/estimate_period/{TOInumber}.png"
