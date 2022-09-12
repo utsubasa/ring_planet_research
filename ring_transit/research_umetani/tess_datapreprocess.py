@@ -308,6 +308,8 @@ def transit_fitting(
                     curvefit_params["c0"],
                     curvefit_params["c1"],
                     curvefit_params["c2"],
+                    curvefit_params["c3"],
+                    curvefit_params["c4"],
                 )
             res = lmfit.minimize(
                 fitting_model,
