@@ -209,6 +209,9 @@ def calc_obs_transit_time(
     plt.xlabel("mid transit time[BJD] - 2457000")
     plt.ylabel("O-C(hrs)")
     plt.tight_layout()
+    os.makedirs(
+        f"{homedir}/fitting_result/figure/calc_obs_transit_time/"
+    )
     plt.savefig(
         f"{homedir}/fitting_result/figure/calc_obs_transit_time/{TOInumber}.png"
     )
@@ -252,6 +255,9 @@ def calc_obs_transit_time(
         ax2.set_xlabel("mid transit time[BJD] - 2457000")
         ax2.set_ylabel("residuals")
         plt.tight_layout()
+        os.makedirs(
+            f"{homedir}/fitting_result/figure/estimate_period/"
+        )
         plt.savefig(
             f"{homedir}/fitting_result/figure/estimate_period/{TOInumber}.png"
         )
