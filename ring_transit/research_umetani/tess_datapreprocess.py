@@ -18,43 +18,6 @@ from scipy.stats import linregress, t
 warnings.filterwarnings("ignore")
 
 
-def bls_analysis(lc, period, transit_time, duration):
-    print("bls analysis...")
-    time.sleep(1)
-    bls_period = np.linspace(10, 50, 10000)
-    bls = lc.to_periodogram(
-        method="bls", period=bls_period
-    )  # oversample_factor=1)\
-    print("bls period = ", bls.period_at_max_power)
-    print(f"period = {period}")
-    print("bls transit time = ", bls.transit_time_at_max_power)
-    print(f"transit time = {transit_time}")
-    print("bls duration = ", bls.duration_at_max_power)
-    print(f"duration = {duration}")
-    bls_transit_time = bls.transit_time_at_max_power.value
-    catalog_lc = lc.fold(period=period, epoch_time=transit_time)
-    bls_lc = lc.fold(period=period, epoch_time=bls_transit_time)
-    ax = catalog_lc[np.abs(catalog_lc.time.value) < 1.0].scatter(
-        label="catalog t0"
-    )
-    bls_lc[np.abs(bls_lc.time.value) < 1.0].scatter(
-        ax=ax, color="red", label="BLS t0"
-    )
-    os.makedirs(
-            f"/Users/u_tsubasa/Dropbox/ring_planet_research/comp_bls/",
-            exist_ok=True,
-            )
-    plt.savefig(
-        f"/Users/u_tsubasa/Dropbox/ring_planet_research/comp_bls/{TOInumber}.png"
-    )
-    plt.close()
-    transit_time = bls_transit_time
-    # duration = bls.duration_at_max_power.value
-    period = bls.period_at_max_power.value
-
-    return transit_time, period
-
-
 def calc_data_survival_rate(lc, duration):
     data_n = len(lc.flux)
     max_data_n = (
@@ -765,8 +728,8 @@ sym_diff = set(hole_lc_list) ^ set(calc_t0_2ndloop_list)
 print(list(sym_diff))
 import pdb;pdb.set_trace()
 """
-for TOI in [964.01]:
-    # for TOI in TOIlist:
+#for TOI in [964.01]:
+for TOI in TOIlist:
     print("analysing: ", "TOI" + str(TOI))
     TOI = str(TOI)
     # if TOI=='1823.01' or TOI=='1833.01' or TOI=='2218.01' or TOI=='224.01':
