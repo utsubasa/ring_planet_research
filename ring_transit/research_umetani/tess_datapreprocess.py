@@ -321,7 +321,7 @@ def transit_fitting(
                 if np.isfinite(res.params["t0"].stderr):
                     # and res.redchi < 10:
                     # if res.redchi < 10:
-                    red_redchi = abs(res.redchi - 1)
+                    red_redchi = res.redchi - 1
                     best_res_dict[red_redchi] = res
         if len(best_res_dict) == 0:
             print(TOInumber, i)
