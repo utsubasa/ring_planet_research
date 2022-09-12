@@ -40,6 +40,10 @@ def bls_analysis(lc, period, transit_time, duration):
     bls_lc[np.abs(bls_lc.time.value) < 1.0].scatter(
         ax=ax, color="red", label="BLS t0"
     )
+    os.makedirs(
+            f"/Users/u_tsubasa/Dropbox/ring_planet_research/comp_bls/",
+            exist_ok=True,
+            )
     plt.savefig(
         f"/Users/u_tsubasa/Dropbox/ring_planet_research/comp_bls/{TOInumber}.png"
     )
