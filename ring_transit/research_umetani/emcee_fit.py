@@ -171,7 +171,7 @@ p_csvlist = ['TOI267.01_735_1.csv','TOI585.01_352_14.csv','TOI615.01_444_2.csv',
             'TOI1976.01_798_5.csv','TOI2020.01_445_6.csv','TOI2140.01_232_9.csv','TOI3460.01_715_7.csv',
             'TOI4606.01_753_12.csv']
 #p_csvlist = ['TOI1963.01_665_6.csv']
-p_csvlist = ['TOI4470.01_0.csv']
+p_csvlist = ['TOI201.01_4_90.csv']
 df = pd.read_csv('./exofop_tess_tois.csv')
 df = df[df['Planet SNR']>100]
 df['TOI'] = df['TOI'].astype(str)
@@ -180,10 +180,11 @@ df['TOI'] = df['TOI'].astype(str)
 #ここはファイル名を要素にしたリストでfor loop
 for p_csv in p_csvlist:
     #dataの呼び出し
+    #TOInumber, _, _ = p_csv.split('_')
     TOInumber, _, _ = p_csv.split('_')
     param_df = df[df['TOI'] == TOInumber[3:]]
     duration = param_df['Duration (hours)'].values / 24
-    csvfile = f'./folded_lc_data/{TOInumber}.csv'
+    csvfile = f'./{TOInumber}.csv'
     try:
         folded_table = ascii.read(csvfile)
     except FileNotFoundError:
@@ -198,20 +199,28 @@ for p_csv in p_csvlist:
     flux_err_data = binned_lc.flux_err.value
 
     ###mcmc setting###
-    mcmc_df = pd.read_csv(f'./fitting_result/data/{TOInumber}/{p_csv}')
+    mcmc_df = pd.read_csv(f'./{p_csv}')
     #mcmc_df = pd.read_csv(f'./mcmc_result/fit_pdata/{p_csv}')
     mcmc_df.index = p_names
+    mcmc_df.at['phi', 'input_value'] = 0
+    mcmc_df.at['theta', 'input_value'] = np.arcsin(mcmc_df.at['b', 'output_value']/mcmc_df.at['a_rs', 'output_value'])
     pdic = mcmc_df['input_value'].to_dict()
+
+    #mcmcで事後分布推定しないパラメータをここで設定
+    mcmc_df.at['t0', 'vary_flags'] = False
+    mcmc_df.at['phi', 'vary_flags'] = False
+    mcmc_df.at['theta', 'vary_flags'] = False
     mcmc_df = mcmc_df[mcmc_df['vary_flags']==True]
     mcmc_params = mcmc_df.index.tolist()
     for try_n in range(5):
-        mcmc_pvalues = mcmc_df['output_value'].values
         #vary_dic = make_dic(names, vary_flags)
         ###generate initial value for theta, phi
-        mcmc_df.at['theta', 'output_value'] = np.random.uniform(1e-5,np.pi-1e-5)
-        mcmc_df.at['phi', 'output_value'] = np.random.uniform(0.0,np.pi)
+        #mcmc_df.at['theta', 'output_value'] = np.random.uniform(1e-5,np.pi-1e-5)
+        #mcmc_df.at['phi', 'output_value'] = np.random.uniform(0.0,np.pi)
+        mcmc_pvalues = mcmc_df['output_value'].values
         print('mcmc_params: ', mcmc_params)
         print('mcmc_pvalues: ', mcmc_pvalues)
+        import pdb;pdb.set_trace()
         pos = mcmc_pvalues + 1e-5 * np.random.randn(32, len(mcmc_pvalues))
         #pos = np.array([rp_rs, theta, phi, r_in, r_out]) + 1e-8 * np.random.randn(32, 5)
         nwalkers, ndim = pos.shape

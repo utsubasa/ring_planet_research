@@ -510,3 +510,36 @@ def bls_analysis(lc, period, transit_time, duration):
 
     return transit_time, period
     """
+    """
+    def calc_bin_std(lc, TOInumber):
+    std_list =[]
+    std_err_list =[]
+    phase_list = []
+    min_list = lc.bin(bins=500).remove_nans().time.value
+    for i in range(len(min_list)):
+        try:
+            part_lc = lc[lc.time.value > min_list[i]]
+            part_lc = part_lc[part_lc.time.value < min_list[i+1]]
+            if len(part_lc) == 0:
+                continue
+            std_list.append(part_lc.flux.std())
+            std_err_list.append(part_lc.flux_err.std())
+            phase_list.append(part_lc.time[0].value)    
+        except IndexError:
+            pass
+    #print(len(std_list))
+    #print(len(phase_list))
+    fig = plt.figure()
+    ax2 = fig.add_subplot(2,1,1) #for plotting transit model and data
+    ax1 = fig.add_subplot(2,1,2) #for plotting residuals
+    lc.errorbar(ax=ax1, color='black', marker='.', zorder=1, label='data')
+    ax2.errorbar(x=phase_list, y=std_list, yerr=std_err_list, fmt='.k')
+    #ax2.set_xlabel('orbital phase')
+    ax2.set_ylabel('Flux std')
+    ax2.set_title(TOInumber)
+    plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/figure/bin_std/{TOInumber}.png')
+    #plt.show()
+    d = {'phase':phase_list, 'bin_std':std_list}
+    pd.DataFrame(data=d).to_csv(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/bin_std/{TOInumber}.csv')
+    plt.close()
+    """
