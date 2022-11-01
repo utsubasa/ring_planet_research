@@ -1,7 +1,7 @@
 # ring_planet_research
 ## emcee_fit.pyの使い方
 ### Requirement
-以下のパッケージを使用しますので、事前にpipやconda等でインストールする必要があります。
+- 以下のパッケージを使用しますので、事前にpipやconda等でインストールする必要があります。
 ```
 astropy==4.2.1
 corner==2.2.1
@@ -15,8 +15,9 @@ pandas==1.2.4
 ```
 バージョンの互換性については未調査事項です。
 
-また、[https://github.com/2ndmk2/ring_transit](https://github.com/2ndmk2/ring_transit)で使用されている`c_compile_ring.so`も必要です。
+- [https://github.com/2ndmk2/ring_transit](https://github.com/2ndmk2/ring_transit)で使用されている`c_compile_ring.so`も必要です。
 こちらのファイルはemcee_fit.pyと同じディレクトリに置いてください。
+- 惑星のパラメータを取得するためにexofop_tess_tois_2022-09-13.csvが必要です。こちらもemcee_fit.pyと同じディレクトリに置いてください。
 
 ### 想定しているディレクトリ構造
 以下のディレクトリ構造でemcee_fit.pyが実行されることを想定しています。
