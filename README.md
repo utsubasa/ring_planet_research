@@ -27,12 +27,6 @@ pandas==1.2.4
 ├──emcee_fit.py
 ├──exofop_tess_tois_2022-09-13.csv
 ├──folded_lc_data
-    ├──20220913
-        ├──obs_t0
-            └──csv
-                ├──TOI170.01.csv
-                ...
-                
     ├──obs_t0
         ├──TOI101.01.csv
         ・・・
