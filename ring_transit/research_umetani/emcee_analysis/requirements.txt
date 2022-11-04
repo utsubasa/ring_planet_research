@@ -1,0 +1,9 @@
+astropy==4.2.1
+corner==2.2.1
+emcee==3.0.2
+h5py=2.10.0
+lmfit==1.0.2
+matplotlib==3.3.4
+numpy==1.20.1
+lightkurve==2.0.10
+pandas==1.2.4
