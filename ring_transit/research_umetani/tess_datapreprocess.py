@@ -271,7 +271,6 @@ def transit_fitting(
     fitting_model=no_ring_transitfit,
     transitfit_params=None,
     curvefit_params=None,
-    trial=None,
 ):
     """transit fitting"""
     flag_time = np.abs(lc.time.value) < 1.0
@@ -286,11 +285,11 @@ def transit_fitting(
             if transitfit_params != None:
                 for p_name in p_names:
                     params[p_name].set(value=transitfit_params[p_name].value)
-                    if trial == "1st":
-                        pass
+                    if p_name != "t0":
+                        params[p_name].set(vary=False)
                     else:
-                        if p_name != "t0":
-                            params[p_name].set(vary=False)
+                        #t0の初期値だけ動かし、function evalsの少なくてエラーが計算できないことを回避
+                        params[p_name].set(value=np.random.uniform(-0.05, 0.05))
             if curvefit_params != None:
                 if poly_type == '4poly':
                     params.add_many(
@@ -327,7 +326,9 @@ def transit_fitting(
                     best_res_dict[red_redchi] = res
         if len(best_res_dict) == 0:
             print(TOInumber, i)
-            lc.scatter()
+            ax = lc.scatter()
+            flux_model = no_ring_transitfit(res.params, lc.time.value, lc.flux.value, lc.flux_err.value, p_names, return_model=True)
+            ax.plot(lc.time.value, flux_model, label="fitting model", color="black")
             plt.show()
             print(lmfit.fit_report(res))
             pdb.set_trace()
@@ -747,15 +748,6 @@ done4poly_list = [s.lstrip("TOI") for s in done4poly_list]
 done4poly_list = [float(s.strip(".png")) for s in done4poly_list]
 done4poly_list = [float(s) for s in done4poly_list]
 
-done20220913_list = os.listdir(
-    "/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/20220913/obs_t0"
-)
-done20220913_list = [s for s in done20220913_list if "TOI" in s]
-done20220913_list = [s.lstrip("TOI") for s in done20220913_list]
-done20220913_list = [float(s.strip(".png")) for s in done20220913_list]
-done20220913_list = [float(s) for s in done20220913_list]
-
-
 done3poly_list = os.listdir(
     "/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/3poly/obs_t0"
 )
@@ -771,13 +763,13 @@ df = df.set_index(["TOI"])
 #df = df.drop(index=done4poly_list, errors="ignore")
 #df = df.drop(index=done3poly_list, errors="ignore")
 #df = df.drop(index=done20220913_list, errors="ignore")
-df = df.drop(index=no_data_found_list, errors="ignore")
+#df = df.drop(index=no_data_found_list, errors="ignore")
 # df = df.drop(index=multiplanet_list, errors='ignore')
-df = df.drop(index=no_perioddata_list, errors="ignore")
+#df = df.drop(index=no_perioddata_list, errors="ignore")
 # df = df.drop(index=startrend_list, errors='ignore')
-df = df.drop(index=flare_list, errors="ignore")
-df = df.drop(index=two_epoch_list, errors="ignore")
-df = df.drop(index=no_signal_list, errors="ignore")
+#df = df.drop(index=flare_list, errors="ignore")
+#df = df.drop(index=two_epoch_list, errors="ignore")
+#df = df.drop(index=no_signal_list, errors="ignore")
 #df = df.drop(index=ignore_list, errors="ignore")
 #df = df.drop(index=duration_ng, errors='ignore')
 #df = df.drop(index=fold_ng, errors='ignore')
@@ -794,12 +786,11 @@ print(list(sym_diff))
 import pdb;pdb.set_trace()
 """
 poly_type = '4poly'
-for TOI in [964.01,]:
+
+
+for TOI in [1254.01, 2218.01]:
     print("analysing: ", "TOI" + str(TOI))
     TOI = str(TOI)
-    # if TOI=='1823.01' or TOI=='1833.01' or TOI=='2218.01' or TOI=='224.01':
-    # continue
-
     """惑星、主星の各パラメータを取得"""
     param_df = df[df["TOI"] == TOI]
     TOInumber = "TOI" + str(param_df["TOI"].values[0])
@@ -813,10 +804,9 @@ for TOI in [964.01,]:
 
     """もしもduration, period, transit_timeどれかのパラメータがnanだったらそのTOIを記録して、処理はスキップする"""
     if np.sum(np.isnan([duration, period, transit_time])) != 0:
-        with open(f'nan3params_toi_{poly_type}.dat', 'a') as f:
-            f.write(f'{TOInumber}: {np.isnan([duration, period, transit_time])}\n')
+        #with open(f'nan3params_toi_{poly_type}.dat', 'a') as f:
+            #f.write(f'{TOInumber}: {np.isnan([duration, period, transit_time])}\n')
         continue
-
     """lightkurveを用いてSPOCが作成した2min cadenceの全セクターのライトカーブをダウンロードする """
     search_result = lk.search_lightcurve(
         f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC"
@@ -827,13 +817,12 @@ for TOI in [964.01,]:
     lc = lc_collection.stitch().remove_nans()  # initialize lc
     #lc = lc_collection.remove_nans()  # initialize lc
 
-    '''
-    lc.scatter()
-    plt.show()
-    #plt.savefig(f'{homedir}/fitting_result/hole_lc_plot/TOI{TOI}.png')
+    
+    #lc.scatter()
+    #plt.savefig(f'{homedir}/hole_lc_plot/TOI{TOI}.png')
     #plt.close()
-    import pdb;pdb.set_trace()
-    '''
+    #import pdb;pdb.set_trace()
+    
     
 
     """多惑星系の場合、ターゲットのトランジットに影響があるかを判断する。"""
@@ -863,13 +852,13 @@ for TOI in [964.01,]:
     num_list = []
     
     #ax = lc.scatter()
+    
     for i, mid_transit_time in enumerate(transit_time_list):
         print(f"preprocessing...epoch: {i}")
-        '''
+        """
         ax.axvline(x=mid_transit_time)
         continue
-        '''
-
+        """
         """トランジットの中心時刻から±duration*2.5の時間帯を切り取る"""
         epoch_start = mid_transit_time - (duration * 2.5)
         epoch_end = mid_transit_time + (duration * 2.5)
@@ -939,7 +928,8 @@ for TOI in [964.01,]:
     if len(t0list) <= 2:
         with open("two_period_toi.dat", "a") as f:
             f.write(f"{TOI}\n")
-
+    
+    
     """folded_lcに対してtransit fitting & remove outliers. transit parametersを得る"""
     print("folding and calculate duration...")
     time.sleep(1)
@@ -948,6 +938,7 @@ for TOI in [964.01,]:
         loaddir=f"{homedir}/fitting_result/data/each_lc/{poly_type}/calc_t0",
         process="calc_t0",
     )
+    
     """各エポックでのtransit fittingで得たmid_transit_timeのリストからorbital period、durationを算出"""
     with open(f"{homedir}/fitting_result/data/t0dicts/{poly_type}/{TOInumber}.pkl", 'rb') as f:
         t0_dict = pickle.load(f)
@@ -1000,31 +991,19 @@ for TOI in [964.01,]:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     #duration = param_df["Duration (hours)"].values[0] / 24
     """transit parametersをfixして、baseline,t0を決める"""
+    print('2nd loop')
     for i, mid_transit_time in enumerate(obs_t0_list):
     # for i, mid_transit_time in enumerate(transit_time_list):
         print(f"reprocessing...epoch: {i}")
         """
-        if i == 202:
+        if i == 33:
             t0list.append(mid_transit_time)
             t0errlist.append(np.nan)
             continue
         """
+        
         """トランジットの中心時刻からduration*2.5の時間帯を切り取る"""
         epoch_start = mid_transit_time - (duration * 2.5)
         epoch_end = mid_transit_time + (duration * 2.5)
