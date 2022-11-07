@@ -283,8 +283,7 @@ def transit_fitting(
     period,
     fitting_model=no_ring_transitfit,
     transitfit_params=None,
-    curvefit_params=None,
-    trial=None,
+    curvefit_params=None
 ):
     """transit fitting"""
     flag_time = np.abs(lc.time.value) < 1.0
@@ -623,7 +622,7 @@ def folding_lc_from_csv(TOInumber, loaddir, savedir):
 
 def make_simulation_data():
     """make_simulation_data"""
-    t = np.linspace(-0.3, 0.3, 430)
+    t = np.linspace(-0.3, 0.3, 500)
     names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
             "b", "norm", "theta", "phi", "tau", "r_in",
             "r_out", "norm2", "norm3", "ecosw", "esinw"]
@@ -647,7 +646,7 @@ def make_simulation_data():
     ###土星likeなTOI495.01のパラメータで作成したモデル###
     pdic_saturnlike = dict(zip(names, saturnlike_values))
     t = t + np.random.randn(len(t))*0.001
-    ymodel = ring_model(t, pdic_saturnlike) + np.random.randn(len(t))*0.001 + np.sin( (t/0.6 +1.2*np.random.rand()) * np.pi)*0.01
+    ymodel = ring_model(t, pdic_saturnlike) + np.random.randn(len(t))*0.001 + np.sin( (t/0.6 +1.2*np.random.rand()) * np.pi)*0.001
     yerr = np.array(t/t)*1e-3
     each_lc = lk.LightCurve(t, ymodel, yerr)
     plt.errorbar(t, ymodel, yerr, label='Model w/o ring', fmt='.k')
@@ -1012,7 +1011,7 @@ for TOI in [495.01]:
         (1 / a_rs)
         * (np.sqrt(np.square(1 + rp_rs) - np.square(b)) / np.sin(inc))
     )
-    """transit fittingによって得たtransit time, period, durationを記録
+    """transit fittingによって得たtransit time, period, durationを記録"""
     obs_t0_idx = np.abs(np.asarray(t0list) - transit_time).argmin()
     os.makedirs(
         f"{homedir}/fitting_result/data/simulation_TOI495.01/folded_lc/modelresult/1stloop/{TOInumber}",
@@ -1028,7 +1027,7 @@ for TOI in [495.01]:
         print(f"obs_transit_time_err[day]: {t0errlist[obs_t0_idx]}", file=f)
         print(f"obs_period[day]: {period}", file=f)
         print(f"obs_period_err[day]: {period_err}", file=f)
-    """
+    
     """fittingで得たtransit time listを反映"""
     obs_t0_list = t0list
     outliers = []
