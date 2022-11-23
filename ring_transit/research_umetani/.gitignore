@@ -1,2 +1,6 @@
 fitting_result/
 hole_lc_plot/
+binned_lc/
+out_of_bounds/
+SAP_fitting_result/
+mcmc_result/
