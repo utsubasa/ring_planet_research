@@ -649,7 +649,7 @@ def make_simulation_data(mid_transit_time):
 
     ###土星likeなTOI495.01のパラメータで作成したモデル###
     pdic_saturnlike = dict(zip(names, saturnlike_values))
-    #t = t + np.random.randn()*0.01
+    #t = t + np.random.randn(len(t))*0.01
     ymodel = ring_model(t, pdic_saturnlike) + np.random.randn(len(t))*0.001# + np.sin( (t/0.6 +1.2*np.random.rand()) * np.pi)*0.001
     yerr = np.array(t/t)*1e-3
     each_lc = lk.LightCurve(t, ymodel, yerr)
@@ -752,11 +752,13 @@ for TOI in [495.01]:
     t0list = []
     t0errlist = []
     num_list = np.arange(EPOCH_NUM)
+    transit_time_list = []
     # ax = lc.scatter()
     #for i, mid_transit_time in enumerate(transit_time_list):
     for i in range(EPOCH_NUM):
         print(f"preprocessing...epoch: {i}")
         mid_transit_time = transit_time + period*i
+        transit_time_list.append(mid_transit_time)
         each_lc = make_simulation_data(mid_transit_time)
         each_lc = (
             each_lc.fold(period=period, epoch_time=mid_transit_time)
@@ -803,7 +805,8 @@ for TOI in [495.01]:
         loaddir=f"{homedir}/fitting_result/data/no_trend_BJD_simulation_TOI495.01/each_lc/calc_t0",
         savedir="calc_t0_1stloop",
     )
-    _, _ = calc_obs_transit_time(t0list, t0errlist, num_list, _, _)
+    transit_time_list = np.array(transit_time_list)
+    _, _ = calc_obs_transit_time(t0list, t0errlist, num_list, transit_time_list, transit_time_error)
     """fittingで得たtransit time listを反映"""
     obs_t0_list = t0list
     outliers = []
