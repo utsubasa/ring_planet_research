@@ -248,11 +248,14 @@ for TOI in [495.01]:
     print(TOI)
     TOInumber = 'TOI' + TOI
     param_df = df[df['TOI'] == TOI]
+    duration = param_df["Duration (hours)"].values[0] / 24
+    period = param_df["Period (days)"].values[0]
 
     #lmfit.minimizeのためのparamsのセッティング。これはリングありモデル
     ###parameters setting###
     TOInumber = 'TOI' + str(param_df['TOI'].values[0])
     #with open(f'./modelresult/1stloop/transit/{TOInumber}/{TOInumber}_folded.txt', 'r') as f:
+    """
     try:
         with open(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/modelresult/1stloop/transit/{TOInumber}/{TOInumber}_folded.txt', 'r') as f:
             #durationline = f.readlines()[-5:].split(' ')[-1]
@@ -266,12 +269,13 @@ for TOI in [495.01]:
             f.write(TOInumber+'\n')
             duration = param_df['Duration (hours)'].values[0] / 24
             period = param_df['Period (days)'].values[0]
+    """
 
     rp = param_df['Planet Radius (R_Earth)'].values[0] * 0.00916794 #translate to Rsun
     rs = param_df['Stellar Radius (R_Sun)'].values[0]
     rp_rs = rp/rs
 
-    csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/folded_lc/obs_t0/{TOInumber}.csv'
+    csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/no_trend_BJD_simulation_TOI495.01/folded_lc/obs_t0/{TOInumber}.csv'
     #csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/{TOInumber}.csv'
     try:
         folded_table = ascii.read(csvfile)
@@ -297,10 +301,12 @@ for TOI in [495.01]:
             pass
     #folded_lc = folded_lc.bin(bins=300)
     '''
-
+    binned_lc.flux = binned_lc.flux/0.9996989
     t = binned_lc.time.value
     flux_data = binned_lc.flux.value
     flux_err_data = binned_lc.flux_err.value
+    binned_lc.scatter()
+    plt.show()
     #t = np.linspace(-0.2, 0.2, 300)
     ###ring model fitting by minimizing chi_square###
     best_res_dict = {}
@@ -359,6 +365,30 @@ for TOI in [495.01]:
         df_for_mcmc = params_df[params_df['vary_flags']==True]
 
         pdic = params_df['values'].to_dict()
+        pdic = params_df['saturnlike_values'].to_dict()
+
+        fig = plt.figure()
+        ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
+        ax_re = fig.add_subplot(2,1,2) #for plotting residuals
+        #elapsed_time = time.time() - start
+        #print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+        ring_flux_model = ring_model(t, pdic, mcmc_pvalues=None)
+        noring_flux_model = no_ring_transitfit(no_ring_res.params, t, flux_data, flux_err_data, noringnames, return_model=True)
+        binned_lc.errorbar(ax=ax_lc)
+        ax_lc.plot(t, ring_flux_model, label='Model w/ ring', color='blue')
+        ax_lc.plot(t, noring_flux_model, label='Model w/o ring', color='red')
+        residuals_ring = binned_lc - ring_flux_model
+        residuals_no_ring = binned_lc - noring_flux_model
+        residuals_ring.plot(ax=ax_re, color='blue', alpha=0.3,  marker='.', zorder=1)
+        residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
+        ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
+        ax_lc.legend()
+        ax_lc.set_title(f'w/ chisq:{np.sum(((flux_data-ring_flux_model)/flux_err_data)**2):.0f}/{500:.0f} w/o chisq:{no_ring_res.chisqr:.0f}/{no_ring_res.nfree:.0f}')
+        #ax_lc.set_title(f'w/ AIC:{ring_res.aic:.2f} w/o AIC:{no_ring_res.aic:.2f}')
+        plt.tight_layout()
+        plt.show()
+        #plt.close()
+        import pdb;pdb.set_trace()
         try:
             ring_res = lmfit.minimize(ring_transitfit, params, args=(t, flux_data, flux_err_data.mean(), names), max_nfev=1000)
         except ValueError:
