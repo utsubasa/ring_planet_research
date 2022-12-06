@@ -202,7 +202,7 @@ no_data_list = [4726.01,372.01,352.01,2617.01,2766.01,2969.01,2989.01,2619.01,26
                 2616.01,2591.01,2580.01,2346.01,2236.01,2047.01,2109.01,2031.01,2040.01,2046.01,1905.01,
                 2055.01,1518.01,1567.01,1355.01,1498.01,1373.01,628.01,1482.01,1580.01,1388.01,1310.01,
                 1521.01,1123.01, 1519.01, 1427.01, 1371.01, 1365.01, 1397.01] #short がないか、SPOCがないか
-no_perioddata_list = [1134.01,1897.01,2423.01,2666.01,4465.01]#exofopの表にperiodの記載無し。1567.01,1656.01もperiodなかったがこちらはcadence=’short’のデータなし。
+no_perioddata_list = [1134.01,1897.01,2423.01,2666.01,4465.01]#exofopの表にperiodの記載無し。1567.01,1656.01もperiodなかったがこちらはcadence='short'のデータなし。
 no_signal_list = [2218.01,212.01,1823.01] #トランジットのsignalが無いか、ノイズに埋もれて見えない
 multiplanet_list = [1670.01, 201.01, 822.01]#, 1130.01]
 startrend_list = [4381.01, 1135.01, 1025.01, 212.01, 1830.01, 2119.01, 224.01]
@@ -275,7 +275,7 @@ for TOI in [495.01]:
     rs = param_df['Stellar Radius (R_Sun)'].values[0]
     rp_rs = rp/rs
 
-    csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/no_trend_BJD_simulation_TOI495.01/folded_lc/obs_t0/{TOInumber}.csv'
+    csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/folded_lc/obs_t0/{TOInumber}.csv'
     #csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/{TOInumber}.csv'
     try:
         folded_table = ascii.read(csvfile)
@@ -286,6 +286,7 @@ for TOI in [495.01]:
     folded_lc = lk.LightCurve(data=folded_table)
     folded_lc = folded_lc[(folded_lc.time.value < duration) & (folded_lc.time.value > -duration)]
     binned_lc = folded_lc.bin(bins=500).remove_nans()
+    
     '''
     for file in files:
         try:
@@ -301,12 +302,33 @@ for TOI in [495.01]:
             pass
     #folded_lc = folded_lc.bin(bins=300)
     '''
-    binned_lc.flux = binned_lc.flux/0.9996989
     t = binned_lc.time.value
     flux_data = binned_lc.flux.value
     flux_err_data = binned_lc.flux_err.value
-    binned_lc.scatter()
+    '''
+    names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
+                 "b", "norm", "theta", "phi", "tau", "r_in",
+                 "r_out", "norm2", "norm3", "ecosw", "esinw"]
+    
+    p_df=pd.read_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/TOI495.01_128_959.csv')
+    p_df.index = names
+    pdic = p_df.output_value.to_dict()
+    ring_flux_model = ring_model(t, pdic, mcmc_pvalues=None)
+    each_chi_square = ((flux_data-ring_flux_model)/flux_err_data)**2
+    fig = plt.figure()
+    ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
+    ax_re = fig.add_subplot(2,1,2) #for plotting residuals
+    binned_lc.errorbar(ax=ax_lc)
+    ax_lc.plot(t, ring_flux_model, label='Model w/ ring', color='blue')
+    residuals_ring = binned_lc - ring_flux_model
+    #residuals_ring.plot(ax=ax_re, color='blue', alpha=0.3,  marker='.', zorder=1)
+    #ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
+    y = np.convolve(each_chi_square,np.ones(70)/70, mode='same')
+    ax_lc.legend()
+    ax_re.plot(t,y)
+    plt.tight_layout()
     plt.show()
+    '''
     #t = np.linspace(-0.2, 0.2, 300)
     ###ring model fitting by minimizing chi_square###
     best_res_dict = {}
@@ -388,7 +410,7 @@ for TOI in [495.01]:
         plt.tight_layout()
         plt.show()
         #plt.close()
-        import pdb;pdb.set_trace()
+        sys.exit()
         try:
             ring_res = lmfit.minimize(ring_transitfit, params, args=(t, flux_data, flux_err_data.mean(), names), max_nfev=1000)
         except ValueError:
