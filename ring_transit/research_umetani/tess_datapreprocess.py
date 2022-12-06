@@ -822,7 +822,8 @@ for TOI in [4470.01, ]:
 
         """外れ値除去と多項式フィッティングを外れ値が検知されなくなるまで繰り返す"""
         while True:
-            curvefit_res = curve_fitting(each_lc, duration)
+            transit_res = transit_fitting(each_lc, rp_rs, period)
+            curvefit_res = curve_fitting(each_lc, duration, transit_res)
             each_lc = curvefit_normalize(each_lc, curvefit_res.params)
             transit_res = transit_fitting(each_lc, rp_rs, period)
             each_lc, outliers, t0list, t0errlist = clip_outliers(
@@ -975,7 +976,8 @@ for TOI in [4470.01, ]:
             continue
 
         while True:
-            curvefit_res = curve_fitting(each_lc, duration)
+            transit_res = transit_fitting(each_lc, rp_rs, period)
+            curvefit_res = curve_fitting(each_lc, duration, transit_res)
             res = transit_fitting(
                 each_lc,
                 rp_rs,
