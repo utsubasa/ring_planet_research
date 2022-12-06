@@ -30,7 +30,9 @@ def calc_data_survival_rate(lc, duration):
 
 
 def calc_obs_transit_time(t0list, t0errlist, num_list, transit_time_list, transit_time_error):
-    """return estimated period or cleaned light curve"""
+    """
+    return estimated period or cleaned light curve
+    """
     diff = t0list - transit_time_list
     transit_time_list = transit_time_list[~(diff == 0)]
     t0errlist = t0errlist[~(t0errlist == 0)]
