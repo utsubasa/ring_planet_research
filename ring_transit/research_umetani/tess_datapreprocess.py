@@ -242,6 +242,7 @@ def clip_outliers(
             t0list.append(res.params["t0"].value + mid_transit_time)
             t0errlist.append(res.params["t0"].stderr)
             outliers = []
+            lc.time = lc.time - res.params["t0"].value
     else:
         print("outliers exist")
         # print('removed bins:', len(each_lc[mask]))
