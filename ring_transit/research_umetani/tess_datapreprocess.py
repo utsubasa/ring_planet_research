@@ -28,15 +28,34 @@ def calc_data_survival_rate(lc, duration):
 
     return data_survival_rate
 
+def _make_diff_bool(list_1, list_2):
+    """2つのリストの共通しない要素についてbool値を出力
 
-def calc_obs_transit_time(t0list, t0errlist, num_list, transit_time_list, transit_time_error):
+    Args:
+        list_1 (List): first list to diff
+        list_2 (List): second list to diff
+    """
+    diff = list_1 - list_2
+    diff_bool = ~(diff==0)
+    return diff_bool
+
+
+def calc_obs_transit_time(t0list, t0errlist, transit_time_list, transit_time_error):
     """
     return estimated period or cleaned light curve
+    mid transit time+period*iのリストと実際にフィットしたリストの差分をとる
+    diff=0は解析していないepochを表しているので除外している。
+    Attributes:
+        t0list(List):実際にフィッティングした結果得たt0のリスト
+        t0errlist(List):実際にフィッティングした結果得たt0のエラーのリスト
+        transit_time_list(List):mid transit time+period*iのリスト
+        transit_time_error(float):EXOFOPのtableにあるtransit_time_errorの値
     """
-    diff = t0list - transit_time_list
-    transit_time_list = transit_time_list[~(diff == 0)]
-    t0errlist = t0errlist[~(t0errlist == 0)]
-    x = np.array(t0list)[~(diff == 0)]
+    diff_bool = _make_diff_bool(t0list, transit_time_list)
+    transit_time_list = transit_time_list[diff_bool]
+    t0list = np.array(t0list)[diff_bool]
+    t0errlist = np.array(t0errlist)[diff_bool]
+    x = np.array(t0list)
     y = np.array(x - transit_time_list) * 24  # [days] > [hours]
     yerr = (np.sqrt(np.square(t0errlist) + np.square(transit_time_error)) * 24)  # [days] > [hours]
     if save_res == True:
@@ -56,8 +75,8 @@ def calc_obs_transit_time(t0list, t0errlist, num_list, transit_time_list, transi
         plt.savefig(f"{homedir}/SAP_fitting_result/figure/calc_obs_transit_time/{poly_type}/{TOInumber}.png")
         plt.close()
 
-    x = np.array(num_list)
-    y = np.array(t0list)[~(diff == 0)]
+    x = np.arange(len(t0list))
+    y = np.array(t0list)
     yerr = t0errlist
     try:
         res = linregress(x, y)
@@ -672,7 +691,7 @@ done4poly_list = [float(s) for s in done4poly_list]
 
 """処理を行わないTOIを選択する"""
 df = df.set_index(["TOI"])
-df = df.drop(index=done4poly_list, errors="ignore")
+#df = df.drop(index=done4poly_list, errors="ignore")
 df = df.drop(index=no_data_found_list, errors="ignore")
 # df = df.drop(index=multiplanet_list, errors='ignore')
 df = df.drop(index=no_perioddata_list, errors="ignore")
@@ -696,8 +715,8 @@ import pdb;pdb.set_trace()
 """
 
 poly_type = '4poly'
-save_res = True
-for TOI in TOIlist:
+save_res = False
+for TOI in [4470.01, ]:
     print("analysing: ", "TOI" + str(TOI))
     TOI = str(TOI)
     """惑星、主星の各パラメータを取得"""
@@ -764,7 +783,6 @@ for TOI in TOIlist:
     outliers = []
     t0list = []
     t0errlist = []
-    num_list = []
     
     #ax = lc.scatter()
     for i, mid_transit_time in enumerate(transit_time_list):
@@ -800,8 +818,6 @@ for TOI in TOIlist:
             t0list.append(mid_transit_time)
             t0errlist.append(np.nan)
             continue
-        else:
-            num_list.append(i)
 
         """外れ値除去と多項式フィッティングを外れ値が検知されなくなるまで繰り返す"""
         while True:
@@ -840,8 +856,8 @@ for TOI in TOIlist:
     #plt.show()
     #import pdb;pdb.set_trace()
     
-    """t0list, t0errlist, num_listの吐き出し"""
-    t0_dict = {'t0list': t0list, 't0errlist': t0errlist, 'num_list': num_list}
+    """t0list, t0errlistのpickle化"""
+    t0_dict = {'t0list': t0list, 't0errlist': t0errlist}
     os.makedirs(f"{homedir}/SAP_fitting_result/data/t0dicts/{poly_type}", exist_ok=True)
     if os.path.exists(f"{homedir}/SAP_fitting_result/data/t0dicts/{poly_type}/{TOInumber}.pkl") == False:
         with open(f"{homedir}/SAP_fitting_result/data/t0dicts/{poly_type}/{TOInumber}.pkl", 'wb') as f:
@@ -870,9 +886,8 @@ for TOI in TOIlist:
 
     t0list = t0_dict['t0list']
     t0errlist = t0_dict['t0errlist']
-    num_list = t0_dict['num_list']
-    period, period_err = calc_obs_transit_time(t0list, t0errlist, num_list, transit_time_list, transit_time_error)
-    # _, _ = calc_obs_transit_time(t0list, t0errlist, num_list, transit_time_list, transit_time_error)
+    period, period_err = calc_obs_transit_time(t0list, t0errlist, transit_time_list, transit_time_error)
+    # _, _ = calc_obs_transit_time(t0list, t0errlist, transit_time_list, transit_time_error)
     a_rs = fold_res.params["a"].value
     b = fold_res.params["b"].value
     inc = np.arccos(b / a_rs)
@@ -906,7 +921,6 @@ for TOI in TOIlist:
     outliers = []
     t0list = []
     t0errlist = []
-    num_list = []
 
 
 
@@ -958,8 +972,6 @@ for TOI in TOIlist:
             t0list.append(mid_transit_time)
             t0errlist.append(np.nan)
             continue
-        else:
-            num_list.append(i)
 
         while True:
             curvefit_res = curve_fitting(each_lc, duration)
