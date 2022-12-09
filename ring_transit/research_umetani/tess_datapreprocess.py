@@ -40,7 +40,7 @@ def _make_diff_bool(list_1, list_2):
     return diff_bool
 
 
-def calc_obs_transit_time(t0list, t0errlist, transit_time_list, transit_time_error):
+def calc_obs_transit_time(t0list, t0errlist, epoch_list, transit_time_list, transit_time_error):
     """
     return estimated period or cleaned light curve
     mid transit time+period*iのリストと実際にフィットしたリストの差分をとる
@@ -58,24 +58,18 @@ def calc_obs_transit_time(t0list, t0errlist, transit_time_list, transit_time_err
     x = np.array(t0list)
     y = np.array(x - transit_time_list) * 24  # [days] > [hours]
     yerr = (np.sqrt(np.square(t0errlist) + np.square(transit_time_error)) * 24)  # [days] > [hours]
-    if save_res == True:
-        os.makedirs(f"{homedir}/SAP_fitting_result/data/calc_obs_transit_time/{poly_type}/", exist_ok=True,)
-        
-        pd.DataFrame({"x": x, "O-C": y, "yerr": yerr}).to_csv(
-            f"{homedir}/SAP_fitting_result/data/calc_obs_transit_time/{poly_type}/{TOInumber}.csv"
-        )
-        
+    if SAVE_RES == True:
+        os.makedirs(f"{SAVE_OC_DIAGRAM_DIR}/data", exist_ok=True,)
+        pd.DataFrame({"x": x, "O-C": y, "yerr": yerr}).to_csv(f"{SAVE_OC_DIAGRAM_DIR}/data/{TOInumber}.csv")
         plt.errorbar(x=x, y=y, yerr=yerr, fmt=".k")
         plt.xlabel("mid transit time[BJD] - 2457000")
         plt.ylabel("O-C(hrs)")
         plt.tight_layout()
-        os.makedirs(
-            f"{homedir}/SAP_fitting_result/figure/calc_obs_transit_time/{poly_type}/", exist_ok=True,
-        )
-        plt.savefig(f"{homedir}/SAP_fitting_result/figure/calc_obs_transit_time/{poly_type}/{TOInumber}.png")
+        os.makedirs(f"{SAVE_OC_DIAGRAM_DIR}/figure", exist_ok=True,)
+        plt.savefig(f"{SAVE_OC_DIAGRAM_DIR}/figure/{TOInumber}.png")
         plt.close()
 
-    x = np.arange(len(t0list))
+    x = np.array(epoch_list)
     y = np.array(t0list)
     yerr = t0errlist
     try:
@@ -113,11 +107,11 @@ def calc_obs_transit_time(t0list, t0errlist, transit_time_list, transit_time_err
         ax2.set_xlabel("mid transit time[BJD] - 2457000")
         ax2.set_ylabel("residuals")
         plt.tight_layout()
-        if save_res == True:
+        if SAVE_RES == True:
             os.makedirs(
-                f"{homedir}/SAP_fitting_result/figure/estimate_period/{poly_type}/", exist_ok=True,
+                SAVE_ESTIMATE_PERIOD_DIR, exist_ok=True,
             )
-            plt.savefig(f"{homedir}/SAP_fitting_result/figure/estimate_period/{poly_type}/{TOInumber}.png")
+            plt.savefig(f"{SAVE_ESTIMATE_PERIOD_DIR}/{TOInumber}.png")
         # plt.show()
         plt.close()
         return estimated_period, ts * res.stderr
@@ -140,18 +134,11 @@ def clip_outliers(
     t = lc.time.value
     flux = lc.flux.value
     flux_err = lc.flux_err.value
+
     if transit_and_poly_fit == True:
-        (
-            flux_model,
-            transit_model,
-            polynomial_model,
-        ) = no_ring_transit_and_polynomialfit(
-            res.params, t, flux, flux_err, p_names, return_model=True
-        )
+        (flux_model,transit_model,polynomial_model,) = no_ring_transit_and_polynomialfit(res.params, t, flux, flux_err, p_names, return_model=True)
     else:
-        flux_model = no_ring_transitfit(
-            res.params, t, flux, flux_err, p_names, return_model=True
-        )
+        flux_model = no_ring_transitfit(res.params, t, flux, flux_err, p_names, return_model=True)
 
     residual_lc = lc.copy()
     residual_lc.flux = np.sqrt(np.square(flux_model - lc.flux))
@@ -163,21 +150,20 @@ def clip_outliers(
         if folded_lc == True:
             try:
                 outliers = vstack(outliers)
-                if save_res == True:
+                if SAVE_RES == True:
                     os.makedirs(
-                        f"{homedir}/SAP_fitting_result/data/folded_lc/outliers/{poly_type}/",
+                        f"{SAVE_FOLD_LC_DATA_DIR}/outliers",
                         exist_ok=True,
                     )
-                    outliers.write(f"{homedir}/SAP_fitting_result/data/folded_lc/outliers/{poly_type}/{TOInumber}.csv")
+                    outliers.write(f"{SAVE_FOLD_LC_DATA_DIR}/outliers/{TOInumber}.csv")
             except ValueError:
                 pass
             outliers = []
+
             return lc, outliers, t0list, t0errlist
         else:
             fig = plt.figure()
-            ax1 = fig.add_subplot(
-                2, 1, 1
-            )  # for plotting transit model and data
+            ax1 = fig.add_subplot(2, 1, 1)  # for plotting transit model and data
             ax2 = fig.add_subplot(2, 1, 2)  # for plotting residuals
             lc.errorbar(ax=ax1, color="gray", marker=".", alpha=0.3)
             ax1.plot(t, flux_model, label="fitting model", color="black")
@@ -213,27 +199,26 @@ def clip_outliers(
             ax2.set_ylabel("residuals")
             plt.tight_layout()
             if transit_and_poly_fit == False:
-                if save_res == True:
+                if SAVE_RES == True:
                     os.makedirs(
-                        f"{homedir}/SAP_fitting_result/figure/each_lc/transit_fit/{poly_type}/{TOInumber}",
+                        f"{SAVE_TRANSITFIT_DIR}/{TOInumber}",
                         exist_ok=True,
                     )
                     
                     plt.savefig(
-                        f"{homedir}/SAP_fitting_result/figure/each_lc/transit_fit/{poly_type}/{TOInumber}/{TOInumber}_{str(i)}.png",
+                        f"{SAVE_TRANSITFIT_DIR}/{TOInumber}/{TOInumber}_{str(i)}.png",
                         header=False,
                         index=False,
                     )
                 
             else:
-                if save_res == True:
+                if SAVE_RES == True:
                     os.makedirs(
-                        f"{homedir}/SAP_fitting_result/figure/each_lc/{poly_type}/{process}/{TOInumber}",
+                        f"{SAVE_SIMULTANEOUS_FIT_DIR}/{TOInumber}/figure",
                         exist_ok=True,
                     )
-                    
                     plt.savefig(
-                        f"{homedir}/SAP_fitting_result/figure/each_lc/{poly_type}/{process}/{TOInumber}/{TOInumber}_{str(i)}.png",
+                        f"{SAVE_SIMULTANEOUS_FIT_DIR}/{TOInumber}/figure/{TOInumber}_{str(i)}.png",
                         header=False,
                         index=False,
                     )
@@ -242,7 +227,6 @@ def clip_outliers(
             t0list.append(res.params["t0"].value + mid_transit_time)
             t0errlist.append(res.params["t0"].stderr)
             outliers = []
-            lc.time = lc.time - res.params["t0"].value
     else:
         print("outliers exist")
         # print('removed bins:', len(each_lc[mask]))
@@ -253,13 +237,13 @@ def clip_outliers(
     return lc, outliers, t0list, t0errlist
 
 
-def curve_fitting(each_lc, duration, res=None):
-    if res != None:
+def curve_fitting(each_lc, duration, transit_res=None):
+    if transit_res != None:
         out_transit = each_lc[
-            (each_lc["time"].value < res.params["t0"].value - (duration * 0.7))
+            (each_lc["time"].value < transit_res.params["t0"].value - (duration * 0.7))
             | (
                 each_lc["time"].value
-                > res.params["t0"].value + (duration * 0.7)
+                > transit_res.params["t0"].value + (duration * 0.7)
             )
         ]
     else:
@@ -268,14 +252,14 @@ def curve_fitting(each_lc, duration, res=None):
             | (each_lc["time"].value > (duration * 0.7))
         ]
 
-    if poly_type == '4poly':
+    if POLY_TYPE == '4poly':
         model = lmfit.models.PolynomialModel(degree=4)
         poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0, c4=0)
         poly_params['c4'].set(max=0.1, min=-0.1)
-    elif poly_type == '3poly':
+    elif POLY_TYPE == '3poly':
         model = lmfit.models.PolynomialModel(degree=3)
         poly_params = model.make_params(c0=1, c1=0, c2=0, c3=0)
-    elif poly_type == '2poly':
+    elif POLY_TYPE == '2poly':
         model = lmfit.models.PolynomialModel(degree=2)
         poly_params = model.make_params(c0=1, c1=0, c2=0)
 
@@ -283,18 +267,16 @@ def curve_fitting(each_lc, duration, res=None):
         out_transit.flux.value, poly_params, x=out_transit.time.value
     )
     result.plot()
-    if save_res == True:
-        os.makedirs(
-            f"{homedir}/SAP_fitting_result/figure/curvefit/{poly_type}/{TOInumber}", exist_ok=True
-        )
-        plt.savefig(f"{homedir}/SAP_fitting_result/figure/curvefit/{poly_type}/{TOInumber}/{TOInumber}_{str(i)}.png")
+    if SAVE_RES == True:
+        os.makedirs(f"{SAVE_CURVEFIT_DIR}/{TOInumber}", exist_ok=True)
+        plt.savefig(f"{SAVE_CURVEFIT_DIR}/{TOInumber}/{TOInumber}_{str(i)}.png")
     plt.close()
 
     return result
 
 
 def curvefit_normalize(each_lc, poly_params):
-    if poly_type == '4poly':
+    if POLY_TYPE == '4poly':
         poly_model = np.polynomial.Polynomial(
             [
                 poly_params["c0"].value,
@@ -304,7 +286,7 @@ def curvefit_normalize(each_lc, poly_params):
                 poly_params["c4"].value,
             ]
         )
-    elif poly_type == '3poly':
+    elif POLY_TYPE == '3poly':
         poly_model = np.polynomial.Polynomial(
             [
                 poly_params["c0"].value,
@@ -313,7 +295,7 @@ def curvefit_normalize(each_lc, poly_params):
                 poly_params["c3"].value,
             ]
         )
-    elif poly_type == '2poly':
+    elif POLY_TYPE == '2poly':
         poly_model = np.polynomial.Polynomial(
             [
                 poly_params["c0"].value,
@@ -326,14 +308,6 @@ def curvefit_normalize(each_lc, poly_params):
     # normalization
     each_lc.flux = each_lc.flux.value / poly_model(each_lc.time.value)
     each_lc.flux_err = each_lc.flux_err.value / poly_model(each_lc.time.value)
-    each_lc.errorbar()
-    if save_res == True:
-        os.makedirs(
-            f"{homedir}/SAP_fitting_result/figure/each_lc/after_curvefit/{poly_type}/{TOInumber}",
-            exist_ok=True,
-        )
-        plt.savefig(f"{homedir}/SAP_fitting_result/figure/each_lc/after_curvefit/{poly_type}/{TOInumber}/{TOInumber}_{str(i)}.png")
-    plt.close()
 
     return each_lc
 
@@ -345,10 +319,10 @@ def folding_lc_from_csv(TOInumber, loaddir, process):
     each_lc_list = []
     try:
         each_lc_list = []
-        total_lc_csv = os.listdir(f"{loaddir}/{TOInumber}/")
+        total_lc_csv = os.listdir(f"{loaddir}/")
         total_lc_csv = [i for i in total_lc_csv if "TOI" in i]
         for each_lc_csv in total_lc_csv:
-            each_table = ascii.read(f"{loaddir}/{TOInumber}/{each_lc_csv}")
+            each_table = ascii.read(f"{loaddir}/{each_lc_csv}")
             each_lc = lk.LightCurve(data=each_table)
             each_lc_list.append(each_lc)
     except ValueError:
@@ -407,20 +381,20 @@ def folding_lc_from_csv(TOInumber, loaddir, process):
     )
     ax2.set_ylabel("residuals")
     plt.tight_layout()
-    if save_res == True:
+    if SAVE_RES == True:
         os.makedirs(
-            f"/Users/u_tsubasa/Dropbox/ring_planet_research/SAP_folded_lc/figure/{poly_type}/{process}",
+            f"{SAVE_FOLD_LC_DIR}/{process}/figure",
             exist_ok=True,
         )
-        plt.savefig(f"/Users/u_tsubasa/Dropbox/ring_planet_research/SAP_folded_lc/figure/{poly_type}/{process}/{TOInumber}.png")
+        plt.savefig(f"{SAVE_FOLD_LC_DIR}/{process}/figure/{TOInumber}.png")
     #plt.show()
     plt.close()
-    if save_res == True:
+    if SAVE_RES == True:
         os.makedirs(
-            f"{homedir}/SAP_fitting_result/data/folded_lc/{poly_type}/{process}/csv",
+            f"{SAVE_FOLD_LC_DATA_DIR}/{process}/csv",
             exist_ok=True,
         )
-        cleaned_lc.write(f"{homedir}/SAP_fitting_result/data/folded_lc/{poly_type}/{process}/csv/{TOInumber}.csv")
+        cleaned_lc.write(f"{SAVE_FOLD_LC_DATA_DIR}/{process}/csv/{TOInumber}.csv")
 
     return res
 
@@ -447,7 +421,7 @@ def no_ring_transit_and_polynomialfit(
     m = batman.TransitModel(params_batman, x)  # initializes model
     transit_model = m.light_curve(params_batman)  # calculates light curve
     poly_params = params.valuesdict()
-    if poly_type == '4poly':
+    if POLY_TYPE == '4poly':
         poly_model = np.polynomial.Polynomial(
             [
                 poly_params["c0"],
@@ -457,7 +431,7 @@ def no_ring_transit_and_polynomialfit(
                 poly_params["c4"],
             ]
         )
-    elif poly_type == '3poly':
+    elif POLY_TYPE == '3poly':
         poly_model = np.polynomial.Polynomial(
             [
                 poly_params["c0"],
@@ -466,7 +440,7 @@ def no_ring_transit_and_polynomialfit(
                 poly_params["c3"],
             ]
         )
-    elif poly_type == '2poly':
+    elif POLY_TYPE == '2poly':
         poly_model = np.polynomial.Polynomial(
             [
                 poly_params["c0"],
@@ -595,7 +569,7 @@ def transit_fitting(
                         #t0の初期値だけ動かし、function evalsの少なくてエラーが計算できないことを回避
                         params[p_name].set(value=np.random.uniform(-0.05, 0.05))
             if curvefit_params != None:
-                if poly_type == '4poly':
+                if POLY_TYPE == '4poly':
                     params.add_many(
                     curvefit_params["c0"],
                     curvefit_params["c1"],
@@ -603,14 +577,14 @@ def transit_fitting(
                     curvefit_params["c3"],
                     curvefit_params["c4"],
                     )   
-                elif poly_type == '3poly':
+                elif POLY_TYPE == '3poly':
                     params.add_many(
                     curvefit_params["c0"],
                     curvefit_params["c1"],
                     curvefit_params["c2"],
                     curvefit_params["c3"],
                     )
-                elif poly_type == '2poly':
+                elif POLY_TYPE == '2poly':
                     params.add_many(
                     curvefit_params["c0"],
                     curvefit_params["c1"],
@@ -648,10 +622,31 @@ def q_to_u_limb(q_arr):
     u2 = np.sqrt(q1) * (1 - 2 * q2)
     return np.array([u1, u2])
 
-homedir = ("/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani")
+POLY_TYPE = '4poly'
+HOMEDIR = f"/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/SAP_fitting_result/{POLY_TYPE}"
+SAVE_RES = True
 
-oridf = pd.read_csv(f"{homedir}/exofop_tess_tois_2022-09-13.csv")
+SAVE_IGNORE_EPOCH_DIR = f"{HOMEDIR}/error_lc/under_90%_data/"
+
+#SAVE_1STLOOP_EACH_LC_DIR = f"{HOMEDIR}/each_lc/"
+SAVE_AFTER_PREPROCESS_EACH_LC_DIR = f"{HOMEDIR}/each_lc/after_preprocess/"
+SAVE_EACH_LC_FIT_REPORT_DIR = f"{HOMEDIR}/each_lc/fit_report/" 
+SAVE_TRANSITFIT_DIR = f"{HOMEDIR}/each_lc/transit_fit/"
+SAVE_SIMULTANEOUS_FIT_DIR = f"{HOMEDIR}/each_lc/transit&poly_fit/"
+SAVE_CURVEFIT_DIR = f"{HOMEDIR}/each_lc/curvefit/"
+
+SAVE_FOLD_LC_DIR = f"/Users/u_tsubasa/Dropbox/ring_planet_research/SAP_folded_lc/"
+SAVE_FOLDLC_FITREPORT_DIR = f"{HOMEDIR}/folded_lc/fit_report/"
+SAVE_FOLD_LC_DATA_DIR = f"{HOMEDIR}/folded_lc/"
+SAVE_T0DICT_DIR = f"{HOMEDIR}/t0dicts/"
+SAVE_OC_DIAGRAM_DIR = f"{HOMEDIR}/o-c_diagram/"
+SAVE_ESTIMATE_PERIOD_DIR = f"{HOMEDIR}/estimate_period/"
+
+oridf = pd.read_csv(f"{HOMEDIR.split(f'/SAP_fitting_result/{POLY_TYPE}')[0]}/exofop_tess_tois_2022-09-13.csv")
 df = oridf[oridf["Planet SNR"] > 100]
+df = df[~(df['TESS Disposition']=='EB')]
+df = df[~(df['TFOPWG Disposition']=='FP')]
+
 with open('./no_data_found_toi.txt', 'rb') as f:
     no_data_found_list = pickle.load(f)  # short がないか、SPOCがないか
 no_perioddata_list = [1134.01, 1897.01, 2423.01, 2666.01, 4465.01,]  # exofopの表にperiodの記載無し。1567.01,1656.01もperiodなかったがこちらはcadence=’short’のデータなし。
@@ -662,37 +657,23 @@ flare_list = [212.01, 1779.01, 2119.01]
 two_epoch_list = [
     671.01,1963.01,1283.01,758.01,1478.01,3501.01,845.01,121.01,1104.01,811.01,3492.01,1312.01,1861.01,665.01,224.01,2047.01,5379.01,5149.01,
     5518.01,5640.01,319.01,2783.01,5540.01,1840.01,5686.01,5226.01,937.01,4725.01,4731.01,5148.01, 1130.01]
-ignore_list = [
-    1130.01,
-    224.01,
-    123.01,
-    1823.01,
-    1292.01,
-    2218.01,
-    964.01,
-    1186.01,
-    1296.01,
-    1254.01,
-    2351.01,
-    1070.01,
-    1344.01
-
-]
+ignore_list = [1130.01,224.01,123.01,1823.01,1292.01,2218.01,964.01,1186.01,1296.01,1254.01,2351.01,1070.01,1344.01]
 duration_ng = [129.01, 182.01, 1059.01, 1182.01, 1425.01, 1455.01, 1811.01,2154.01, 3910.01] 
 trend_ng = [1069.01, 1092.01, 1141.01, 1163.01, 1198.01, 1270.01, 1299.01, 1385.01, 1454.01, 1455.01, 1647.01, 1796.01,]
 fold_ng = [986.01, 1041.01]
+
 # 既に前処理したTOIの重複した前処理を回避するためのTOIのリスト
-done4poly_list = os.listdir("/Users/u_tsubasa/Dropbox/ring_planet_research/SAP_folded_lc/figure/4poly/obs_t0")
+done4poly_list = os.listdir("/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/SAP_fitting_result/4poly/folded_lc/obs_t0/csv")
 done4poly_list = [s for s in done4poly_list if "TOI" in s]
 done4poly_list = [s.lstrip("TOI") for s in done4poly_list]
-done4poly_list = [float(s.strip(".png")) for s in done4poly_list]
+done4poly_list = [float(s.strip(".csv")) for s in done4poly_list]
 done4poly_list = [float(s) for s in done4poly_list]
 
 #df = df.sort_values("Planet SNR", ascending=False)
 
 """処理を行わないTOIを選択する"""
 df = df.set_index(["TOI"])
-#df = df.drop(index=done4poly_list, errors="ignore")
+df = df.drop(index=done4poly_list, errors="ignore")
 df = df.drop(index=no_data_found_list, errors="ignore")
 # df = df.drop(index=multiplanet_list, errors='ignore')
 df = df.drop(index=no_perioddata_list, errors="ignore")
@@ -707,17 +688,8 @@ df = df.reset_index()
 
 df["TOI"] = df["TOI"].astype(str)
 TOIlist = df["TOI"]
-"""
-hole_lc_list = os.listdir('{homedir}/SAP_fitting_result/hole_lc_plot')
-calc_t0_2ndloop_list = os.listdir('/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/obs_t0')
-sym_diff = set(hole_lc_list) ^ set(calc_t0_2ndloop_list)
-print(list(sym_diff))
-import pdb;pdb.set_trace()
-"""
 
-poly_type = '4poly'
-save_res = False
-for TOI in [4470.01, ]:
+for TOI in TOIlist:
     print("analysing: ", "TOI" + str(TOI))
     TOI = str(TOI)
     """惑星、主星の各パラメータを取得"""
@@ -731,10 +703,11 @@ for TOI in [4470.01, ]:
     rs = param_df["Stellar Radius (R_Sun)"].values[0]
     rp_rs = rp / rs
 
+
     """もしもduration, period, transit_timeどれかのパラメータがnanだったらそのTOIを記録して、処理はスキップする
     if np.sum(np.isnan([duration, period, transit_time])) != 0:
-        if save_res == True:
-            with open(f'nan3params_toi_{poly_type}.dat', 'a') as f:
+        if SAVE_RES == True:
+            with open(f'nan3params_toi_{POLY_TYPE}.dat', 'a') as f:
                 f.write(f'{TOInumber}: {np.isnan([duration, period, transit_time])}\n')
         else:
             pass
@@ -744,8 +717,8 @@ for TOI in [4470.01, ]:
     print('judging whether other planet transit is included in the data...')
     other_p_df = oridf[oridf['TIC ID'] == param_df['TIC ID'].values[0]]
     if len(other_p_df.index) != 1:
-        if save_res == True:
-            with open(f'multiplanet_toi_{poly_type}.dat', 'a') as f:
+        if SAVE_RES == True:
+            with open(f'multiplanet_toi_{POLY_TYPE}.dat', 'a') as f:
                 f.write(f'{TOInumber}\n')
         else:
             pass
@@ -759,16 +732,12 @@ for TOI in [4470.01, ]:
     )
     lc_collection = search_result.download_all()
     #lc_collection = search_result[0].download()
+
     """全てのライトカーブを結合し、fluxがNaNのデータ点は除去する"""
     lc = lc_collection.stitch().remove_nans()  # initialize lc
     #lc = lc_collection.remove_nans()  # initialize lc
     lc.flux = lc.sap_flux
     lc.flux_err = lc.sap_flux_err
-    
-    #lc.scatter()
-    #plt.savefig(f'{homedir}/hole_lc_plot/TOI{TOI}.png')
-    #plt.close()
-    #import pdb;pdb.set_trace()
     
     """ターゲットの惑星のtransit time listを作成"""
     transit_time_list = np.append(
@@ -784,6 +753,7 @@ for TOI in [4470.01, ]:
     outliers = []
     t0list = []
     t0errlist = []
+    epoch_list = []
     
     #ax = lc.scatter()
     for i, mid_transit_time in enumerate(transit_time_list):
@@ -803,22 +773,22 @@ for TOI in [4470.01, ]:
             .remove_nans()
         )
 
+
         """データ点が理論値の90%未満ならそのエポックは解析対象から除外"""
         data_survival_rate = calc_data_survival_rate(each_lc, duration)
         if data_survival_rate < 0.9:
             if data_survival_rate != 0.0:
                 ax = each_lc.errorbar()
                 ax.set_title(f"{data_survival_rate:4f} useable")
-                if save_res == True:
-                    os.makedirs(
-                        f"{homedir}/SAP_fitting_result/figure/error_lc/under_90%_data/calc_t0/{poly_type}/{TOInumber}",
-                        exist_ok=True,
-                    )
-                    plt.savefig(f"{homedir}/SAP_fitting_result/figure/error_lc/under_90%_data/calc_t0/{poly_type}/{TOInumber}/{TOInumber}_{str(i)}.png")
+                if SAVE_RES == True:
+                    os.makedirs(f"{SAVE_IGNORE_EPOCH_DIR}/{TOInumber}/calc_t0",exist_ok=True,)
+                    plt.savefig(f"{SAVE_IGNORE_EPOCH_DIR}/{TOInumber}/calc_t0/{TOInumber}_{str(i)}.png")
                 plt.close()
             t0list.append(mid_transit_time)
             t0errlist.append(np.nan)
             continue
+        else:
+            epoch_list.append(i)
 
         """外れ値除去と多項式フィッティングを外れ値が検知されなくなるまで繰り返す"""
         while True:
@@ -833,21 +803,19 @@ for TOI in [4470.01, ]:
                 t0list,
                 t0errlist,
                 transit_and_poly_fit=False,
-                process="1stloop",
+                process="calc_t0",
             )
             if len(outliers) == 0:
-                if save_res == True:
-                    os.makedirs(
-                        f"{homedir}/SAP_fitting_result/data/each_lc/{poly_type}/calc_t0/{TOInumber}",
-                        exist_ok=True,
-                    )
-                    each_lc.write(f"{homedir}/SAP_fitting_result/data/each_lc/{poly_type}/calc_t0/{TOInumber}/{TOInumber}_{str(i)}.csv")
-                    os.makedirs(
-                    f"{homedir}/SAP_fitting_result/data/each_lc/fit_statistics/1stloop/{poly_type}/{TOInumber}",
-                    exist_ok=True,
-                    )
+                if SAVE_RES == True:
+                    os.makedirs(f"{SAVE_AFTER_PREPROCESS_EACH_LC_DIR}/{TOInumber}/calc_t0/data",exist_ok=True,)
+                    each_lc.write(f"{SAVE_AFTER_PREPROCESS_EACH_LC_DIR}/{TOInumber}/calc_t0/data/{TOInumber}_{str(i)}.csv")
+                    each_lc.errorbar()
+                    os.makedirs(f"{SAVE_AFTER_PREPROCESS_EACH_LC_DIR}/{TOInumber}/calc_t0/figure",exist_ok=True,)
+                    plt.savefig(f"{SAVE_AFTER_PREPROCESS_EACH_LC_DIR}/{TOInumber}/calc_t0/figure/{TOInumber}_{str(i)}.png")
+                    plt.close()
+                    os.makedirs(f"{SAVE_EACH_LC_FIT_REPORT_DIR}/{TOInumber}/calc_t0",exist_ok=True,)
                     with open(
-                        f"{homedir}/SAP_fitting_result/data/each_lc/fit_statistics/1stloop/{poly_type}/{TOInumber}/{TOInumber}_{str(i)}.txt",
+                        f"{SAVE_EACH_LC_FIT_REPORT_DIR}/{TOInumber}/calc_t0/{TOInumber}_{str(i)}.txt",
                         "a",
                     ) as f:
                         print(lmfit.fit_report(transit_res), file=f)
@@ -860,9 +828,9 @@ for TOI in [4470.01, ]:
     
     """t0list, t0errlistのpickle化"""
     t0_dict = {'t0list': t0list, 't0errlist': t0errlist}
-    os.makedirs(f"{homedir}/SAP_fitting_result/data/t0dicts/{poly_type}", exist_ok=True)
-    if os.path.exists(f"{homedir}/SAP_fitting_result/data/t0dicts/{poly_type}/{TOInumber}.pkl") == False:
-        with open(f"{homedir}/SAP_fitting_result/data/t0dicts/{poly_type}/{TOInumber}.pkl", 'wb') as f:
+    os.makedirs(SAVE_T0DICT_DIR, exist_ok=True)
+    if os.path.exists(f"{SAVE_T0DICT_DIR}/{TOInumber}.pkl") == False:
+        with open(f"{SAVE_T0DICT_DIR}/{TOInumber}.pkl", 'wb') as f:
             pickle.dump(t0_dict, f)
 
     """transit epochが2つ以下のTOIを記録しておく
@@ -877,19 +845,19 @@ for TOI in [4470.01, ]:
     time.sleep(1)
     fold_res = folding_lc_from_csv(
         TOInumber,
-        loaddir=f"{homedir}/SAP_fitting_result/data/each_lc/{poly_type}/calc_t0",
+        loaddir=f"{SAVE_AFTER_PREPROCESS_EACH_LC_DIR}/{TOInumber}/calc_t0/data",
         process="calc_t0",
     )
     
     
     """各エポックでのtransit fittingで得たmid_transit_timeのリストからorbital period、durationを算出"""
-    #with open(f"{homedir}/SAP_fitting_result/data/t0dicts/{poly_type}/{TOInumber}.pkl", 'rb') as f:
+    #with open(f"{HOMEDIR}/SAP_fitting_result/data/t0dicts/{POLY_TYPE}/{TOInumber}.pkl", 'rb') as f:
         #t0_dict = pickle.load(f)
 
     t0list = t0_dict['t0list']
     t0errlist = t0_dict['t0errlist']
-    period, period_err = calc_obs_transit_time(t0list, t0errlist, transit_time_list, transit_time_error)
-    # _, _ = calc_obs_transit_time(t0list, t0errlist, transit_time_list, transit_time_error)
+    period, period_err = calc_obs_transit_time(t0list, t0errlist, epoch_list, transit_time_list, transit_time_error)
+    # _, _ = calc_obs_transit_time(t0list, t0errlist, epoch_list, transit_time_list, transit_time_error)
     a_rs = fold_res.params["a"].value
     b = fold_res.params["b"].value
     inc = np.arccos(b / a_rs)
@@ -901,14 +869,14 @@ for TOI in [4470.01, ]:
     )
     
     """transit fittingによって得たtransit time, period, durationを記録"""
-    if save_res == True:
+    if SAVE_RES == True:
         obs_t0_idx = np.abs(np.asarray(t0list) - transit_time).argmin()
         os.makedirs(
-            f"{homedir}/SAP_fitting_result/data/folded_lc/{poly_type}/calc_t0/fit_statistics/{TOInumber}",
+            f"{SAVE_FOLDLC_FITREPORT_DIR}/{TOInumber}/calc_t0/data",
             exist_ok=True,
         )
         with open(
-            f"{homedir}/SAP_fitting_result/data/folded_lc/{poly_type}/calc_t0/fit_statistics/{TOInumber}/{TOInumber}_folded.txt",
+            f"{SAVE_FOLDLC_FITREPORT_DIR}/{TOInumber}/calc_t0/data/{TOInumber}_folded.txt",
             "a",
         ) as f:
             print(lmfit.fit_report(fold_res), file=f)
@@ -964,12 +932,12 @@ for TOI in [4470.01, ]:
             if data_survival_rate != 0.0:
                 ax = each_lc.errorbar()
                 ax.set_title(f"{data_survival_rate:4f} useable")
-                if save_res == True:
+                if SAVE_RES == True:
                     os.makedirs(
-                        f"{homedir}/SAP_fitting_result/figure/error_lc/under_90%_data/obs_t0/{poly_type}/{TOInumber}",
+                        f"{SAVE_IGNORE_EPOCH_DIR}/{TOInumber}/obs_t0",
                         exist_ok=True,
                     )
-                    plt.savefig(f"{homedir}/SAP_fitting_result/figure/error_lc/under_90%_data/obs_t0/{poly_type}/{TOInumber}/{TOInumber}_{str(i)}.png")
+                    plt.savefig(f"{SAVE_IGNORE_EPOCH_DIR}/{TOInumber}/obs_t0/{TOInumber}_{str(i)}.png")
                 plt.close()
             t0list.append(mid_transit_time)
             t0errlist.append(np.nan)
@@ -997,18 +965,19 @@ for TOI in [4470.01, ]:
             )
             each_lc = curvefit_normalize(each_lc, res.params)
             if len(outliers) == 0:
-                if save_res == True:
+                if SAVE_RES == True:
+                    os.makedirs(f"{SAVE_AFTER_PREPROCESS_EACH_LC_DIR}/{TOInumber}/obs_t0/data",exist_ok=True,)
+                    each_lc.write(f"{SAVE_AFTER_PREPROCESS_EACH_LC_DIR}/{TOInumber}/obs_t0/data/{TOInumber}_{str(i)}.csv")
+                    each_lc.errorbar()
+                    os.makedirs(f"{SAVE_AFTER_PREPROCESS_EACH_LC_DIR}/{TOInumber}/obs_t0/figure",exist_ok=True,)
+                    plt.savefig(f"{SAVE_AFTER_PREPROCESS_EACH_LC_DIR}/{TOInumber}/obs_t0/figure/{TOInumber}_{str(i)}.png")
+                    plt.close()
                     os.makedirs(
-                        f"{homedir}/SAP_fitting_result/data/each_lc/{poly_type}/obs_t0/{TOInumber}",
-                        exist_ok=True,
-                    )
-                    each_lc.write(f"{homedir}/SAP_fitting_result/data/each_lc/{poly_type}/obs_t0/{TOInumber}/{TOInumber}_{str(i)}.csv")
-                    os.makedirs(
-                        f"{homedir}/SAP_fitting_result/data/each_lc/fit_statistics/2ndloop/{poly_type}/{TOInumber}",
+                        f"{SAVE_EACH_LC_FIT_REPORT_DIR}/{TOInumber}/obs_t0",
                         exist_ok=True,
                     )
                     with open(
-                        f"{homedir}/SAP_fitting_result/data/each_lc/fit_statistics/2ndloop/{poly_type}/{TOInumber}/{TOInumber}_{str(i)}.txt",
+                        f"{SAVE_EACH_LC_FIT_REPORT_DIR}/{TOInumber}/obs_t0/{TOInumber}_{str(i)}.txt",
                         "a",
                     ) as f:
                         print(lmfit.fit_report(res), file=f)
@@ -1022,19 +991,17 @@ for TOI in [4470.01, ]:
     time.sleep(1)
     fold_res = folding_lc_from_csv(
         TOInumber,
-        loaddir=f"{homedir}/SAP_fitting_result/data/each_lc/{poly_type}/obs_t0/",
+        loaddir=f"{SAVE_AFTER_PREPROCESS_EACH_LC_DIR}/{TOInumber}/obs_t0/data",
         process="obs_t0",
     )
-    # fold_res = folding_lc_from_csv(TOInumber, loaddir=f'{homedir}/SAP_fitting_result/data/each_lc/calc_t0', process='calc_t0_2ndloop')
+    # fold_res = folding_lc_from_csv(TOInumber, loaddir=f'{HOMEDIR}/SAP_fitting_result/data/each_lc/calc_t0', process='calc_t0_2ndloop')
     os.makedirs(
-        f"{homedir}/SAP_fitting_result/data/folded_lc/{poly_type}/obs_t0/fit_statistics/{TOInumber}",
+        f"{SAVE_FOLDLC_FITREPORT_DIR}/{TOInumber}/obs_t0/data",
         exist_ok=True,
     )
     with open(
-        f"{homedir}/SAP_fitting_result/data/folded_lc/{poly_type}/obs_t0/fit_statistics/{TOInumber}/{TOInumber}_folded.txt",
+        f"{SAVE_FOLDLC_FITREPORT_DIR}/{TOInumber}/obs_t0/data/{TOInumber}_folded.txt",
         "a",
     ) as f:
         print(lmfit.fit_report(fold_res), file=f)
     print(f"Analysis completed: {TOInumber}")
-
-# import pdb;pdb.set_trace()

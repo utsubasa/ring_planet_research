@@ -1,8 +1,11 @@
+archive_fitting_result/
 fitting_result/
 hole_lc_plot/
 binned_lc/
 out_of_bounds/
 SAP_fitting_result/
+PDCSAP_fitting_result/
+archive_SAP_fitting_result/
 mcmc_result/
 except_data_EB/
 except_data_FP/
