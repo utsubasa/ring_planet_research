@@ -6,3 +6,6 @@ SAP_fitting_result/
 mcmc_result/
 except_data_EB/
 except_data_FP/
+archive_fitting_result/
+archive_SAP_fitting_result/
+PDCSAP_fitting_result/

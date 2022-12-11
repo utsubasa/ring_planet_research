@@ -218,11 +218,11 @@ def calc_obs_transit_time(
     plt.ylabel("O-C(hrs)")
     plt.tight_layout()
     os.makedirs(
-                f"{homedir}/fitting_result/figure/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/calc_obs_transit_time/",
+                f"{homedir}/fitting_result/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/calc_obs_transit_time/",
                 exist_ok=True,
                 )
     plt.savefig(
-        f"{homedir}/fitting_result/figure/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/calc_obs_transit_time/{TOInumber}.png"
+        f"{homedir}/fitting_result/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/calc_obs_transit_time/{TOInumber}.png"
     )
     plt.close()
     
@@ -265,11 +265,11 @@ def calc_obs_transit_time(
         ax2.set_ylabel("residuals")
         plt.tight_layout()
         os.makedirs(
-                f"{homedir}/fitting_result/figure/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/estimate_period/",
+                f"{homedir}/fitting_result/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/estimate_period/",
                 exist_ok=True,
                 )
         plt.savefig(
-            f"{homedir}/fitting_result/figure/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/estimate_period/{TOInumber}.png"
+            f"{homedir}/fitting_result/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/estimate_period/{TOInumber}.png"
         )
         # plt.show()
         plt.close()
@@ -366,11 +366,11 @@ def clip_outliers(res, lc, outliers, t0list, t0errlist, folded_lc=False, transit
             try:
                 outliers = vstack(outliers)
                 os.makedirs(
-                    "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/folded_lc/outliers",
+                    "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/folded_lc/outliers",
                     exist_ok=True,
                 )
                 outliers.write(
-                    f"/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/folded_lc/outliers/{TOInumber}.csv"
+                    f"/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/folded_lc/outliers/{TOInumber}.csv"
                 )
             except ValueError:
                 pass
@@ -420,22 +420,22 @@ def clip_outliers(res, lc, outliers, t0list, t0errlist, folded_lc=False, transit
 
             if transit_and_poly_fit == False:
                 os.makedirs(
-                    f"{homedir}/fitting_result/figure/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/each_lc/transit_fit/{TOInumber}",
+                    f"{homedir}/fitting_result/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/each_lc/transit_fit/{TOInumber}",
                     exist_ok=True,
                 )
                 plt.savefig(
-                    f"{homedir}/fitting_result/figure/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/each_lc/transit_fit/{TOInumber}/{TOInumber}_{str(i)}.png",
+                    f"{homedir}/fitting_result/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/each_lc/transit_fit/{TOInumber}/{TOInumber}_{str(i)}.png",
                     header=False,
                     index=False,
                 )
                 # plt.savefig(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
             else:
                 os.makedirs(
-                    f"{homedir}/fitting_result/figure/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/each_lc/{savedir}/{TOInumber}",
+                    f"{homedir}/fitting_result/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/each_lc/{savedir}/{TOInumber}",
                     exist_ok=True,
                 )
                 plt.savefig(
-                    f"{homedir}/fitting_result/figure/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/each_lc/{savedir}/{TOInumber}/{TOInumber}_{str(i)}.png",
+                    f"{homedir}/fitting_result/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/each_lc/{savedir}/{TOInumber}/{TOInumber}_{str(i)}.png",
                     header=False,
                     index=False,
                 )
@@ -476,10 +476,10 @@ def curve_fitting(each_lc, duration, res=None):
     )
     result.plot()
     os.makedirs(
-        f"{homedir}/fitting_result/figure/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/curvefit/{TOInumber}", exist_ok=True
+        f"{homedir}/fitting_result/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/curvefit/{TOInumber}", exist_ok=True
     )
     plt.savefig(
-        f"{homedir}/fitting_result/figure/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/curvefit/{TOInumber}/{TOInumber}_{str(i)}.png"
+        f"{homedir}/fitting_result/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/curvefit/{TOInumber}/{TOInumber}_{str(i)}.png"
     )
     # os.makedirs(f'{homedir}/fitting_result/figure/curvefit/bls/{TOInumber}', exist_ok=True)
     # plt.savefig(f'{homedir}/fitting_result/figure/curvefit/bls/{TOInumber}/{TOInumber}_{str(i)}.png')
@@ -592,20 +592,20 @@ def folding_lc_from_csv(TOInumber, loaddir, savedir):
     ax2.set_ylabel("residuals")
     plt.tight_layout()
     os.makedirs(
-        f"/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/{savedir}",
+        f"/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/{savedir}",
         exist_ok=True,
     )
     plt.savefig(
-        f"/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/{savedir}/{TOInumber}.png"
+        f"/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/{savedir}/{TOInumber}.png"
     )
     # plt.show()
     plt.close()
     os.makedirs(
-        f"/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/folded_lc/{savedir}",
+        f"/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/folded_lc/{savedir}",
         exist_ok=True,
     )
     cleaned_lc.write(
-        f"/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/folded_lc/{savedir}/{TOInumber}.csv"
+        f"/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/folded_lc/{savedir}/{TOInumber}.csv"
     )
 
     return res
@@ -637,23 +637,23 @@ def make_simulation_data(mid_transit_time):
     ###土星likeなTOI495.01のパラメータで作成したモデル###
     pdic_saturnlike = dict(zip(names, saturnlike_values))
     #t = t + np.random.randn(len(t))*0.01
-    ymodel = ring_model(t, pdic_saturnlike) + np.random.randn(len(t))*0.001# + np.sin( (t/0.6 +1.2*np.random.rand()) * np.pi)*0.001
+    ymodel = ring_model(t, pdic_saturnlike) + np.random.randn(len(t))*0.001 + np.sin( (t/0.6 +1.2*np.random.rand()) * np.pi)*0.01
     yerr = np.array(t/t)*1e-3
     each_lc = lk.LightCurve(t, ymodel, yerr)
     each_lc.time = each_lc.time + np.random.randn()*0.01 + mid_transit_time
     plt.errorbar(each_lc.time.value, each_lc.flux.value, each_lc.flux_err.value, fmt='.k')
     os.makedirs(
-                f"{homedir}/fitting_result/figure/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/before_process/each_lc",
+                f"{homedir}/fitting_result/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/before_process/each_lc",
                 exist_ok=True,
             )
-    plt.savefig(f"{homedir}/fitting_result/figure/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/before_process/each_lc/{i}.png")
+    plt.savefig(f"{homedir}/fitting_result/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/before_process/each_lc/{i}.png")
     #plt.show()
     plt.close()
     os.makedirs(
-                f"{homedir}/fitting_result/data/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/before_process/each_lc",
+                f"{homedir}/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/before_process/each_lc",
                 exist_ok=True,
             )
-    each_lc.write(f"{homedir}/fitting_result/data/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/before_process/each_lc/{i}.csv")
+    each_lc.write(f"{homedir}/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/before_process/each_lc/{i}.csv")
 
     return each_lc
 
@@ -700,19 +700,19 @@ def ring_model(t, pdic, mcmc_pvalues=None):
 def save_each_lc(each_lc, savedir):
     each_lc.errorbar()
     os.makedirs(
-        f"{homedir}/fitting_result/figure/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/each_lc/after_curvefit/{TOInumber}",
+        f"{homedir}/fitting_result/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/each_lc/after_curvefit/{TOInumber}",
         exist_ok=True,
     )
     plt.savefig(
-        f"{homedir}/fitting_result/figure/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/each_lc/after_curvefit/{TOInumber}/{TOInumber}_{str(i)}.png"
+        f"{homedir}/fitting_result/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/each_lc/after_curvefit/{TOInumber}/{TOInumber}_{str(i)}.png"
     )
     plt.close()
     os.makedirs(
-        f"{homedir}/fitting_result/data/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/each_lc/{savedir}/{TOInumber}",
+        f"{homedir}/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/each_lc/{savedir}/{TOInumber}",
         exist_ok=True,
     )
     each_lc.write(
-        f"{homedir}/fitting_result/data/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/each_lc/{savedir}/{TOInumber}/{TOInumber}_{str(i)}.csv"
+        f"{homedir}/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/each_lc/{savedir}/{TOInumber}/{TOInumber}_{str(i)}.csv"
     )
 
 homedir = (
@@ -764,9 +764,9 @@ for TOI in [495.01]:
         print(f"preprocessing...epoch: {i}")
         mid_transit_time = transit_time + period*i
         transit_time_list.append(mid_transit_time)
-        #each_lc = make_simulation_data(mid_transit_time)
-        each_table = ascii.read(f"{homedir}/fitting_result/data/notransitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/before_process/each_lc/{i}.csv")
-        each_lc = lk.LightCurve(data=each_table)
+        each_lc = make_simulation_data(mid_transit_time)
+        #each_table = ascii.read(f"{homedir}/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/before_process/each_lc/{i}.csv")
+        #each_lc = lk.LightCurve(data=each_table)
         
         each_lc = (
             each_lc.fold(period=period, epoch_time=mid_transit_time)
@@ -781,7 +781,6 @@ for TOI in [495.01]:
             curvefit_res = curve_fitting(each_lc, duration, transit_res)
             each_lc = curvefit_normalize(each_lc, curvefit_res.params)
             transit_res = transit_fitting(each_lc, rp_rs, period)
-            # res = transit_fitting(each_lc, rp_rs, period, fitting_model=no_ring_transit_and_polynomialfit, transitfit_params=None, curvefit_params=curvefit_res.params, trial='1st')
             each_lc, outliers, t0list, t0errlist = clip_outliers(
                 transit_res,
                 each_lc,
@@ -796,11 +795,11 @@ for TOI in [495.01]:
                 break
 
         os.makedirs(
-            f"{homedir}/fitting_result/data/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/each_lc/modelresult/1stloop/{TOInumber}",
+            f"{homedir}/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/each_lc/modelresult/1stloop/{TOInumber}",
             exist_ok=True,
         )
         with open(
-            f"{homedir}/fitting_result/data/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/each_lc/modelresult/1stloop/{TOInumber}/{TOInumber}_{str(i)}.txt",
+            f"{homedir}/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/each_lc/modelresult/1stloop/{TOInumber}/{TOInumber}_{str(i)}.txt",
             "a",
         ) as f:
             print(lmfit.fit_report(transit_res), file=f)
@@ -812,11 +811,11 @@ for TOI in [495.01]:
     fold_res = folding_lc_from_csv(
         TOInumber,
         #loaddir=f"{homedir}/fitting_result/data/each_lc/calc_t0",
-        loaddir=f"{homedir}/fitting_result/data/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/each_lc/calc_t0",
+        loaddir=f"{homedir}/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/each_lc/calc_t0",
         savedir="calc_t0_1stloop",
     )
     transit_time_list = np.array(transit_time_list)
-    _, _ = calc_obs_transit_time(t0list, t0errlist, num_list, transit_time_list, transit_time_error)
+    #_, _ = calc_obs_transit_time(t0list, t0errlist, num_list, transit_time_list, transit_time_error)
     """fittingで得たtransit time listを反映"""
     obs_t0_list = t0list
     outliers = []
@@ -828,7 +827,7 @@ for TOI in [495.01]:
     for i, mid_transit_time in enumerate(obs_t0_list):
     #for i in range(54):
         print(f"reprocessing...epoch: {i}")
-        each_table = ascii.read(f"{homedir}/fitting_result/data/notransitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/before_process/each_lc/{i}.csv")
+        each_table = ascii.read(f"{homedir}/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/before_process/each_lc/{i}.csv")
         each_lc = lk.LightCurve(data=each_table)
         each_lc = (
             each_lc.fold(period=period, epoch_time=mid_transit_time)
@@ -842,11 +841,11 @@ for TOI in [495.01]:
                 ax = each_lc.errorbar()
                 ax.set_title(f"{data_survival_rate:4f} useable")
                 os.makedirs(
-                    f"{homedir}/fitting_result/figure/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/error_lc/under_90%_data/obs_t0/{TOInumber}",
+                    f"{homedir}/fitting_result/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/error_lc/under_90%_data/obs_t0/{TOInumber}",
                     exist_ok=True,
                 )
                 plt.savefig(
-                    f"{homedir}/fitting_result/figure/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/error_lc/under_90%_data/obs_t0/{TOInumber}/{TOInumber}_{str(i)}.png"
+                    f"{homedir}/fitting_result/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/error_lc/under_90%_data/obs_t0/{TOInumber}/{TOInumber}_{str(i)}.png"
                 )
                 plt.close()
             t0list.append(mid_transit_time)
@@ -867,11 +866,11 @@ for TOI in [495.01]:
                 curvefit_params=curvefit_res.params,
             )
             os.makedirs(
-                f"{homedir}/fitting_result/data/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/each_lc/modelresult/2ndloop/{TOInumber}",
+                f"{homedir}/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/each_lc/modelresult/2ndloop/{TOInumber}",
                 exist_ok=True,
             )
             with open(
-                f"{homedir}/fitting_result/data/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/each_lc/modelresult/2ndloop/{TOInumber}/{TOInumber}_{str(i)}.txt",
+                f"{homedir}/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/each_lc/modelresult/2ndloop/{TOInumber}/{TOInumber}_{str(i)}.txt",
                 "a",
             ) as f:
                 print(lmfit.fit_report(res), file=f)
@@ -897,16 +896,16 @@ for TOI in [495.01]:
     time.sleep(1)
     fold_res = folding_lc_from_csv(
         TOInumber,
-        loaddir=f"{homedir}/fitting_result/data/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/each_lc/obs_t0/",
+        loaddir=f"{homedir}/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/each_lc/obs_t0/",
         savedir="obs_t0",
     )
     # fold_res = folding_lc_from_csv(TOInumber, loaddir=f'{homedir}/fitting_result/data/each_lc/calc_t0', savedir='calc_t0_2ndloop')
     os.makedirs(
-        f"{homedir}/fitting_result/data/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/folded_lc/modelresult/2ndloop/{TOInumber}",
+        f"{homedir}/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/folded_lc/modelresult/2ndloop/{TOInumber}",
         exist_ok=True,
     )
     with open(
-        f"{homedir}/fitting_result/data/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/folded_lc/modelresult/2ndloop/{TOInumber}/{TOInumber}_folded.txt",
+        f"{homedir}/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/folded_lc/modelresult/2ndloop/{TOInumber}/{TOInumber}_folded.txt",
         "a",
     ) as f:
         print(lmfit.fit_report(fold_res), file=f)
