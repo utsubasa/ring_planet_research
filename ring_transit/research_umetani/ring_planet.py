@@ -275,7 +275,7 @@ for TOI in [495.01]:
     rs = param_df['Stellar Radius (R_Sun)'].values[0]
     rp_rs = rp/rs
 
-    csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/transitfitbeforecurvefit_no_trend_BJD_simulation_TOI495.01/folded_lc/obs_t0/{TOInumber}.csv'
+    csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/folded_lc/obs_t0/{TOInumber}.csv'
     #csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/{TOInumber}.csv'
     try:
         folded_table = ascii.read(csvfile)
