@@ -18,44 +18,6 @@ import c_compile_ring
 
 warnings.filterwarnings("ignore")
 
-
-def bls_analysis(lc, period, transit_time, duration):
-    print("bls analysis...")
-    time.sleep(1)
-    bls_period = np.linspace(10, 50, 10000)
-    bls = lc.to_periodogram(
-        method="bls", period=bls_period
-    )  # oversample_factor=1)\
-    print("bls period = ", bls.period_at_max_power)
-    print(f"period = {period}")
-    print("bls transit time = ", bls.transit_time_at_max_power)
-    print(f"transit time = {transit_time}")
-    print("bls duration = ", bls.duration_at_max_power)
-    print(f"duration = {duration}")
-    bls_transit_time = bls.transit_time_at_max_power.value
-    catalog_lc = lc.fold(period=period, epoch_time=transit_time)
-    bls_lc = lc.fold(period=period, epoch_time=bls_transit_time)
-    ax = catalog_lc[np.abs(catalog_lc.time.value) < 1.0].scatter(
-        label="catalog t0"
-    )
-    bls_lc[np.abs(bls_lc.time.value) < 1.0].scatter(
-        ax=ax, color="red", label="BLS t0"
-    )
-    os.makedirs(
-                f"/Users/u_tsubasa/Dropbox/ring_planet_research/comp_bls/",
-                exist_ok=True,
-                )
-    plt.savefig(
-        f"/Users/u_tsubasa/Dropbox/ring_planet_research/comp_bls/{TOInumber}.png"
-    )
-    plt.close()
-    transit_time = bls_transit_time
-    # duration = bls.duration_at_max_power.value
-    period = bls.period_at_max_power.value
-
-    return transit_time, period
-
-
 def calc_data_survival_rate(lc, duration):
     data_n = len(lc.flux)
     max_data_n = (
@@ -498,27 +460,10 @@ def curvefit_normalize(each_lc, poly_params):
             poly_params["c4"].value,
         ]
     )
-    """
-    poly_model = np.polynomial.Polynomial([result.params.valuesdict()['c0'],\
-                    result.params.valuesdict()['c1'],\
-                    result.params.valuesdict()['c2'],\
-                    result.params.valuesdict()['c3'],\
-                    result.params.valuesdict()['c4'],\
-                    result.params.valuesdict()['c5'],\
-                    result.params.valuesdict()['c6'],\
-                    result.params.valuesdict()['c7']])
-    """
     # normalization
-    print(i, each_lc[
-            (each_lc["time"].value < -(duration * 0.7))
-            | (each_lc["time"].value > (duration * 0.7))
-        ].flux.mean())
     each_lc.flux = each_lc.flux.value / poly_model(each_lc.time.value)
     each_lc.flux_err = each_lc.flux_err.value / poly_model(each_lc.time.value)
-    print(i, each_lc[
-            (each_lc["time"].value < -(duration * 0.7))
-            | (each_lc["time"].value > (duration * 0.7))
-        ].flux.mean())
+    
     return each_lc
 
 
@@ -635,12 +580,11 @@ def make_simulation_data(mid_transit_time):
                 True, False, False, False, False]
 
     ###土星likeなTOI495.01のパラメータで作成したモデル###
-    pdic_saturnlike = dict(zip(names, saturnlike_values))
-    #t = t + np.random.randn(len(t))*0.01
+    pdic_saturnlike = dict(zip(names, saturnlike_values)) 
     ymodel = ring_model(t, pdic_saturnlike) + np.random.randn(len(t))*0.001 + np.sin( (t/0.6 +1.2*np.random.rand()) * np.pi)*0.01
     yerr = np.array(t/t)*1e-3
     each_lc = lk.LightCurve(t, ymodel, yerr)
-    each_lc.time = each_lc.time + np.random.randn()*0.01 + mid_transit_time
+    each_lc.time = each_lc.time + mid_transit_time + np.random.randn()*0.01
     plt.errorbar(each_lc.time.value, each_lc.flux.value, each_lc.flux_err.value, fmt='.k')
     os.makedirs(
                 f"{homedir}/fitting_result/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/before_process/each_lc",
