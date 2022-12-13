@@ -623,7 +623,7 @@ def q_to_u_limb(q_arr):
     return np.array([u1, u2])
 
 POLY_TYPE = '4poly'
-HOMEDIR = f"/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/SAP_fitting_result/{POLY_TYPE}"
+HOMEDIR = f"/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/PDCSAP_fitting_result/{POLY_TYPE}"
 SAVE_RES = True
 
 SAVE_IGNORE_EPOCH_DIR = f"{HOMEDIR}/error_lc/under_90%_data/"
@@ -635,14 +635,14 @@ SAVE_TRANSITFIT_DIR = f"{HOMEDIR}/each_lc/transit_fit/"
 SAVE_SIMULTANEOUS_FIT_DIR = f"{HOMEDIR}/each_lc/transit&poly_fit/"
 SAVE_CURVEFIT_DIR = f"{HOMEDIR}/each_lc/curvefit/"
 
-SAVE_FOLD_LC_DIR = f"/Users/u_tsubasa/Dropbox/ring_planet_research/SAP_folded_lc/"
+SAVE_FOLD_LC_DIR = f"/Users/u_tsubasa/Dropbox/ring_planet_research/PDCSAP_folded_lc/"
 SAVE_FOLDLC_FITREPORT_DIR = f"{HOMEDIR}/folded_lc/fit_report/"
 SAVE_FOLD_LC_DATA_DIR = f"{HOMEDIR}/folded_lc/"
 SAVE_T0DICT_DIR = f"{HOMEDIR}/t0dicts/"
 SAVE_OC_DIAGRAM_DIR = f"{HOMEDIR}/o-c_diagram/"
 SAVE_ESTIMATE_PERIOD_DIR = f"{HOMEDIR}/estimate_period/"
 
-oridf = pd.read_csv(f"{HOMEDIR.split(f'/SAP_fitting_result/{POLY_TYPE}')[0]}/exofop_tess_tois_2022-09-13.csv")
+oridf = pd.read_csv(f"{HOMEDIR.split(f'/PDCSAP_fitting_result/{POLY_TYPE}')[0]}/exofop_tess_tois_2022-09-13.csv")
 df = oridf[oridf["Planet SNR"] > 100]
 df = df[~(df['TESS Disposition']=='EB')]
 df = df[~(df['TFOPWG Disposition']=='FP')]
@@ -661,19 +661,19 @@ ignore_list = [1130.01,224.01,123.01,1823.01,1292.01,2218.01,964.01,1186.01,1296
 duration_ng = [129.01, 182.01, 1059.01, 1182.01, 1425.01, 1455.01, 1811.01,2154.01, 3910.01] 
 trend_ng = [1069.01, 1092.01, 1141.01, 1163.01, 1198.01, 1270.01, 1299.01, 1385.01, 1454.01, 1455.01, 1647.01, 1796.01,]
 fold_ng = [986.01, 1041.01]
-
+"""
 # 既に前処理したTOIの重複した前処理を回避するためのTOIのリスト
-done4poly_list = os.listdir("/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/SAP_fitting_result/4poly/folded_lc/obs_t0/csv")
+done4poly_list = os.listdir("/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/PDCSAP_fitting_result/4poly/folded_lc/obs_t0/csv")
 done4poly_list = [s for s in done4poly_list if "TOI" in s]
 done4poly_list = [s.lstrip("TOI") for s in done4poly_list]
 done4poly_list = [float(s.strip(".csv")) for s in done4poly_list]
 done4poly_list = [float(s) for s in done4poly_list]
-
+"""
 #df = df.sort_values("Planet SNR", ascending=False)
 
 """処理を行わないTOIを選択する"""
 df = df.set_index(["TOI"])
-df = df.drop(index=done4poly_list, errors="ignore")
+#df = df.drop(index=done4poly_list, errors="ignore")
 df = df.drop(index=no_data_found_list, errors="ignore")
 # df = df.drop(index=multiplanet_list, errors='ignore')
 df = df.drop(index=no_perioddata_list, errors="ignore")
@@ -736,8 +736,8 @@ for TOI in TOIlist:
     """全てのライトカーブを結合し、fluxがNaNのデータ点は除去する"""
     lc = lc_collection.stitch().remove_nans()  # initialize lc
     #lc = lc_collection.remove_nans()  # initialize lc
-    lc.flux = lc.sap_flux
-    lc.flux_err = lc.sap_flux_err
+    #lc.flux = lc.sap_flux
+    #lc.flux_err = lc.sap_flux_err
     
     """ターゲットの惑星のtransit time listを作成"""
     transit_time_list = np.append(
