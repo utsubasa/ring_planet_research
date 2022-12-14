@@ -580,12 +580,41 @@ def make_simulation_data(mid_transit_time):
                 True, False, False, False, False]
 
     ###土星likeなTOI495.01のパラメータで作成したモデル###
-    pdic_saturnlike = dict(zip(names, saturnlike_values)) 
-    ymodel = ring_model(t, pdic_saturnlike) + np.random.randn(len(t))*0.001 + np.sin( (t/0.6 +1.2*np.random.rand()) * np.pi)*0.01
+    pdic_saturnlike = dict(zip(names, saturnlike_values))
+    p_names = ["t0", 
+               "per", 
+               "rp", 
+               "a", 
+               "b", 
+               "ecc", 
+               "w", 
+               "q1", 
+               "q2"]
+    values = [np.random.uniform(-0.05, 0.05), 
+              1.27, 
+              0.237, 
+              3.81, 
+              0.10, 
+              0,
+              90.0,
+              0.26, 
+              0.36
+        ]
+    maxes = [0.5, period * 1.2, 0.5, 1000, 1 + rp_rs, 0.8, 90, 1.0, 1.0]
+    mins = [-0.5, period * 0.8, 0.01, 1, 0, 0, 90, 0.0, 0.0]
+    vary_flags = [True, False, True, True, True, False, False, True, True]
+    params = set_params_lm(p_names, values, mins, maxes, vary_flags)
+    params_batman = set_params_batman(params, p_names)
+    m = batman.TransitModel(params_batman, t)  # initializes model
+    model = m.light_curve(params_batman)  # calculates light curve
+    ymodel = model + np.random.randn(len(t))*0.001 + np.sin( (t/0.6 +1.2*np.random.rand()) * np.pi)*0.01
+
+    #ymodel = ring_model(t, pdic_saturnlike) + np.random.randn(len(t))*0.001 + np.sin( (t/0.6 +1.2*np.random.rand()) * np.pi)*0.01
     yerr = np.array(t/t)*1e-3
     each_lc = lk.LightCurve(t, ymodel, yerr)
     each_lc.time = each_lc.time + mid_transit_time + np.random.randn()*0.01
     plt.errorbar(each_lc.time.value, each_lc.flux.value, each_lc.flux_err.value, fmt='.k')
+    #plt.show()
     os.makedirs(
                 f"{homedir}/fitting_result/figure/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/before_process/each_lc",
                 exist_ok=True,
