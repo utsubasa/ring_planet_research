@@ -652,7 +652,7 @@ with open('./no_data_found_toi.txt', 'rb') as f:
 no_perioddata_list = [1134.01, 1897.01, 2423.01, 2666.01, 4465.01,]  # exofopの表にperiodの記載無し。1567.01,1656.01もperiodなかったがこちらはcadence=’short’のデータなし。
 no_signal_list = [2218.01]  # トランジットのsignalが無いか、ノイズに埋もれて見えない
 multiplanet_list = [1670.01, 201.01, 822.01]  # , 1130.01]
-startrend_list = [4381.01, 1135.01, 1025.01, 212.01, 1830.01, 2119.01, 224.01]
+startrend_list = [4381.01, 1135.01, 1025.01, 1830.01, 2119.01]
 flare_list = [212.01, 1779.01, 2119.01]
 two_epoch_list = [
     671.01,1963.01,1283.01,758.01,1478.01,3501.01,845.01,121.01,1104.01,811.01,3492.01,1312.01,1861.01,665.01,224.01,2047.01,5379.01,5149.01,
@@ -660,27 +660,27 @@ two_epoch_list = [
 ignore_list = [1130.01,224.01,123.01,1823.01,1292.01,2218.01,964.01,1186.01,1296.01,1254.01,2351.01,1070.01,1344.01]
 duration_ng = [129.01, 182.01, 1059.01, 1182.01, 1425.01, 1455.01, 1811.01,2154.01, 3910.01] 
 trend_ng = [1069.01, 1092.01, 1141.01, 1163.01, 1198.01, 1270.01, 1299.01, 1385.01, 1454.01, 1455.01, 1647.01, 1796.01,]
-fold_ng = [986.01, 1041.01]
-"""
+fold_ng = [986.01]
+
 # 既に前処理したTOIの重複した前処理を回避するためのTOIのリスト
 done4poly_list = os.listdir("/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/PDCSAP_fitting_result/4poly/folded_lc/obs_t0/csv")
 done4poly_list = [s for s in done4poly_list if "TOI" in s]
 done4poly_list = [s.lstrip("TOI") for s in done4poly_list]
 done4poly_list = [float(s.strip(".csv")) for s in done4poly_list]
 done4poly_list = [float(s) for s in done4poly_list]
-"""
+
 #df = df.sort_values("Planet SNR", ascending=False)
 
 """処理を行わないTOIを選択する"""
 df = df.set_index(["TOI"])
-#df = df.drop(index=done4poly_list, errors="ignore")
+df = df.drop(index=done4poly_list, errors="ignore")
 df = df.drop(index=no_data_found_list, errors="ignore")
 # df = df.drop(index=multiplanet_list, errors='ignore')
 df = df.drop(index=no_perioddata_list, errors="ignore")
 # df = df.drop(index=startrend_list, errors='ignore')
-df = df.drop(index=flare_list, errors="ignore")
-df = df.drop(index=two_epoch_list, errors="ignore")
-df = df.drop(index=ignore_list, errors="ignore")
+#df = df.drop(index=flare_list, errors="ignore")
+#df = df.drop(index=two_epoch_list, errors="ignore")
+#df = df.drop(index=ignore_list, errors="ignore")
 #df = df.drop(index=duration_ng, errors='ignore')
 #df = df.drop(index=fold_ng, errors='ignore')
 #df = df.drop(index=trend_ng, errors='ignore')
@@ -689,12 +689,16 @@ df = df.reset_index()
 df["TOI"] = df["TOI"].astype(str)
 TOIlist = df["TOI"]
 
-for TOI in TOIlist:
+for TOI in startrend_list:
     print("analysing: ", "TOI" + str(TOI))
     TOI = str(TOI)
     """惑星、主星の各パラメータを取得"""
     param_df = df[df["TOI"] == TOI]
-    TOInumber = "TOI" + str(param_df["TOI"].values[0])
+    try:
+        TOInumber = "TOI" + str(param_df["TOI"].values[0])
+    except IndexError:
+        print(f'out of target: {TOI}')
+        continue
     duration = param_df["Duration (hours)"].values[0] / 24
     period = param_df["Period (days)"].values[0]
     transit_time = (param_df["Transit Epoch (BJD)"].values[0] - 2457000.0)  # translate BTJD
@@ -731,10 +735,21 @@ for TOI in TOIlist:
         f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC"
     )
     lc_collection = search_result.download_all()
-    #lc_collection = search_result[0].download()
+    #lc_collection = search_result[0].download(flux_column='sap_flux')
 
     """全てのライトカーブを結合し、fluxがNaNのデータ点は除去する"""
     lc = lc_collection.stitch().remove_nans()  # initialize lc
+    '''
+    from lightkurve.correctors import CBVCorrector
+    cbvCorrector = CBVCorrector(lc_collection)
+    fig = plt.figure()
+    ax1 = fig.add_subplot(2,1,1) #for plotting transit model and data
+    ax2 = fig.add_subplot(2,1,2) #for plotting residuals
+    lc_collection.scatter(ax=ax1)
+    cbvCorrector.cbvs[0].plot(ax=ax2)
+    plt.show()
+    import pdb;pdb.set_trace()
+    '''
     #lc = lc_collection.remove_nans()  # initialize lc
     #lc.flux = lc.sap_flux
     #lc.flux_err = lc.sap_flux_err
