@@ -175,13 +175,13 @@ def plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name):
     ax.add_patch(c2)
     ax.add_patch(e)
     ax.add_patch(e2)
-    ax.set_title(f'chisq={str(ring_res.redchi)[:6]}')
+    #ax.set_title(f'chisq={str(ring_res.redchi)[:6]}')
     plt.axis('scaled')
     ax.set_aspect('equal')
     #os.makedirs(f'./lmfit_result/illustration/{TOInumber}', exist_ok=True)
-    os.makedirs(f'./simulation/illustration/{TOInumber}', exist_ok=True)
-    plt.savefig(f'./simulation/illustration/{TOInumber}/{file_name}', bbox_inches="tight")
-    #plt.show()
+    #os.makedirs(f'./simulation/illustration/{TOInumber}', exist_ok=True)
+    #plt.savefig(f'./simulation/illustration/{TOInumber}/{file_name}', bbox_inches="tight")
+    plt.show()
 
 #csvfile = './folded_lc_data/TOI2403.01.csv'
 #done_TOIlist = os.listdir('./lmfit_result/transit_fit') #ダブリ解析防止
@@ -242,6 +242,8 @@ df = df.reset_index()
 df = df.sort_values('Planet SNR', ascending=False)
 df['TOI'] = df['TOI'].astype(str)
 TOIlist = df['TOI']
+#plot_ring(rp_rs=0.123, rin_rp=1.25, rout_rin=1.25, b=0.1, theta=0.7, phi=0, file_name = f"test.png")
+#import pdb;pdb.set_trace()
 for TOI in [495.01]:
 #for TOI in TOIlist[330:]:
     TOI =  str(TOI)
@@ -275,7 +277,7 @@ for TOI in [495.01]:
     rs = param_df['Stellar Radius (R_Sun)'].values[0]
     rp_rs = rp/rs
 
-    csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/withtrend_notransitfitbeforecurvefit_BJD_simulation_TOI495.01/folded_lc/obs_t0/{TOInumber}.csv'
+    csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin/folded_lc/obs_t0/TOI495.01.csv'
     #csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/{TOInumber}.csv'
     try:
         folded_table = ascii.read(csvfile)
@@ -305,6 +307,7 @@ for TOI in [495.01]:
     t = binned_lc.time.value
     flux_data = binned_lc.flux.value
     flux_err_data = binned_lc.flux_err.value
+    
     '''
     names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
                  "b", "norm", "theta", "phi", "tau", "r_in",
@@ -409,6 +412,7 @@ for TOI in [495.01]:
         #ax_lc.set_title(f'w/ AIC:{ring_res.aic:.2f} w/o AIC:{no_ring_res.aic:.2f}')
         plt.tight_layout()
         plt.show()
+        import pdb;pdb.set_trace()
         #plt.close()
         sys.exit()
         try:
