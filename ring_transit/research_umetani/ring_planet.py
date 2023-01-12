@@ -183,7 +183,7 @@ def plot_ring(rp_rs, rin_rp, rout_rin, b, theta, phi, file_name):
     #plt.savefig(f'./simulation/illustration/{TOInumber}/{file_name}', bbox_inches="tight")
     plt.show()
 
-#csvfile = './folded_lc_data/TOI2403.01.csv'
+#CSVFILE = './folded_lc_data/TOI2403.01.csv'
 #done_TOIlist = os.listdir('./lmfit_result/transit_fit') #ダブリ解析防止
 oridf = pd.read_csv('./exofop_tess_tois.csv')
 df = oridf[oridf['Planet SNR']>100]
@@ -277,12 +277,12 @@ for TOI in [495.01]:
     rs = param_df['Stellar Radius (R_Sun)'].values[0]
     rp_rs = rp/rs
 
-    csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin/folded_lc/obs_t0/TOI495.01.csv'
-    #csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/{TOInumber}.csv'
+    CSVFILE = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/folded_lc/obs_t0/TOI495.01.csv'
+    #CSVFILE = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/{TOInumber}.csv'
     try:
-        folded_table = ascii.read(csvfile)
+        folded_table = ascii.read(CSVFILE)
     except FileNotFoundError:
-        #with open('csvfile_FileNotFoundError.txt', 'a') as f:
+        #with open('CSVFILE_FileNotFoundError.txt', 'a') as f:
             #f.write(TOInumber+'\n')
         continue
     folded_lc = lk.LightCurve(data=folded_table)
@@ -408,7 +408,7 @@ for TOI in [495.01]:
         residuals_no_ring.plot(ax=ax_re, color='red', alpha=0.3,  marker='.', zorder=1)
         ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
         ax_lc.legend()
-        ax_lc.set_title(f'w/ chisq:{np.sum(((flux_data-ring_flux_model)/flux_err_data)**2):.0f}/{500:.0f} w/o chisq:{no_ring_res.chisqr:.0f}/{no_ring_res.nfree:.0f}')
+        ax_lc.set_title(f'w/ chisq:{np.sum(((flux_data-ring_flux_model)/flux_err_data)**2):.0f}/{len(binned_lc)} w/o chisq:{no_ring_res.chisqr:.0f}/{no_ring_res.nfree:.0f}')
         #ax_lc.set_title(f'w/ AIC:{ring_res.aic:.2f} w/o AIC:{no_ring_res.aic:.2f}')
         plt.tight_layout()
         plt.show()
