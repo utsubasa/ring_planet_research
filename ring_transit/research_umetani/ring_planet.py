@@ -15,6 +15,7 @@ import sys
 import scipy.stats
 from scipy import integrate
 from concurrent import futures
+import time
 warnings.filterwarnings('ignore')
 
 
@@ -109,7 +110,6 @@ def ring_model(t, pdic, mcmc_pvalues=None):
 
 #リングありモデルをfitting
 def ring_transitfit(params, x, data, eps_data, p_names, return_model=False):
-    #start =time.time()
     model = ring_model(x, params.valuesdict())
     chi_square = np.sum(((data-model)/eps_data)**2)
     #print(params)
@@ -134,7 +134,7 @@ def no_ring_transitfit(params, x, data, eps_data, p_names, return_model=False):
     else:
         return (data-model) / eps_data
 
-def plot_ring(ring_res, rp_rs, rin_rp, rout_rin, b, theta, phi, file_name):
+def plot_ring(TOInumber, ring_res, rp_rs, rin_rp, rout_rin, b, theta, phi, file_name):
     """
         plotter for rings
 
@@ -179,12 +179,16 @@ def plot_ring(ring_res, rp_rs, rin_rp, rout_rin, b, theta, phi, file_name):
     ax.set_title(f'chisq={str(ring_res.redchi)[:6]}')
     plt.axis('scaled')
     ax.set_aspect('equal')
-    os.makedirs(f'{lmfit_dir}/illustration/{TOInumber}', exist_ok=True)
+    os.makedirs(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/lmfit_res/illustration/{TOInumber}', exist_ok=True)
     #os.makedirs(f'./simulation/illustration/{TOInumber}', exist_ok=True)
-    plt.savefig(f'{lmfit_dir}/illustration/{TOInumber}/{file_name}', bbox_inches="tight")
+    plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/lmfit_res/illustration/{TOInumber}/{file_name}', bbox_inches="tight")
     #plt.show()
 
-def calc_ring_res(m, no_ring_res, t, flux_data, flux_err_data, TOInumber):
+def calc_ring_res(m, no_ring_res, binned_lc, period, TOInumber, noringnames):
+    t = binned_lc.time.value
+    flux_data = binned_lc.flux.value
+    flux_err_data = binned_lc.flux_err.value
+
     names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
             "b", "norm", "theta", "phi", "tau", "r_in",
             "r_out", "norm2", "norm3", "ecosw", "esinw"]
@@ -206,6 +210,7 @@ def calc_ring_res(m, no_ring_res, t, flux_data, flux_err_data, TOInumber):
     values = [q1, q2, t0, period, rp_rs, a_rs,
               b, norm, theta, phi, tau, r_in,
               r_out, 0.0, 0.0, 0.0, 0.0]
+    print(values)
 
     saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
                 1, 1, np.pi/6.74, 0, 1, 1.53,
@@ -241,11 +246,11 @@ def calc_ring_res(m, no_ring_res, t, flux_data, flux_err_data, TOInumber):
         input_df=input_df.applymap(lambda x: '{:.6f}'.format(x))
         output_df=output_df.applymap(lambda x: '{:.6f}'.format(x))
         result_df = input_df.join((output_df, pd.Series(vary_flags, index=names, name='vary_flags')))
-        os.makedirs(f'{lmfit_dir}/fit_p_data/ring_model/{TOInumber}', exist_ok=True)
+        os.makedirs(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/lmfit_res/fit_p_data/ring_model/{TOInumber}', exist_ok=True)
         #os.makedirs(f'./simulation/fit_p_data/{TOInumber}', exist_ok=True)
-        result_df.to_csv(f'{lmfit_dir}/fit_p_data/ring_model/{TOInumber}/{TOInumber}_{F_obs:.0f}_{m}.csv', header=True, index=False)
+        result_df.to_csv(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/lmfit_res/fit_p_data/ring_model/{TOInumber}/{TOInumber}_{F_obs:.0f}_{m}.csv', header=True, index=False)
 
-        plot_ring(ring_res, rp_rs=ring_res.params['rp_rs'].value, rin_rp=ring_res.params['r_in'].value, rout_rin=ring_res.params['r_out'].value, b=ring_res.params['b'].value, theta=ring_res.params['theta'].value, phi=ring_res.params['phi'].value, file_name = f"{TOInumber}_{F_obs:.0f}_{m}.pdf")
+        plot_ring(TOInumber, ring_res, rp_rs=ring_res.params['rp_rs'].value, rin_rp=ring_res.params['r_in'].value, rout_rin=ring_res.params['r_out'].value, b=ring_res.params['b'].value, theta=ring_res.params['theta'].value, phi=ring_res.params['phi'].value, file_name = f"{TOInumber}_{F_obs:.0f}_{m}.pdf")
 
         fig = plt.figure()
         ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
@@ -264,9 +269,9 @@ def calc_ring_res(m, no_ring_res, t, flux_data, flux_err_data, TOInumber):
         #ax_lc.set_title(f'w/ chisq:{ring_res.chisqr:.0f}/{ring_res.nfree:.0f} w/o chisq:{no_ring_res.chisqr:.0f}/{no_ring_res.nfree:.0f}')
         ax_lc.set_title(f'{TOInumber}, p={p_value:.2e}')
         plt.tight_layout()
-        os.makedirs(f'{lmfit_dir}/transit_fit/{TOInumber}', exist_ok=True)
+        os.makedirs(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/lmfit_res/transit_fit/{TOInumber}', exist_ok=True)
         #os.makedirs(f'./simulation/transit_fit/{TOInumber}', exist_ok=True)
-        plt.savefig(f'{lmfit_dir}/transit_fit/{TOInumber}/{TOInumber}_{F_obs:.0f}_{m}.pdf')
+        plt.savefig(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/lmfit_res/transit_fit/{TOInumber}/{TOInumber}_{F_obs:.0f}_{m}.pdf')
         #plt.show()
         plt.close()
         
@@ -306,160 +311,181 @@ def calc_bin_std(lc, TOInumber):
     pd.DataFrame(data=d).to_csv(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/bin_std/{TOInumber}.csv')
     plt.close()
 
-#csvfile = './folded_lc_data/TOI2403.01.csv'
-#done_TOIlist = os.listdir('./lmfit_result/transit_fit') #ダブリ解析防止
-#oridf = pd.read_csv('./exofop_tess_tois.csv')
-oridf = pd.read_csv('./exofop_tess_tois_2022-09-13.csv')
-lmfit_dir='/Users/u_tsubasa/Dropbox/ring_planet_research/lmfit_result'
-df = oridf[oridf['Planet SNR']>100]
+def calc_ring_res_wrapper(args):
+    """引数をアンパックして渡す関数です。"""
+    return calc_ring_res(*args)
 
-no_data_list = [4726.01,372.01,352.01,2617.01,2766.01,2969.01,2989.01,2619.01,2626.01,2624.01,2625.01,
-                2622.01,3041.01,2889.01,4543.01,3010.01,2612.01,4463.01,4398.01,4283.01,4145.01,3883.01,
-                4153.01,3910.01,3604.01,3972.01,3589.01,3735.01,4079.01,4137.01,3109.01,3321.01,3136.01,
-                3329.01,2826.01,2840.01,3241.01,2724.01,2704.01,2803.01,2799.01,2690.01,2745.01,2645.01,
-                2616.01,2591.01,2580.01,2346.01,2236.01,2047.01,2109.01,2031.01,2040.01,2046.01,1905.01,
-                2055.01,1518.01,1567.01,1355.01,1498.01,1373.01,628.01,1482.01,1580.01,1388.01,1310.01,
-                1521.01,1123.01, 1519.01, 1427.01, 1371.01, 1365.01, 1397.01] #short がないか、SPOCがないか
-no_perioddata_list = [1134.01,1897.01,2423.01,2666.01,4465.01]#exofopの表にperiodの記載無し。1567.01,1656.01もperiodなかったがこちらはcadence=’short’のデータなし。
-no_signal_list = [2218.01,212.01,1823.01] #トランジットのsignalが無いか、ノイズに埋もれて見えない
-multiplanet_list = [1670.01, 201.01, 822.01]#, 1130.01]
-startrend_list = [4381.01, 1135.01, 1025.01, 212.01, 1830.01, 2119.01, 224.01]
-flare_list = [212.01, 2119.01, 1779.01]
-two_epoch_list = [671.01, 1963.01, 1283.01, 758.01, 1478.01, 3501.01, 964.01, 845.01, 121.01,1104.01, 811.01, 3492.01]
+def main():
+    #csvfile = './folded_lc_data/TOI2403.01.csv'
+    #done_TOIlist = os.listdir('./lmfit_result/transit_fit') #ダブリ解析防止
+    #oridf = pd.read_csv('./exofop_tess_tois.csv')
+    oridf = pd.read_csv('./exofop_tess_tois_2022-09-13.csv')
+    lmfit_dir='/Users/u_tsubasa/Dropbox/ring_planet_research/lmfit_result'
+    df = oridf[oridf['Planet SNR']>100]
 
-duration_ng = [129.01, 182.01, 1059.01, 1182.01, 1425.01, 1455.01] 
-trend_ng = [1069.01, 1092.01, 1141.01, 1163.01, 1198.01, 1270.01, 1299.01, 1385.01, 1454.01, 1455.01, 1647.01, 1796.01,]
-'''
-df['Rjup'] = df['Planet Radius (R_Earth)']/11.209
-plt.scatter(x=df['Period (days)'], y = df['Rjup'], color='k')
-plt.xlabel('Orbital Period(day)')
-plt.ylabel(r'Planet Radius ($R_{J}$)')
-plt.gca().yaxis.set_tick_params(which='both', direction='in',bottom=True, top=True, left=True, right=True)
-plt.gca().xaxis.set_tick_params(which='both', direction='in',bottom=True, top=True, left=True, right=True)
-plt.xscale('log')
-plt.minorticks_on()
-plt.show()
-import pdb;pdb.set_trace()
+    no_data_list = [4726.01,372.01,352.01,2617.01,2766.01,2969.01,2989.01,2619.01,2626.01,2624.01,2625.01,
+                    2622.01,3041.01,2889.01,4543.01,3010.01,2612.01,4463.01,4398.01,4283.01,4145.01,3883.01,
+                    4153.01,3910.01,3604.01,3972.01,3589.01,3735.01,4079.01,4137.01,3109.01,3321.01,3136.01,
+                    3329.01,2826.01,2840.01,3241.01,2724.01,2704.01,2803.01,2799.01,2690.01,2745.01,2645.01,
+                    2616.01,2591.01,2580.01,2346.01,2236.01,2047.01,2109.01,2031.01,2040.01,2046.01,1905.01,
+                    2055.01,1518.01,1567.01,1355.01,1498.01,1373.01,628.01,1482.01,1580.01,1388.01,1310.01,
+                    1521.01,1123.01, 1519.01, 1427.01, 1371.01, 1365.01, 1397.01] #short がないか、SPOCがないか
+    no_perioddata_list = [1134.01,1897.01,2423.01,2666.01,4465.01]#exofopの表にperiodの記載無し。1567.01,1656.01もperiodなかったがこちらはcadence=’short’のデータなし。
+    no_signal_list = [2218.01,212.01,1823.01] #トランジットのsignalが無いか、ノイズに埋もれて見えない
+    multiplanet_list = [1670.01, 201.01, 822.01]#, 1130.01]
+    startrend_list = [4381.01, 1135.01, 1025.01, 212.01, 1830.01, 2119.01, 224.01]
+    flare_list = [212.01, 2119.01, 1779.01]
+    two_epoch_list = [671.01, 1963.01, 1283.01, 758.01, 1478.01, 3501.01, 964.01, 845.01, 121.01,1104.01, 811.01, 3492.01]
 
-done_list = os.listdir('/mwork2/umetanitb/research_umetani/lmfit/transit_fit/')
-done_list = [s for s in done_list if 'TOI' in s]
-done_list = [s.lstrip('TOI') for s in done_list ]
-#done_list = [float(s.strip('.pdf')) for s in done_list]
-done_list = [float(s) for s in done_list]
-'''
-df['TOI'] = df['TOI'].astype(str)
-df = df.sort_values('Planet SNR', ascending=False)
-df = df.set_index(['TOI'])
-#df = df.drop(index=done_list, errors='ignore')
-df = df.drop(index=no_data_list, errors='ignore')
-#df = df.drop(index=multiplanet_list, errors='ignore')
-#df = df.drop(index=startrend_list, errors='ignore')
-#df = df.drop(index=flare_list, errors='ignore')
-df = df.drop(index=two_epoch_list, errors='ignore')
-df = df.drop(index=no_signal_list, errors='ignore')
-#df = df.drop(index=duration_ng, errors='ignore')
-#df = df.drop(index=trend_ng, errors='ignore')
-df = df.reset_index()
-
-
-TOIlist = df['TOI']
-#for TOI in [495.01]:
-
-#TOI = TOIlist[10]
-#for TOI in [129.01,]:
-for TOI in TOIlist:
-    TOI = str(TOI)
-    print(TOI)
-    TOInumber = 'TOI' + TOI
-    param_df = df[df['TOI'] == TOI]
+    duration_ng = [129.01, 182.01, 1059.01, 1182.01, 1425.01, 1455.01] 
+    trend_ng = [1069.01, 1092.01, 1141.01, 1163.01, 1198.01, 1270.01, 1299.01, 1385.01, 1454.01, 1455.01, 1647.01, 1796.01,]
     '''
-    ###parameters setting###
-    #TOInumber = 'TOI' + str(param_df['TOI'].values[0])
-    try:
-        with open(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/4poly/calc_t0/fit_statistics/{TOInumber}/{TOInumber}_folded.txt', 'r') as f:
-            #durationline = f.readlines()[-5:].split(' ')[-1]
-            durationline, _, _, periodline, _ = f.readlines()[-5:]
-            durationline = durationline.split(' ')[-1]
-            duration = np.float(durationline)
-            periodline = periodline.split(' ')[-1]
-            period = np.float(periodline)
-    except FileNotFoundError:
-        with open('./folded.txt_FileNotFoundError.txt', 'a') as f:
-            f.write(TOInumber+'\n')
-            duration = param_df['Duration (hours)'].values[0] / 24
-            period = param_df['Period (days)'].values[0]
-
-    rp = param_df['Planet Radius (R_Earth)'].values[0] * 0.00916794 #translate to Rsun
-    rs = param_df['Stellar Radius (R_Sun)'].values[0]
-    rp_rs = rp/rs
-    '''
-
-    #csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/4poly/obs_t0/csv/{TOInumber}.csv'
-    csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/20220913/obs_t0/csv/{TOInumber}.csv'
-    try:
-        folded_table = ascii.read(csvfile)
-    except FileNotFoundError:
-        #with open('./csvfile_FileNotFoundError.txt', 'a') as f:
-            #f.write(TOInumber+',')
-        continue
-    folded_lc = lk.LightCurve(data=folded_table)
-    #folded_lc = folded_lc[(folded_lc.time.value < duration) & (folded_lc.time.value > -duration)]
-    calc_bin_std(folded_lc, TOInumber)
-    continue
-    binned_lc = folded_lc.bin(bins=500).remove_nans()
-    
-    t = binned_lc.time.value
-    flux_data = binned_lc.flux.value
-    flux_err_data = binned_lc.flux_err.value
-
-    if np.sum(np.isnan([t, flux_data, flux_err_data])) != 0:
-        with open('./NaN_values_detected.txt', 'a') as f:
-            f.write(TOInumber+',')
-            continue
-    ###no ring model fitting by minimizing chi_square###
-    best_res_dict = {}
-    for n in range(50):
-        noringnames = ["t0", "per", "rp", "a", "b", "ecc", "w", "q1", "q2"]
-        #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
-        #noringvalues = [0, period, rp_rs, a_rs, 83.0, 0.0, 90.0, 0.2, 0.2]
-        if np.isnan(rp_rs):
-            noringvalues = [np.random.uniform(-0.05,0.05), period, np.random.uniform(0.05,0.1), np.random.uniform(1,10), np.random.uniform(0.0,0.5), 0, 90.0, np.random.uniform(0.1,0.9), np.random.uniform(0.1,0.9)]
-        else:
-            noringvalues = [np.random.uniform(-0.05,0.05), period, rp_rs, np.random.uniform(1,10), np.random.uniform(0.0,0.5), 0, 90.0, np.random.uniform(0.1,0.9), np.random.uniform(0.1,0.9)]
-        noringmins = [-0.2, period*0.8, 0.01, 1, 0, 0, 90, 0.0, 0.0]
-        noringmaxes = [0.2, period*1.2, 0.5, 100, 1.0, 0.8, 90, 1.0, 1.0]
-        noringvary_flags = [True, False, True, True, True, False, False, True, True]
-        no_ring_params = set_params_lm(noringnames, noringvalues, noringmins, noringmaxes, noringvary_flags)
-        no_ring_res = lmfit.minimize(no_ring_transitfit, no_ring_params, args=(t, flux_data, flux_err_data, noringnames), max_nfev=1000)
-        if no_ring_res.params['t0'].stderr != None:
-            if np.isfinite(no_ring_res.params['t0'].stderr) and no_ring_res.redchi < 10:
-                red_redchi = no_ring_res.redchi-1
-                best_res_dict[red_redchi] = no_ring_res
-    no_ring_res = sorted(best_res_dict.items())[0][1]
-    input_df = pd.DataFrame.from_dict(no_ring_params.valuesdict(), orient="index",columns=["input_value"])
-    output_df = pd.DataFrame.from_dict(no_ring_res.params.valuesdict(), orient="index",columns=["output_value"])
-    input_df = input_df.applymap(lambda x: '{:.6f}'.format(x))
-    output_df = output_df.applymap(lambda x: '{:.6f}'.format(x))
-    result_df = input_df.join((output_df, pd.Series(noringvary_flags, index=noringnames, name='vary_flags')))
-    os.makedirs(f'{lmfit_dir}/fit_p_data/no_ring_model/{TOInumber}', exist_ok=True)
-    result_df.to_csv(f'{lmfit_dir}/fit_p_data/no_ring_model/{TOInumber}/{TOInumber}_{no_ring_res.redchi:.2f}.csv', header=True, index=False)
-
-    ###ring model fitting by minimizing chi_square###
-    m = range(10)
-    src_datas = list(map(lambda x: [x, no_ring_res, t, flux_data, flux_err_data, TOInumber], m))
-    with futures.ProcessPoolExecutor(max_workers=4) as executor:
-        future_list = executor.map(fn=calc_ring_res, src_datas)
-        future_res_list = [f.result() for f in future_list]
+    df['Rjup'] = df['Planet Radius (R_Earth)']/11.209
+    plt.scatter(x=df['Period (days)'], y = df['Rjup'], color='k')
+    plt.xlabel('Orbital Period(day)')
+    plt.ylabel(r'Planet Radius ($R_{J}$)')
+    plt.gca().yaxis.set_tick_params(which='both', direction='in',bottom=True, top=True, left=True, right=True)
+    plt.gca().xaxis.set_tick_params(which='both', direction='in',bottom=True, top=True, left=True, right=True)
+    plt.xscale('log')
+    plt.minorticks_on()
+    plt.show()
     import pdb;pdb.set_trace()
-    print(future_res_list)
-    ring_res = list(sorted(future_res_list, key=lambda x: x['F_obs'], reverse=True)[0].values())[0]
-    F_obs = ( (no_ring_res.chisqr-ring_res.chisqr)/ (ring_res.nvarys-no_ring_res.nvarys) ) / ( ring_res.chisqr/(ring_res.ndata-ring_res.nvarys-1) )
-    p_value = 1 - integrate.quad( lambda x:scipy.stats.f.pdf(x, ring_res.ndata-ring_res.nvarys-1, ring_res.nvarys-no_ring_res.nvarys), 0, F_obs )[0]
-    with open(f'{lmfit_dir}/fit_report/{TOInumber}.txt', 'a') as fi:
-        print('no ring transit fit report:\n', file = fi)
-        print(lmfit.fit_report(no_ring_res), file = fi)
-        print('ring transit fit report:\n', file = fi)
-        print(lmfit.fit_report(ring_res), file = fi)
-        print(f'\nF_obs: {F_obs}', file = fi)
-        print(f'\np_value: {p_value}', file = fi)
-    
+
+    done_list = os.listdir('/mwork2/umetanitb/research_umetani/lmfit/transit_fit/')
+    done_list = [s for s in done_list if 'TOI' in s]
+    done_list = [s.lstrip('TOI') for s in done_list ]
+    #done_list = [float(s.strip('.pdf')) for s in done_list]
+    done_list = [float(s) for s in done_list]
+    '''
+    df['TOI'] = df['TOI'].astype(str)
+    df = df.sort_values('Planet SNR', ascending=False)
+    df = df.set_index(['TOI'])
+    #df = df.drop(index=done_list, errors='ignore')
+    df = df.drop(index=no_data_list, errors='ignore')
+    #df = df.drop(index=multiplanet_list, errors='ignore')
+    #df = df.drop(index=startrend_list, errors='ignore')
+    #df = df.drop(index=flare_list, errors='ignore')
+    df = df.drop(index=two_epoch_list, errors='ignore')
+    df = df.drop(index=no_signal_list, errors='ignore')
+    #df = df.drop(index=duration_ng, errors='ignore')
+    #df = df.drop(index=trend_ng, errors='ignore')
+    df = df.reset_index()
+
+
+    TOIlist = df['TOI']
+    #for TOI in [495.01]:
+
+    #TOI = TOIlist[10]
+    #for TOI in [129.01,]:
+    for TOI in [495.01,]:
+        TOI = str(TOI)
+        print(TOI)
+        TOInumber = 'TOI' + TOI
+        param_df = df[df['TOI'] == TOI]
+        
+        ###parameters setting###
+        TOInumber = 'TOI' + str(param_df['TOI'].values[0])
+        try:
+            with open(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/4poly/calc_t0/fit_statistics/{TOInumber}/{TOInumber}_folded.txt', 'r') as f:
+                #durationline = f.readlines()[-5:].split(' ')[-1]
+                durationline, _, _, periodline, _ = f.readlines()[-5:]
+                durationline = durationline.split(' ')[-1]
+                duration = np.float(durationline)
+                periodline = periodline.split(' ')[-1]
+                period = np.float(periodline)
+        except FileNotFoundError:
+            with open('./folded.txt_FileNotFoundError.txt', 'a') as f:
+                f.write(TOInumber+'\n')
+                duration = param_df['Duration (hours)'].values[0] / 24
+                period = param_df['Period (days)'].values[0]
+
+        rp = param_df['Planet Radius (R_Earth)'].values[0] * 0.00916794 #translate to Rsun
+        rs = param_df['Stellar Radius (R_Sun)'].values[0]
+        rp_rs = rp/rs
+        
+
+        #csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/4poly/obs_t0/csv/{TOInumber}.csv'
+        csvfile = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/folded_lc/obs_t0/{TOInumber}.csv'
+        try:
+            folded_table = ascii.read(csvfile)
+        except FileNotFoundError:
+            #with open('./csvfile_FileNotFoundError.txt', 'a') as f:
+                #f.write(TOInumber+',')
+            continue
+        folded_lc = lk.LightCurve(data=folded_table)
+        folded_lc = folded_lc[(folded_lc.time.value < duration) & (folded_lc.time.value > -duration)]
+        #calc_bin_std(folded_lc, TOInumber)
+        #continue
+        binned_lc = folded_lc.bin(bins=500).remove_nans()
+        
+        t = binned_lc.time.value
+        flux_data = binned_lc.flux.value
+        flux_err_data = binned_lc.flux_err.value
+
+        if np.sum(np.isnan([t, flux_data, flux_err_data])) != 0:
+            with open('./NaN_values_detected.txt', 'a') as f:
+                f.write(TOInumber+',')
+                continue
+        ###no ring model fitting by minimizing chi_square###
+        best_res_dict = {}
+        for n in range(50):
+            noringnames = ["t0", "per", "rp", "a", "b", "ecc", "w", "q1", "q2"]
+            #values = [0.0, 4.0, 0.08, 8.0, 83.0, 0.0, 90.0, 0.2, 0.2]
+            #noringvalues = [0, period, rp_rs, a_rs, 83.0, 0.0, 90.0, 0.2, 0.2]
+            if np.isnan(rp_rs):
+                noringvalues = [np.random.uniform(-0.05,0.05), period, np.random.uniform(0.05,0.1), np.random.uniform(1,10), np.random.uniform(0.0,0.5), 0, 90.0, np.random.uniform(0.1,0.9), np.random.uniform(0.1,0.9)]
+            else:
+                noringvalues = [np.random.uniform(-0.05,0.05), period, rp_rs, np.random.uniform(1,10), np.random.uniform(0.0,0.5), 0, 90.0, np.random.uniform(0.1,0.9), np.random.uniform(0.1,0.9)]
+            noringmins = [-0.2, period*0.8, 0.01, 1, 0, 0, 90, 0.0, 0.0]
+            noringmaxes = [0.2, period*1.2, 0.5, 100, 1.0, 0.8, 90, 1.0, 1.0]
+            noringvary_flags = [True, False, True, True, True, False, False, True, True]
+            no_ring_params = set_params_lm(noringnames, noringvalues, noringmins, noringmaxes, noringvary_flags)
+            no_ring_res = lmfit.minimize(no_ring_transitfit, no_ring_params, args=(t, flux_data, flux_err_data, noringnames), max_nfev=1000)
+            if no_ring_res.params['t0'].stderr != None:
+                if np.isfinite(no_ring_res.params['t0'].stderr) and no_ring_res.redchi < 10:
+                    red_redchi = no_ring_res.redchi-1
+                    best_res_dict[red_redchi] = no_ring_res
+        no_ring_res = sorted(best_res_dict.items())[0][1]
+        input_df = pd.DataFrame.from_dict(no_ring_params.valuesdict(), orient="index",columns=["input_value"])
+        output_df = pd.DataFrame.from_dict(no_ring_res.params.valuesdict(), orient="index",columns=["output_value"])
+        input_df = input_df.applymap(lambda x: '{:.6f}'.format(x))
+        output_df = output_df.applymap(lambda x: '{:.6f}'.format(x))
+        result_df = input_df.join((output_df, pd.Series(noringvary_flags, index=noringnames, name='vary_flags')))
+        os.makedirs(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/lmfit_res/fit_p_data/no_ring_model/{TOInumber}', exist_ok=True)
+        result_df.to_csv(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/lmfit_res/fit_p_data/no_ring_model/{TOInumber}/{TOInumber}_{no_ring_res.redchi:.2f}.csv', header=True, index=False)
+
+        ###ring model fitting by minimizing chi_square###
+        m = range(4)
+        src_datas = list(map(lambda x: [x, no_ring_res, binned_lc, period, TOInumber, noringnames], m))
+        with futures.ProcessPoolExecutor(max_workers=4) as executor:
+            future_list = executor.map(calc_ring_res_wrapper, src_datas, timeout=None)
+        #future_res_list = [f.result() for f in future_list]
+        for i, fit_res in enumerate(future_list):
+            if i > 0:
+                if fit_res['F_obs'] > F_obs:
+                    ring_res = fit_res['res']
+                    F_obs = fit_res['F_obs']
+                    print(ring_res)
+                    print(F_obs)
+                else:
+                    pass
+            else:
+                ring_res = fit_res['res']
+                F_obs = fit_res['F_obs']
+                print(ring_res)
+                print(F_obs)
+
+        import pdb;pdb.set_trace()
+        #F_obs = ( (no_ring_res.chisqr-ring_res.chisqr)/ (ring_res.nvarys-no_ring_res.nvarys) ) / ( ring_res.chisqr/(ring_res.ndata-ring_res.nvarys-1) )
+        p_value = 1 - integrate.quad( lambda x:scipy.stats.f.pdf(x, ring_res.ndata-ring_res.nvarys-1, ring_res.nvarys-no_ring_res.nvarys), 0, F_obs )[0]
+        with open(f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/lmfit_res/fit_report/{TOInumber}.txt', 'a') as fi:
+            print('no ring transit fit report:\n', file = fi)
+            print(lmfit.fit_report(no_ring_res), file = fi)
+            print('ring transit fit report:\n', file = fi)
+            print(lmfit.fit_report(ring_res), file = fi)
+            print(f'\nF_obs: {F_obs}', file = fi)
+            print(f'\np_value: {p_value}', file = fi)
+        
+
+if __name__ == '__main__':
+    main()

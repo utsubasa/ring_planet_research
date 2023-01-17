@@ -686,7 +686,7 @@ df = df.reset_index()
 df["TOI"] = df["TOI"].astype(str)
 TOIlist = df["TOI"]
 
-for TOI in [585.01, 1025.01, 1270.01, 1431.01, 183.01, 427.01, 504.01, 632.01, 4420.01, 2251.01, 1924.01, 1431.01, 129.01, ]:
+for TOI in [495.01, 585.01, 1025.01, 1270.01, 1431.01, 183.01, 427.01, 504.01, 632.01, 4420.01, 2251.01, 1924.01, 1431.01, 129.01, ]:
     print("analysing: ", "TOI" + str(TOI))
     TOI = str(TOI)
     """惑星、主星の各パラメータを取得"""
@@ -748,8 +748,8 @@ for TOI in [585.01, 1025.01, 1270.01, 1431.01, 183.01, 427.01, 504.01, 632.01, 4
     import pdb;pdb.set_trace()
     '''
     #lc = lc_collection.remove_nans()  # initialize lc
-    lc.flux = lc.sap_flux
-    lc.flux_err = lc.sap_flux_err
+    #lc.flux = lc.sap_flux
+    #lc.flux_err = lc.sap_flux_err
     
     """ターゲットの惑星のtransit time listを作成"""
     transit_time_list = np.append(
@@ -779,6 +779,9 @@ for TOI in [585.01, 1025.01, 1270.01, 1431.01, 183.01, 427.01, 504.01, 632.01, 4
         epoch_end = mid_transit_time + (duration * 2.5)
         tmp = lc[lc.time.value > epoch_start]
         each_lc = tmp[tmp.time.value < epoch_end]
+        each_lc.errorbar()
+        plt.show()
+        import pdb;pdb.set_trace()
         each_lc = (
             each_lc.fold(period=period, epoch_time=mid_transit_time)
             .normalize()
