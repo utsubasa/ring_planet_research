@@ -584,7 +584,8 @@ def make_simulation_data(mid_transit_time):
     pdic_saturnlike = dict(zip(names, saturnlike_values))
     ymodel = ring_model(t, pdic_saturnlike)*(1+(np.sin( (t/0.6 +1.2*np.random.rand()) * np.pi)*0.01)) + np.random.randn(len(t))*0.001
     #ymodel = ring_model(t, pdic_saturnlike) + np.random.randn(len(t))*0.001 + np.sin( (t/0.6 +1.2*np.random.rand()) * np.pi)*0.01
-    yerr = np.array(t/t)*1e-3
+    ymodel = ymodel*15000
+    yerr = np.array(t/t)*1e-3*15000
     each_lc = lk.LightCurve(t, ymodel, yerr)
     each_lc.time = each_lc.time + mid_transit_time# + np.random.randn()*0.01
     plt.errorbar(each_lc.time.value, each_lc.flux.value, each_lc.flux_err.value, fmt='.k')
