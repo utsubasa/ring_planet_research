@@ -188,9 +188,24 @@ def calc_ring_res(m, no_ring_res, t, flux_data, flux_err_data, TOInumber):
     names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
             "b", "norm", "theta", "phi", "tau", "r_in",
             "r_out", "norm2", "norm3", "ecosw", "esinw"]
-    values = [no_ring_res.params.valuesdict()['q1'], no_ring_res.params.valuesdict()['q2'], no_ring_res.params.valuesdict()['t0'], period, no_ring_res.params.valuesdict()['rp'], no_ring_res.params.valuesdict()['a'],
-                no_ring_res.params.valuesdict()['b'], 1, np.random.uniform(1e-5,np.pi-1e-5), np.random.uniform(0.0,np.pi), 1, np.random.uniform(1.01,2.44),
-                np.random.uniform(1.02,2.44), 0.0, 0.0, 0.0, 0.0]
+
+    q1 = np.random.uniform(no_ring_res.params.valuesdict()['q1']*0.8,no_ring_res.params.valuesdict()['q1']*1.2)
+    q2 = np.random.uniform(no_ring_res.params.valuesdict()['q2']*0.8,no_ring_res.params.valuesdict()['q2']*1.2)
+    t0 = 0
+    rp_rs = np.random.uniform(no_ring_res.params.valuesdict()['rp']*0.8, no_ring_res.params.valuesdict()['rp']*1.2)
+    a_rs = np.random.uniform(no_ring_res.params.valuesdict()['a']*0.5,no_ring_res.params.valuesdict()['a']*2.0)
+    b = np.random.uniform(0.0,1.0)
+    norm = 1
+    theta = np.random.uniform(1e-5,np.pi-1e-5)
+    phi = np.random.uniform(-np.pi/2, np.pi/2)
+    tau = 1
+    r_in = np.random.uniform(1.02,2.44)
+    r_out = np.random.uniform(1.02,2.44)
+
+
+    values = [q1, q2, t0, period, rp_rs, a_rs,
+              b, norm, theta, phi, tau, r_in,
+              r_out, 0.0, 0.0, 0.0, 0.0]
 
     saturnlike_values = [0.0, 0.7, 0.0, 4.0, 0.18, 10.7,
                 1, 1, np.pi/6.74, 0, 1, 1.53,
@@ -198,10 +213,10 @@ def calc_ring_res(m, no_ring_res, t, flux_data, flux_err_data, TOInumber):
 
     mins = [0.0, 0.0, -0.1, 0.0, 0.01, 1.0,
             0.0, 0.9, 0.0, 0.0, 0.0, 1.00,
-            1.01, -0.1, -0.1, 0.0, 0.0]
+            1.0, -0.1, -0.1, 0.0, 0.0]
 
     maxes = [1.0, 1.0, 0.1, 100.0, 0.5, 100.0,
-                1.0, 1.1, np.pi, np.pi, 1.0, 2.45,
+                1.2, 1.1, np.pi, np.pi, 1.0, 2.45,
                 2.45, 0.1, 0.1, 0.0, 0.0]
 
     vary_flags = [True, True, True, False, True, True,
@@ -430,20 +445,14 @@ for TOI in TOIlist:
     result_df.to_csv(f'{lmfit_dir}/fit_p_data/no_ring_model/{TOInumber}/{TOInumber}_{no_ring_res.redchi:.2f}.csv', header=True, index=False)
 
     ###ring model fitting by minimizing chi_square###
-    future_list = []
-    #best_ring_res_dict = {}
-    with futures.ThreadPoolExecutor(max_workers=4) as executor:
-        future_list = [executor.submit(fn=calc_ring_res, 
-                                  m=m,
-                                  no_ring_res=no_ring_res, 
-                                  t=t, 
-                                  flux_data=flux_data, 
-                                  flux_err_data=flux_err_data, 
-                                  TOInumber=TOInumber) for m in range(100)]
+    m = range(10)
+    src_datas = list(map(lambda x: [x, no_ring_res, t, flux_data, flux_err_data, TOInumber], m))
+    with futures.ProcessPoolExecutor(max_workers=4) as executor:
+        future_list = executor.map(fn=calc_ring_res, src_datas)
         future_res_list = [f.result() for f in future_list]
+    import pdb;pdb.set_trace()
     print(future_res_list)
     ring_res = list(sorted(future_res_list, key=lambda x: x['F_obs'], reverse=True)[0].values())[0]
-    #ring_res = sorted(best_ring_res_dict.items(), reverse=True)[0][1]
     F_obs = ( (no_ring_res.chisqr-ring_res.chisqr)/ (ring_res.nvarys-no_ring_res.nvarys) ) / ( ring_res.chisqr/(ring_res.ndata-ring_res.nvarys-1) )
     p_value = 1 - integrate.quad( lambda x:scipy.stats.f.pdf(x, ring_res.ndata-ring_res.nvarys-1, ring_res.nvarys-no_ring_res.nvarys), 0, F_obs )[0]
     with open(f'{lmfit_dir}/fit_report/{TOInumber}.txt', 'a') as fi:
