@@ -4,7 +4,7 @@ import os
 import pdb
 import time
 import warnings
-
+import pdb
 import batman
 import lightkurve as lk
 import lmfit
@@ -23,7 +23,7 @@ def calc_data_survival_rate(lc, duration):
     max_data_n = (
         duration * 5 * 60 * 24 / 2
     )  # mid_transit_timeからdurationの前後×2.5 [min]/ 2 min cadence
-    data_survival_rate = data_n / max_data_n
+    data_survival_rate = (data_n / max_data_n)*100
     print(f"{data_survival_rate:2f}% data usable")
     # max_data_n = (lc.time_original[-1]-lc.time_original[0])*24*60/2
     return data_survival_rate
@@ -87,23 +87,20 @@ def set_params_lm(p_names, values, mins, maxes, vary_flags):
 
 # リングなしモデルをfitting
 def no_ring_transitfit(params, x, data, eps_data, p_names, return_model=False):
-    global chi_square
     params_batman = set_params_batman(params, p_names)
     m = batman.TransitModel(params_batman, x)  # initializes model
     model = m.light_curve(params_batman)  # calculates light curve
-    chi_square = np.sum(((data - model) / eps_data) ** 2)
+    #chi_square = np.sum(((data - model) / eps_data) ** 2)
     # print(params)
     # print(chi_square)
+    #visualize_plot_process(model, x, data, eps_data)
     if return_model == True:
         return model
     else:
         return (data - model) / eps_data
 
 
-def no_ring_transit_and_polynomialfit(
-    params, x, data, eps_data, p_names, return_model=False
-):
-    global chi_square
+def no_ring_transit_and_polynomialfit(params, x, data, eps_data, p_names, return_model=False):
     params_batman = set_params_batman(params, p_names)
     m = batman.TransitModel(params_batman, x)  # initializes model
     transit_model = m.light_curve(params_batman)  # calculates light curve
@@ -112,15 +109,38 @@ def no_ring_transit_and_polynomialfit(
         [poly_params["c0"], poly_params["c1"], poly_params["c2"], poly_params["c3"], poly_params["c4"]]
     )
     polynomialmodel = poly_model(x)
-    model = transit_model + polynomialmodel - 1
-    # chi_square = np.sum(((data-model)/eps_data)**2)
+    model = transit_model + polynomialmodel -1
+    chi_square = np.sum(((data-model)/eps_data)**2)
     # print(params)
-    # print(chi_square)
+    #print(chi_square)
+    #visualize_plot_process(model, x, data, eps_data)
     if return_model == True:
         return model, transit_model, polynomialmodel
     else:
         return (data - model) / eps_data
 
+def visualize_plot_process(model, x, data, eps_data):
+    fig = plt.figure()
+    ax1 = fig.add_subplot(2, 1, 1)
+    ax2 = fig.add_subplot(2, 1, 2)  # for plotting residuals
+    try:
+        ax1.errorbar(x=x, y=data, yerr=eps_data, fmt=".k")
+    except TypeError:
+        ax1.scatter(x=x, y=data, color="r")
+    ax1.plot(x, model, label="fitted line")
+    ax1.set_ylabel("flux")
+    residuals = data - model
+    try:
+        ax2.errorbar(x=x, y=residuals, yerr=eps_data, fmt=".k")
+    except TypeError:
+        ax2.scatter(x=x, y=residuals, color="r")
+    ax2.plot(x, np.zeros(len(x)), color="red")
+    ax2.set_xlabel("mid transit time[BJD] - 2457000")
+    ax2.set_ylabel("residuals")
+    plt.title(np.sum(((data-model)/eps_data)**2))
+    plt.tight_layout()
+    plt.pause(0.01)
+    plt.close()
 
 def transit_params_setting(rp_rs, period):
     global p_names
@@ -180,11 +200,11 @@ def calc_obs_transit_time(
     plt.ylabel("O-C(hrs)")
     plt.tight_layout()
     os.makedirs(
-                f"{homedir}/fitting_result/figure/simulation_TOI495.01/theta_0.8/calc_obs_transit_time/",
+                f"{homedir}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/calc_obs_transit_time/",
                 exist_ok=True,
                 )
     plt.savefig(
-        f"{homedir}/fitting_result/figure/simulation_TOI495.01/theta_0.8/calc_obs_transit_time/{TOInumber}.png"
+        f"{homedir}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/calc_obs_transit_time/{TOInumber}.png"
     )
     plt.close()
     
@@ -227,11 +247,11 @@ def calc_obs_transit_time(
         ax2.set_ylabel("residuals")
         plt.tight_layout()
         os.makedirs(
-                f"{homedir}/fitting_result/figure/simulation_TOI495.01/theta_0.8/estimate_period/",
+                f"{homedir}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/estimate_period/",
                 exist_ok=True,
                 )
         plt.savefig(
-            f"{homedir}/fitting_result/figure/simulation_TOI495.01/theta_0.8/estimate_period/{TOInumber}.png"
+            f"{homedir}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/estimate_period/{TOInumber}.png"
         )
         # plt.show()
         plt.close()
@@ -278,6 +298,7 @@ def transit_fitting(
                     curvefit_params["c3"],
                     curvefit_params["c4"],
                 )
+                #params["c0"].value = params["c0"].value
             res = lmfit.minimize(
                 fitting_model,
                 params,
@@ -306,13 +327,9 @@ def clip_outliers(res, lc, outliers, t0list, t0errlist, folded_lc=False, transit
     flux = lc.flux.value
     flux_err = lc.flux_err.value
     if transit_and_poly_fit == True:
-        (
-            flux_model,
-            transit_model,
-            polynomial_model,
-        ) = no_ring_transit_and_polynomialfit(
+        flux_model,transit_model,polynomial_model = no_ring_transit_and_polynomialfit(
             res.params, t, flux, flux_err, p_names, return_model=True
-        )
+            )
     else:
         flux_model = no_ring_transitfit(
             res.params, t, flux, flux_err, p_names, return_model=True
@@ -329,11 +346,11 @@ def clip_outliers(res, lc, outliers, t0list, t0errlist, folded_lc=False, transit
             try:
                 outliers = vstack(outliers)
                 os.makedirs(
-                    "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/theta_0.8/folded_lc/outliers",
+                    "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/folded_lc/outliers",
                     exist_ok=True,
                 )
                 outliers.write(
-                    f"/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/theta_0.8/folded_lc/outliers/{TOInumber}.csv"
+                    f"/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/folded_lc/outliers/{TOInumber}.csv"
                 )
             except ValueError:
                 pass
@@ -382,22 +399,22 @@ def clip_outliers(res, lc, outliers, t0list, t0errlist, folded_lc=False, transit
 
             if transit_and_poly_fit == False:
                 os.makedirs(
-                    f"{homedir}/fitting_result/figure/simulation_TOI495.01/theta_0.8/each_lc/transit_fit/{TOInumber}",
+                    f"{homedir}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/each_lc/transit_fit/{TOInumber}",
                     exist_ok=True,
                 )
                 plt.savefig(
-                    f"{homedir}/fitting_result/figure/simulation_TOI495.01/theta_0.8/each_lc/transit_fit/{TOInumber}/{TOInumber}_{str(i)}.png",
+                    f"{homedir}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/each_lc/transit_fit/{TOInumber}/{TOInumber}_{str(i)}.png",
                     header=False,
                     index=False,
                 )
                 # plt.savefig(f'{homedir}/fitting_result/figure/each_lc/bls/{TOInumber}/{TOInumber}_{str(i)}.png', header=False, index=False)
             else:
                 os.makedirs(
-                    f"{homedir}/fitting_result/figure/simulation_TOI495.01/theta_0.8/each_lc/{savedir}/{TOInumber}",
+                    f"{homedir}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/each_lc/{savedir}/{TOInumber}",
                     exist_ok=True,
                 )
                 plt.savefig(
-                    f"{homedir}/fitting_result/figure/simulation_TOI495.01/theta_0.8/each_lc/{savedir}/{TOInumber}/{TOInumber}_{str(i)}.png",
+                    f"{homedir}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/each_lc/{savedir}/{TOInumber}/{TOInumber}_{str(i)}.png",
                     header=False,
                     index=False,
                 )
@@ -406,7 +423,7 @@ def clip_outliers(res, lc, outliers, t0list, t0errlist, folded_lc=False, transit
             t0list.append(res.params["t0"].value + mid_transit_time)
             t0errlist.append(res.params["t0"].stderr)
             outliers = []
-            lc.time = lc.time - res.params["t0"].value
+            #lc.time = lc.time - res.params["t0"].value
     else:
         print("outliers exist")
         # print('removed bins:', len(each_lc[mask]))
@@ -438,10 +455,10 @@ def curve_fitting(each_lc, duration, res=None):
     )
     result.plot()
     os.makedirs(
-        f"{homedir}/fitting_result/figure/simulation_TOI495.01/theta_0.8/curvefit/{TOInumber}", exist_ok=True
+        f"{homedir}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/curvefit/{TOInumber}", exist_ok=True
     )
     plt.savefig(
-        f"{homedir}/fitting_result/figure/simulation_TOI495.01/theta_0.8/curvefit/{TOInumber}/{TOInumber}_{str(i)}.png"
+        f"{homedir}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/curvefit/{TOInumber}/{TOInumber}_{str(i)}.png"
     )
     # os.makedirs(f'{homedir}/fitting_result/figure/curvefit/bls/{TOInumber}', exist_ok=True)
     # plt.savefig(f'{homedir}/fitting_result/figure/curvefit/bls/{TOInumber}/{TOInumber}_{str(i)}.png')
@@ -484,6 +501,7 @@ def folding_lc_from_csv(TOInumber, loaddir, savedir):
         pass
     cleaned_lc = vstack(each_lc_list)
     cleaned_lc.sort("time")
+
 
     while True:
         res = transit_fitting(
@@ -535,22 +553,23 @@ def folding_lc_from_csv(TOInumber, loaddir, savedir):
         zorder=2,
     )
     ax2.set_ylabel("residuals")
+    plt.title(np.sum((cleaned_lc.flux.value - flux_model/cleaned_lc.flux_err.value)**2))
     plt.tight_layout()
     os.makedirs(
-        f"/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/simulation_TOI495.01/theta_0.8/{savedir}",
+        f"/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/simulation_TOI495.01/kakerusin_likesap/{savedir}",
         exist_ok=True,
     )
     plt.savefig(
-        f"/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/simulation_TOI495.01/theta_0.8/{savedir}/{TOInumber}.png"
+        f"/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/simulation_TOI495.01/kakerusin_likesap/{savedir}/{TOInumber}.png"
     )
     # plt.show()
     plt.close()
     os.makedirs(
-        f"/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/theta_0.8/folded_lc/{savedir}",
+        f"/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/folded_lc/{savedir}",
         exist_ok=True,
     )
     cleaned_lc.write(
-        f"/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/theta_0.8/folded_lc/{savedir}/{TOInumber}.csv"
+        f"/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/folded_lc/{savedir}/{TOInumber}.csv"
     )
     
 
@@ -565,7 +584,7 @@ def make_simulation_data(mid_transit_time):
             "r_out", "norm2", "norm3", "ecosw", "esinw"]
 
     saturnlike_values = [0.26, 0.36, np.random.uniform(-0.05, 0.05), 1.27, 0.123, 3.81,
-            0.10, 1, 0.8*np.pi/180, 0, 1, 1.53,
+            0.10, 1, np.pi/6.74, 0, 1, 1.53,
             1.95, 0.0, 0.0, 0.0, 0.0]
 
     mins = [0.0, 0.0, -0.1, 0.0, 0.01, 1.0,
@@ -591,17 +610,17 @@ def make_simulation_data(mid_transit_time):
     plt.errorbar(each_lc.time.value, each_lc.flux.value, each_lc.flux_err.value, fmt='.k')
     #plt.show()
     os.makedirs(
-                f"{homedir}/fitting_result/figure/simulation_TOI495.01/theta_0.8/before_process/each_lc",
+                f"{homedir}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/before_process/each_lc",
                 exist_ok=True,
             )
-    plt.savefig(f"{homedir}/fitting_result/figure/simulation_TOI495.01/theta_0.8/before_process/each_lc/{i}.png")
+    plt.savefig(f"{homedir}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/before_process/each_lc/{i}.png")
     #plt.show()
     plt.close()
     os.makedirs(
-                f"{homedir}/fitting_result/data/simulation_TOI495.01/theta_0.8/before_process/each_lc",
+                f"{homedir}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/before_process/each_lc",
                 exist_ok=True,
             )
-    each_lc.write(f"{homedir}/fitting_result/data/simulation_TOI495.01/theta_0.8/before_process/each_lc/{i}.csv")
+    each_lc.write(f"{homedir}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/before_process/each_lc/{i}.csv")
 
     return each_lc
 
@@ -649,19 +668,19 @@ def ring_model(t, pdic, mcmc_pvalues=None):
 def save_each_lc(each_lc, savedir):
     each_lc.errorbar()
     os.makedirs(
-        f"{homedir}/fitting_result/figure/simulation_TOI495.01/theta_0.8/each_lc/after_curvefit/{TOInumber}",
+        f"{homedir}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/each_lc/after_curvefit/{TOInumber}",
         exist_ok=True,
     )
     plt.savefig(
-        f"{homedir}/fitting_result/figure/simulation_TOI495.01/theta_0.8/each_lc/after_curvefit/{TOInumber}/{TOInumber}_{str(i)}.png"
+        f"{homedir}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/each_lc/after_curvefit/{TOInumber}/{TOInumber}_{str(i)}.png"
     )
     plt.close()
     os.makedirs(
-        f"{homedir}/fitting_result/data/simulation_TOI495.01/theta_0.8/each_lc/{savedir}/{TOInumber}",
+        f"{homedir}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/each_lc/{savedir}/{TOInumber}",
         exist_ok=True,
     )
     each_lc.write(
-        f"{homedir}/fitting_result/data/simulation_TOI495.01/theta_0.8/each_lc/{savedir}/{TOInumber}/{TOInumber}_{str(i)}.csv"
+        f"{homedir}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/each_lc/{savedir}/{TOInumber}/{TOInumber}_{str(i)}.csv"
     )
 
 homedir = (
@@ -710,10 +729,13 @@ for TOI in [495.01]:
         print(f"preprocessing...epoch: {i}")
         mid_transit_time = transit_time + period*i
         transit_time_list.append(mid_transit_time)
-        each_lc = make_simulation_data(mid_transit_time)
-        #each_table = ascii.read(f"{homedir}/fitting_result/data/simulation_TOI495.01/theta_0.8/before_process/each_lc/{i}.csv")
-        #each_lc = lk.LightCurve(data=each_table)
+        #each_lc = make_simulation_data(mid_transit_time)
+        each_table = ascii.read(f"{homedir}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/before_process/each_lc/{i}.csv")
+        each_lc = lk.LightCurve(data=each_table)
         each_lc = each_lc.fold(period=period, epoch_time=mid_transit_time).normalize().remove_nans()
+        #each_lc = each_lc.fold(period=period, epoch_time=mid_transit_time).remove_nans()
+        #each_lc.flux = each_lc.flux/15000
+        #each_lc.flux_err = each_lc.flux_err/15000
 
 
         """外れ値除去と多項式フィッティングを外れ値が検知されなくなるまで繰り返す"""
@@ -731,16 +753,18 @@ for TOI in [495.01]:
                 transit_and_poly_fit=False,
                 savedir="1stloop",
             )
+            
             if len(outliers) == 0:
+                each_lc.time = each_lc.time - transit_res.params["t0"].value
                 save_each_lc(each_lc, "calc_t0")
                 break
 
         os.makedirs(
-            f"{homedir}/fitting_result/data/simulation_TOI495.01/theta_0.8/each_lc/modelresult/1stloop/{TOInumber}",
+            f"{homedir}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/each_lc/modelresult/1stloop/{TOInumber}",
             exist_ok=True,
         )
         with open(
-            f"{homedir}/fitting_result/data/simulation_TOI495.01/theta_0.8/each_lc/modelresult/1stloop/{TOInumber}/{TOInumber}_{str(i)}.txt",
+            f"{homedir}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/each_lc/modelresult/1stloop/{TOInumber}/{TOInumber}_{str(i)}.txt",
             "a",
         ) as f:
             print(lmfit.fit_report(transit_res), file=f)
@@ -752,7 +776,7 @@ for TOI in [495.01]:
     fold_res = folding_lc_from_csv(
         TOInumber,
         #loaddir=f"{homedir}/fitting_result/data/each_lc/calc_t0",
-        loaddir=f"{homedir}/fitting_result/data/simulation_TOI495.01/theta_0.8/each_lc/calc_t0",
+        loaddir=f"{homedir}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/each_lc/calc_t0",
         savedir="calc_t0_1stloop",
     )
     transit_time_list = np.array(transit_time_list)
@@ -768,9 +792,12 @@ for TOI in [495.01]:
     for i, mid_transit_time in enumerate(obs_t0_list):
     #for i in range(54):
         print(f"reprocessing...epoch: {i}")
-        each_table = ascii.read(f"{homedir}/fitting_result/data/simulation_TOI495.01/theta_0.8/before_process/each_lc/{i}.csv")
+        each_table = ascii.read(f"{homedir}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/before_process/each_lc/{i}.csv")
         each_lc = lk.LightCurve(data=each_table)
         each_lc = each_lc.fold(period=period, epoch_time=mid_transit_time).normalize().remove_nans()
+        #each_lc = each_lc.fold(period=period, epoch_time=mid_transit_time).remove_nans()
+        #each_lc.flux = each_lc.flux/15000
+        #each_lc.flux_err = each_lc.flux_err/15000
         """解析中断条件を満たさないかチェック"""
         data_survival_rate = calc_data_survival_rate(each_lc, duration)
         if data_survival_rate < 0.9:
@@ -778,11 +805,11 @@ for TOI in [495.01]:
                 ax = each_lc.errorbar()
                 ax.set_title(f"{data_survival_rate:4f} useable")
                 os.makedirs(
-                    f"{homedir}/fitting_result/figure/simulation_TOI495.01/theta_0.8/error_lc/under_90%_data/obs_t0/{TOInumber}",
+                    f"{homedir}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/error_lc/under_90%_data/obs_t0/{TOInumber}",
                     exist_ok=True,
                 )
                 plt.savefig(
-                    f"{homedir}/fitting_result/figure/simulation_TOI495.01/theta_0.8/error_lc/under_90%_data/obs_t0/{TOInumber}/{TOInumber}_{str(i)}.png"
+                    f"{homedir}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/error_lc/under_90%_data/obs_t0/{TOInumber}/{TOInumber}_{str(i)}.png"
                 )
                 plt.close()
             t0list.append(mid_transit_time)
@@ -794,20 +821,13 @@ for TOI in [495.01]:
         while True:
             transit_res = transit_fitting(each_lc, rp_rs, period)
             curvefit_res = curve_fitting(each_lc, duration, transit_res)
-            res = transit_fitting(
-                each_lc,
-                rp_rs,
-                period,
-                fitting_model=no_ring_transit_and_polynomialfit,
-                transitfit_params=fold_res.params,
-                curvefit_params=curvefit_res.params,
-            )
+            res = transit_fitting(each_lc,rp_rs,period,fitting_model=no_ring_transit_and_polynomialfit,transitfit_params=fold_res.params,curvefit_params=curvefit_res.params,)
             os.makedirs(
-                f"{homedir}/fitting_result/data/simulation_TOI495.01/theta_0.8/each_lc/modelresult/2ndloop/{TOInumber}",
+                f"{homedir}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/each_lc/modelresult/2ndloop/{TOInumber}",
                 exist_ok=True,
             )
             with open(
-                f"{homedir}/fitting_result/data/simulation_TOI495.01/theta_0.8/each_lc/modelresult/2ndloop/{TOInumber}/{TOInumber}_{str(i)}.txt",
+                f"{homedir}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/each_lc/modelresult/2ndloop/{TOInumber}/{TOInumber}_{str(i)}.txt",
                 "a",
             ) as f:
                 print(lmfit.fit_report(res), file=f)
@@ -821,8 +841,8 @@ for TOI in [495.01]:
                 savedir="2ndloop",
             )
             each_lc = curvefit_normalize(each_lc, res.params)
-
             if len(outliers) == 0:
+                #each_lc.time = each_lc.time - res.params["t0"].value
                 save_each_lc(each_lc, "obs_t0")
                 break
                 
@@ -834,16 +854,16 @@ for TOI in [495.01]:
     time.sleep(1)
     fold_res = folding_lc_from_csv(
         TOInumber,
-        loaddir=f"{homedir}/fitting_result/data/simulation_TOI495.01/theta_0.8/each_lc/obs_t0/",
+        loaddir=f"{homedir}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/each_lc/obs_t0/",
         savedir="obs_t0",
     )
     # fold_res = folding_lc_from_csv(TOInumber, loaddir=f'{homedir}/fitting_result/data/each_lc/calc_t0', savedir='calc_t0_2ndloop')
     os.makedirs(
-        f"{homedir}/fitting_result/data/simulation_TOI495.01/theta_0.8/folded_lc/modelresult/2ndloop/{TOInumber}",
+        f"{homedir}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/folded_lc/modelresult/2ndloop/{TOInumber}",
         exist_ok=True,
     )
     with open(
-        f"{homedir}/fitting_result/data/simulation_TOI495.01/theta_0.8/folded_lc/modelresult/2ndloop/{TOInumber}/{TOInumber}_folded.txt",
+        f"{homedir}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/folded_lc/modelresult/2ndloop/{TOInumber}/{TOInumber}_folded.txt",
         "a",
     ) as f:
         print(lmfit.fit_report(fold_res), file=f)
