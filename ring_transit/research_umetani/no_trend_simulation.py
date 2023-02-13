@@ -212,7 +212,7 @@ def no_ring_transit_and_polynomialfit(params, lc, p_names, return_model=False):
         ]
     )
     polynomialmodel = poly_model(t)
-    model = transit_model + polynomialmodel
+    model = transit_model * polynomialmodel
     # chi_square = np.sum(((flux - model) / flux_err) ** 2)
     # print(params)
     # print(chi_square)
@@ -514,7 +514,7 @@ def folding_lc_from_csv(loaddir):
     try:
         each_lc_list = []
         total_lc_csv = os.listdir(f"{loaddir}/")
-        total_lc_csv = [i for i in total_lc_csv if "TOI" in i]
+        total_lc_csv = [i for i in total_lc_csv if "csv" in i]
         for each_lc_csv in total_lc_csv:
             each_table = ascii.read(f"{loaddir}/{each_lc_csv}")
             each_lc = lk.LightCurve(data=each_table)
@@ -529,7 +529,9 @@ def folding_lc_from_csv(loaddir):
 
 def make_simulation_data(mid_transit_time):
     """make_simulation_data"""
-    t = np.linspace(-0.3, 0.3, 500)
+    t = np.linspace(
+        np.random.uniform(-0.31, -0.29), np.random.uniform(0.29, 0.31), 500
+    )
     names = [
         "q1",
         "q2",
@@ -553,14 +555,14 @@ def make_simulation_data(mid_transit_time):
     saturnlike_values = [
         0.26,
         0.36,
-        np.random.uniform(-0.05, 0.05),
-        1.27,
+        0,
+        period,
         0.123,
         3.81,
-        0.10,
+        0.00,
         1,
-        np.pi / 6.74,
-        0,
+        45 * np.pi / 180,
+        0 * np.pi / 180,
         1,
         1.53,
         1.95,
@@ -570,18 +572,25 @@ def make_simulation_data(mid_transit_time):
         0.0,
     ]
 
-    ###土星likeなTOI495.01のパラメータで作成したモデル###
+    # --土星likeなTOI495.01のパラメータで作成したモデル--#
     pdic_saturnlike = dict(zip(names, saturnlike_values))
     ymodel = (
         ring_model(t, pdic_saturnlike)
         * (1 + (np.sin((t / 0.6 + 1.2 * np.random.rand()) * np.pi) * 0.01))
         + np.random.randn(len(t)) * 0.001
     )
-    # ymodel = ring_model(t, pdic_saturnlike) + np.random.randn(len(t))*0.001 + np.sin( (t/0.6 +1.2*np.random.rand()) * np.pi)*0.01
+    ymodel = (
+        ring_model(t, pdic_saturnlike)
+        + np.random.randn(len(t)) * 0.001
+        + np.sin((t / 0.6 + 1.2 * np.random.rand()) * np.pi) * 0.01
+    )
     ymodel = ymodel * 15000
     yerr = np.array(t / t) * 1e-3 * 15000
     each_lc = lk.LightCurve(t, ymodel, yerr)
-    each_lc.time = each_lc.time + mid_transit_time  # + np.random.randn()*0.01
+
+    each_lc.time = (
+        each_lc.time + mid_transit_time
+    )  # + np.random.randn() * 0.01
 
     return each_lc
 
@@ -658,31 +667,92 @@ def ring_model(t, pdic, mcmc_pvalues=None):
     return model_flux
 
 
-def save_each_lc(each_lc, savedir):
-    each_lc.errorbar()
+def ringfit(i, lc):
+    # binned_lc = lc.bin(bins=500).normalize().remove_nans()
+    binned_lc = lc
+    t = binned_lc.time.value
+    flux_data = binned_lc.flux.value
+    flux_err_data = binned_lc.flux_err.value
+
+    names = [
+        "q1",
+        "q2",
+        "t0",
+        "porb",
+        "rp_rs",
+        "a_rs",
+        "b",
+        "norm",
+        "theta",
+        "phi",
+        "tau",
+        "r_in",
+        "r_out",
+        "norm2",
+        "norm3",
+        "ecosw",
+        "esinw",
+    ]
+
+    saturnlike_values = [
+        0.26,
+        0.36,
+        0,
+        period,
+        0.123,
+        3.81,
+        0.00,
+        1,
+        45 * np.pi / 180,
+        0 * np.pi / 180,
+        1,
+        1.53,
+        1.95,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+    ]
+
+    pdic = dict(zip(names, saturnlike_values))
+
+    fig = plt.figure()
+    ax_lc = fig.add_subplot(2, 1, 1)  # for plotting transit model and data
+    ax_re = fig.add_subplot(2, 1, 2)  # for plotting residuals
+    ring_flux_model = ring_model(t, pdic, mcmc_pvalues=None)
+    # binned_lc.errorbar(ax=ax_lc)
+    ax_lc.errorbar(t, flux_data, flux_err_data)
+    ax_lc.plot(t, ring_flux_model, label="Model w/ ring", color="blue")
+    residuals_ring = binned_lc - ring_flux_model
+    residuals_ring.plot(
+        ax=ax_re, color="blue", alpha=0.3, marker=".", zorder=1
+    )
+    ax_re.plot(t, np.zeros(len(t)), color="black", zorder=2)
+    ax_re.set_ylim(-0.002, 0.002)
+    ax_lc.legend()
+    ax_lc.set_title(
+        f"w/ chisq:{np.sum(((flux_data-ring_flux_model)/flux_err_data)**2):.0f}/{len(binned_lc)}"
+    )
+    # ax_lc.set_title(f'w/ AIC:{ring_res.aic:.2f} w/o AIC:{no_ring_res.aic:.2f}')
+    plt.tight_layout()
     os.makedirs(
-        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/each_lc/after_curvefit/{TOInumber}",
+        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/badass/",
         exist_ok=True,
     )
     plt.savefig(
-        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/each_lc/after_curvefit/{TOInumber}/{TOInumber}_{str(i)}.png"
+        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/badass/{i}.png"
     )
+    plt.show()
     plt.close()
-    os.makedirs(
-        f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/each_lc/{savedir}/{TOInumber}",
-        exist_ok=True,
-    )
-    each_lc.write(
-        f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/each_lc/{savedir}/{TOInumber}/{TOInumber}_{str(i)}.csv"
-    )
+    pdb.set_trace()
 
 
 """定数の定義"""
 HOMEDIR = (
     "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani"
 )
-SAVE_BEFOREPROCESS_LC_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/before_process"
-SAVE_BEFOREPROCESS_LC_DATA_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/before_process"
+SAVE_BEFOREPROCESS_LC_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/before_process"
+SAVE_BEFOREPROCESS_LC_DATA_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/before_process"
 EPOCH_NUM = 54
 
 oridf = pd.read_csv(f"{HOMEDIR}/exofop_tess_tois.csv")
@@ -691,172 +761,104 @@ df = df.sort_values("Planet SNR", ascending=False)
 df["TOI"] = df["TOI"].astype(str)
 TOIlist = df["TOI"]
 
-for TOI in [495.01]:
-    print("analysing: ", "TOI" + str(TOI))
-    TOI = str(TOI)
+TOI = 495.01
+print("analysing: ", "TOI" + str(TOI))
+TOI = str(TOI)
 
-    """惑星、主星の各パラメータを取得"""
-    param_df = df[df["TOI"] == TOI]
-    TOInumber = "TOI" + str(param_df["TOI"].values[0])
-    duration = param_df["Duration (hours)"].values[0] / 24
-    period = param_df["Period (days)"].values[0]
-    transit_time = (
-        param_df["Transit Epoch (BJD)"].values[0] - 2457000.0
-    )  # translate BTJD
-    transit_time_error = param_df["Transit Epoch error"].values[0]
-    rp = (
-        param_df["Planet Radius (R_Earth)"].values[0] * 0.00916794
-    )  # translate to Rsun
-    rs = param_df["Stellar Radius (R_Sun)"].values[0]
-    rp_rs = rp / rs
+"""惑星、主星の各パラメータを取得"""
+param_df = df[df["TOI"] == TOI]
+TOInumber = "TOI" + str(param_df["TOI"].values[0])
+duration = param_df["Duration (hours)"].values[0] / 24
+period = param_df["Period (days)"].values[0]
+transit_time = (
+    param_df["Transit Epoch (BJD)"].values[0] - 2457000.0
+)  # translate BTJD
+transit_time_error = param_df["Transit Epoch error"].values[0]
+rp = (
+    param_df["Planet Radius (R_Earth)"].values[0] * 0.00916794
+)  # translate to Rsun
+rs = param_df["Stellar Radius (R_Sun)"].values[0]
+rp_rs = rp / rs
 
-    """"保存場所のセッティング"""
-    SAVE_CURVEFIT_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/curvefit/{TOInumber}"
-    SAVE_TRANSITFIT_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/each_lc/transit_fit/{TOInumber}"
-    SAVE_TRANSIT_POLYFIT_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/each_lc/transit_and_polyfit/{TOInumber}"
-    SAVE_1STPROCESS_LC_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/each_lc/after_curvefit/{TOInumber}"
-    SAVE_1STPROCESS_LC_DATA_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/each_lc/calc_t0/{TOInumber}"
-    SAVE_1STMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/each_lc/modelresult/1stloop/{TOInumber}"
-    SAVE_1STFOLDMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/folded_lc/modelresult/1stloop/{TOInumber}"
-    SAVE_1STFOLD_LC_DIR = "/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/simulation_TOI495.01/kakerusin_likesap/calc_t0"
-    SAVE_1STFOLD_LC_DATA_DIR = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/folded_lc/calc_t0"
-    SAVE_2NDMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/each_lc/modelresult/2ndloop/{TOInumber}"
-    SAVE_2NDPROCESS_LC_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/each_lc/after_curvefit/{TOInumber}"
-    SAVE_2NDPROCESS_LC_DATA_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/each_lc/obs_t0/{TOInumber}"
-    SAVE_2NDFOLD_LC_DIR = "/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/simulation_TOI495.01/kakerusin_likesap/obs_t0"
-    SAVE_2NDFOLD_LC_DATA_DIR = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/folded_lc/obs_t0"
-    SAVE_2NDFOLDMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/folded_lc/modelresult/2ndloop/{TOInumber}"
-    """各エポックで外れ値除去と多項式フィッティング"""
-    # 値を格納するリストの定義
-    outliers = []
-    t0list = []
-    t0errlist = []
-    num_list = np.arange(EPOCH_NUM)
-    transit_time_list = [transit_time + period * i for i in range(EPOCH_NUM)]
-    # ax = lc.scatter()
-    for i, mid_transit_time in enumerate(transit_time_list):
-        print(f"preprocessing...epoch: {i}")
+""""保存場所のセッティング"""
+SAVE_CURVEFIT_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/curvefit/{TOInumber}"
+SAVE_TRANSITFIT_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/each_lc/transit_fit/{TOInumber}"
+SAVE_TRANSIT_POLYFIT_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/each_lc/transit_and_polyfit/{TOInumber}"
+SAVE_1STPROCESS_LC_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/each_lc/after_curvefit/{TOInumber}"
+SAVE_1STPROCESS_LC_DATA_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/each_lc/calc_t0/{TOInumber}"
+SAVE_1STMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/each_lc/modelresult/1stloop/{TOInumber}"
+SAVE_1STFOLDMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/folded_lc/modelresult/1stloop/{TOInumber}"
+SAVE_1STFOLD_LC_DIR = "/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/calc_t0"
+SAVE_1STFOLD_LC_DATA_DIR = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/folded_lc/calc_t0"
+SAVE_2NDMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/each_lc/modelresult/2ndloop/{TOInumber}"
+SAVE_2NDPROCESS_LC_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/each_lc/after_curvefit/{TOInumber}"
+SAVE_2NDPROCESS_LC_DATA_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/each_lc/obs_t0/{TOInumber}"
+SAVE_2NDFOLD_LC_DIR = "/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/obs_t0"
+SAVE_2NDFOLD_LC_DATA_DIR = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/folded_lc/obs_t0"
+SAVE_2NDFOLDMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/folded_lc/modelresult/2ndloop/{TOInumber}"
 
-        each_lc = make_simulation_data(mid_transit_time)
-        plot_lc = PlotLightcurve(
-            savedir=SAVE_BEFOREPROCESS_LC_DIR, savefile=f"{i}.png", lc=each_lc
-        )
-        plot_lc.plot_lightcurve()
-        plot_lc.save()
-        os.makedirs(SAVE_BEFOREPROCESS_LC_DATA_DIR, exist_ok=True)
-        each_lc.write(f"{SAVE_BEFOREPROCESS_LC_DATA_DIR}/{i}.csv")
 
-        # each_table = ascii.read(f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/before_process/each_lc/{i}.csv")
-        # each_lc = lk.LightCurve(data=each_table)
-        each_lc = (
-            each_lc.fold(period=period, epoch_time=mid_transit_time)
-            .normalize()
-            .remove_nans()
-        )
+# folded_lc = folding_lc_from_csv(SAVE_BEFOREPROCESS_LC_DATA_DIR)
+# folded_lc.write(f"{SAVE_2NDFOLD_LC_DATA_DIR}/{TOInumber}.csv", overwrite=True)
+# pdb.set_trace()
 
-        """外れ値除去と多項式フィッティングを外れ値が検知されなくなるまで繰り返す"""
-        while True:
-            # curvefitを正確にするためtransitfitでt0を求めておく
-            transit_res = transit_fitting(each_lc, rp_rs, period)
-            curvefit_res = curve_fitting(each_lc, duration, transit_res)
-            plot_lc = PlotCurvefit(
-                savedir=SAVE_CURVEFIT_DIR,
-                savefile=f"{TOInumber}_{str(i)}.png",
-                lc=each_lc,
-                fit_res=curvefit_res,
-            )
-            plot_lc.plot()
-            plot_lc.save()
 
-            each_lc = curvefit_normalize(each_lc, curvefit_res.params)
-            transit_res = transit_fitting(each_lc, rp_rs, period)
-            transit_model = no_ring_transitfit(
-                transit_res.params, each_lc, p_names, return_model=True
-            )
-            outlier_bools = detect_outliers(each_lc, transit_model)
-            inverse_mask = np.logical_not(outlier_bools)
-            if np.all(inverse_mask):
-                plot_lc = PlotLightcurveWithModel(
-                    savedir=SAVE_TRANSITFIT_DIR,
-                    savefile=f"{TOInumber}_{str(i)}.png",
-                    lc=each_lc,
-                    model={"fitting model": (transit_model, "black")},
-                    outliers=outliers,
-                )
-                plot_lc.plot_lightcurve()
-                plot_lc.plot_model()
-                plot_lc.plot_residuals()
-                plot_lc.plot_outliers()
-                plot_lc.configs()
-                plot_lc.save()
+"""各エポックで外れ値除去と多項式フィッティング"""
+# 値を格納するリストの定義
+outliers = []
+t0list = []
+t0errlist = []
+num_list = np.arange(EPOCH_NUM)
+transit_time_list = [transit_time + period * i for i in range(EPOCH_NUM)]
+# ax = lc.scatter()
 
-                each_lc.time = each_lc.time - transit_res.params["t0"].value
-                plot_after1stloop_lc = PlotLightcurve(
-                    savedir=SAVE_1STPROCESS_LC_DIR,
-                    savefile=f"{TOInumber}_{str(i)}.png",
-                    lc=each_lc,
-                )
-                plot_after1stloop_lc.plot_lightcurve()
-                plot_after1stloop_lc.save()
-                os.makedirs(SAVE_1STPROCESS_LC_DATA_DIR, exist_ok=True)
-                each_lc.write(
-                    f"{SAVE_1STPROCESS_LC_DATA_DIR}/{TOInumber}_{str(i)}.csv"
-                )
-                # save_each_lc(each_lc, "calc_t0")
-                # t0のズレを補正したmidtransittimelistを作るためt0list,t0errlistそれぞれappend
-                t0list.append(
-                    transit_res.params["t0"].value + mid_transit_time
-                )
-                t0errlist.append(transit_res.params["t0"].stderr)
+for i, mid_transit_time in enumerate(transit_time_list):
+    print(f"preprocessing...epoch: {i}")
 
-                outliers = []
-
-                break
-            else:
-                outliers.append(each_lc[outlier_bools])
-                each_lc = clip_outliers(
-                    each_lc,
-                    outlier_bools,
-                )
-
-        os.makedirs(SAVE_1STMODELFIT_DIR, exist_ok=True)
-        with open(
-            f"{SAVE_1STMODELFIT_DIR}/{TOInumber}_{str(i)}.txt",
-            "a",
-        ) as f:
-            print(lmfit.fit_report(transit_res), file=f)
-    # plt.show()
-    # import pdb;pdb.set_trace()
-    """folded_lcに対してtransit fitting & remove outliers. transit parametersを得る"""
-    print("folding and calculate duration...")
-    time.sleep(1)
-    """
-    fold_res = folding_lc_from_csv(
-        TOInumber,
-        #loaddir=f"{HOMEDIR}/fitting_result/data/each_lc/calc_t0",
-        loaddir=f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/each_lc/calc_t0",
-        savedir="calc_t0_1stloop",
+    each_lc = make_simulation_data(mid_transit_time)
+    plot_lc = PlotLightcurve(
+        savedir=SAVE_BEFOREPROCESS_LC_DIR, savefile=f"{i}.png", lc=each_lc
     )
-    """
-    folded_lc = folding_lc_from_csv(
-        loaddir=SAVE_1STPROCESS_LC_DATA_DIR,
+    plot_lc.plot_lightcurve()
+    plot_lc.save()
+    os.makedirs(SAVE_BEFOREPROCESS_LC_DATA_DIR, exist_ok=True)
+    each_lc.write(f"{SAVE_BEFOREPROCESS_LC_DATA_DIR}/{i}.csv", overwrite=True)
+    # each_table = ascii.read(f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/before_process/{i}.csv")
+    # each_lc = lk.LightCurve(data=each_table)
+
+    each_lc = (
+        each_lc.fold(period=period, epoch_time=mid_transit_time)
+        .normalize()
+        .remove_nans()
     )
 
-    outliers = []
+    # each_lc = each_lc.remove_nans()
+    """外れ値除去と多項式フィッティングを外れ値が検知されなくなるまで繰り返す"""
     while True:
-        fold_res = transit_fitting(
-            folded_lc, rp_rs, period, fitting_model=no_ring_transitfit
+        # curvefitを正確にするためtransitfitでt0を求めておく
+        transit_res = transit_fitting(each_lc, rp_rs, period)
+        curvefit_res = curve_fitting(each_lc, duration, transit_res)
+        plot_lc = PlotCurvefit(
+            savedir=SAVE_CURVEFIT_DIR,
+            savefile=f"{TOInumber}_{str(i)}.png",
+            lc=each_lc,
+            fit_res=curvefit_res,
         )
+        plot_lc.plot()
+        plot_lc.save()
+
+        each_lc = curvefit_normalize(each_lc, curvefit_res.params)
+        transit_res = transit_fitting(each_lc, rp_rs, period)
         transit_model = no_ring_transitfit(
-            fold_res.params, folded_lc, p_names, return_model=True
+            transit_res.params, each_lc, p_names, return_model=True
         )
-        outlier_bools = detect_outliers(folded_lc, transit_model)
+        outlier_bools = detect_outliers(each_lc, transit_model)
         inverse_mask = np.logical_not(outlier_bools)
         if np.all(inverse_mask):
             plot_lc = PlotLightcurveWithModel(
-                savedir=SAVE_1STFOLD_LC_DIR,
-                savefile=f"{TOInumber}.png",
-                lc=folded_lc,
+                savedir=SAVE_TRANSITFIT_DIR,
+                savefile=f"{TOInumber}_{str(i)}.png",
+                lc=each_lc,
                 model={"fitting model": (transit_model, "black")},
                 outliers=outliers,
             )
@@ -867,188 +869,265 @@ for TOI in [495.01]:
             plot_lc.configs()
             plot_lc.save()
 
-            os.makedirs(SAVE_1STFOLD_LC_DATA_DIR, exist_ok=True)
-            folded_lc.write(f"{SAVE_1STFOLD_LC_DATA_DIR}/{TOInumber}.csv")
-            os.makedirs(SAVE_1STFOLDMODELFIT_DIR, exist_ok=True)
-            with open(
-                f"{SAVE_1STFOLDMODELFIT_DIR}/{TOInumber}_folded.txt",
-                "a",
-            ) as f:
-                print(lmfit.fit_report(fold_res), file=f)
+            each_lc.time = each_lc.time - transit_res.params["t0"].value
+            plot_after1stloop_lc = PlotLightcurve(
+                savedir=SAVE_1STPROCESS_LC_DIR,
+                savefile=f"{TOInumber}_{str(i)}.png",
+                lc=each_lc,
+            )
+            plot_after1stloop_lc.plot_lightcurve()
+            plot_after1stloop_lc.save()
+            os.makedirs(SAVE_1STPROCESS_LC_DATA_DIR, exist_ok=True)
+            each_lc.write(
+                f"{SAVE_1STPROCESS_LC_DATA_DIR}/{TOInumber}_{str(i)}.csv",
+                overwrite=True,
+            )
+            # save_each_lc(each_lc, "calc_t0")
+            # t0のズレを補正したmidtransittimelistを作るためt0list,t0errlistそれぞれappend
+            t0list.append(transit_res.params["t0"].value + mid_transit_time)
+            t0errlist.append(transit_res.params["t0"].stderr)
+
+            outliers = []
+
             break
         else:
-            outliers.append(folded_lc[outlier_bools])
-            folded_lc = clip_outliers(
-                folded_lc,
+            outliers.append(each_lc[outlier_bools])
+            each_lc = clip_outliers(
+                each_lc,
                 outlier_bools,
             )
-    transit_time_list = np.array(transit_time_list)
-    # _, _ = calc_obs_transit_time(t0list, t0errlist, num_list, transit_time_list, transit_time_error)
-    """fittingで得たtransit time listを反映"""
-    obs_t0_list = t0list
-    outliers = []
-    t0list = []
-    t0errlist = []
-    num_list = []
 
-    """transit parametersをfixして、baseline,t0を決める"""
-    for i, mid_transit_time in enumerate(obs_t0_list):
-        print(f"reprocessing...epoch: {i}")
-        each_table = ascii.read(f"{SAVE_BEFOREPROCESS_LC_DATA_DIR}/{i}.csv")
-        each_lc = lk.LightCurve(data=each_table)
-        each_lc = (
-            each_lc.fold(period=period, epoch_time=mid_transit_time)
-            .normalize()
-            .remove_nans()
+    os.makedirs(SAVE_1STMODELFIT_DIR, exist_ok=True)
+    with open(
+        f"{SAVE_1STMODELFIT_DIR}/{TOInumber}_{str(i)}.txt",
+        "a",
+    ) as f:
+        print(lmfit.fit_report(transit_res), file=f)
+
+    # ringfit(i, each_lc)
+# plt.show()
+# pdb.set_trace()
+"""folded_lcに対してtransit fitting & remove outliers. transit parametersを得る"""
+print("folding and calculate duration...")
+time.sleep(1)
+folded_lc = folding_lc_from_csv(
+    loaddir=SAVE_1STPROCESS_LC_DATA_DIR,
+)
+
+outliers = []
+while True:
+    fold_res = transit_fitting(
+        folded_lc, rp_rs, period, fitting_model=no_ring_transitfit
+    )
+    transit_model = no_ring_transitfit(
+        fold_res.params, folded_lc, p_names, return_model=True
+    )
+    outlier_bools = detect_outliers(folded_lc, transit_model)
+    inverse_mask = np.logical_not(outlier_bools)
+    if np.all(inverse_mask):
+        plot_lc = PlotLightcurveWithModel(
+            savedir=SAVE_1STFOLD_LC_DIR,
+            savefile=f"{TOInumber}.png",
+            lc=folded_lc,
+            model={"fitting model": (transit_model, "black")},
+            outliers=outliers,
         )
-        """解析中断条件を満たさないかチェック"""
-        data_survival_rate = calc_data_survival_rate(each_lc, duration)
-        if data_survival_rate < 0.9:
-            if data_survival_rate != 0.0:
-                ax = each_lc.errorbar()
-                ax.set_title(f"{data_survival_rate:4f} useable")
-                os.makedirs(
-                    f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/error_lc/under_90%_data/obs_t0/{TOInumber}",
-                    exist_ok=True,
-                )
-                plt.savefig(
-                    f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/error_lc/under_90%_data/obs_t0/{TOInumber}/{TOInumber}_{str(i)}.png"
-                )
-                plt.close()
-            t0list.append(mid_transit_time)
-            t0errlist.append(np.nan)
-            continue
-        else:
-            num_list.append(i)
+        plot_lc.plot_lightcurve()
+        plot_lc.plot_model()
+        plot_lc.plot_residuals()
+        plot_lc.plot_outliers()
+        plot_lc.configs()
+        plot_lc.save()
 
-        while True:
-            # curvefitを正確に行うために1回transitfitしている
-            transit_res = transit_fitting(each_lc, rp_rs, period)
-            # 初期値を得るためのcurvefit
-            curvefit_res = curve_fitting(each_lc, duration, transit_res)
-            curvefit_res.params["c0"].set(
-                value=curvefit_res.params["c0"].value - 1
+        os.makedirs(SAVE_1STFOLD_LC_DATA_DIR, exist_ok=True)
+        folded_lc.write(
+            f"{SAVE_1STFOLD_LC_DATA_DIR}/{TOInumber}.csv", overwrite=True
+        )
+        os.makedirs(SAVE_1STFOLDMODELFIT_DIR, exist_ok=True)
+        with open(
+            f"{SAVE_1STFOLDMODELFIT_DIR}/{TOInumber}_folded.txt",
+            "a",
+        ) as f:
+            print(lmfit.fit_report(fold_res), file=f)
+        break
+    else:
+        outliers.append(folded_lc[outlier_bools])
+        folded_lc = clip_outliers(
+            folded_lc,
+            outlier_bools,
+        )
+
+transit_time_list = np.array(transit_time_list)
+# _, _ = calc_obs_transit_time(t0list, t0errlist, num_list, transit_time_list, transit_time_error)
+"""fittingで得たtransit time listを反映"""
+obs_t0_list = t0list
+outliers = []
+t0list = []
+t0errlist = []
+num_list = []
+
+"""transit parametersをfixして、baseline,t0を決める"""
+for i, mid_transit_time in enumerate(obs_t0_list):
+    print(f"reprocessing...epoch: {i}")
+    each_table = ascii.read(f"{SAVE_BEFOREPROCESS_LC_DATA_DIR}/{i}.csv")
+    each_lc = lk.LightCurve(data=each_table)
+    each_lc = (
+        each_lc.fold(period=period, epoch_time=mid_transit_time)
+        .normalize()
+        .remove_nans()
+    )
+    """解析中断条件を満たさないかチェック"""
+    data_survival_rate = calc_data_survival_rate(each_lc, duration)
+    if data_survival_rate < 0.9:
+        if data_survival_rate != 0.0:
+            ax = each_lc.errorbar()
+            ax.set_title(f"{data_survival_rate:4f} useable")
+            os.makedirs(
+                f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/error_lc/under_90%_data/obs_t0/{TOInumber}",
+                exist_ok=True,
             )
-            res = transit_fitting(
+            plt.savefig(
+                f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_likesap/error_lc/under_90%_data/obs_t0/{TOInumber}/{TOInumber}_{str(i)}.png"
+            )
+            plt.close()
+        t0list.append(mid_transit_time)
+        t0errlist.append(np.nan)
+        continue
+    else:
+        num_list.append(i)
+
+    while True:
+        # curvefitを正確に行うために1回transitfitしている
+        transit_res = transit_fitting(each_lc, rp_rs, period)
+        # 初期値を得るためのcurvefit
+        curvefit_res = curve_fitting(each_lc, duration, transit_res)
+
+        res = transit_fitting(
+            each_lc,
+            rp_rs,
+            period,
+            fitting_model=no_ring_transit_and_polynomialfit,
+            transitfit_params=fold_res.params,
+            curvefit_params=curvefit_res.params,
+        )
+        (
+            flux_model,
+            transit_model,
+            polynomial_model,
+        ) = no_ring_transit_and_polynomialfit(
+            res.params, each_lc, p_names, return_model=True
+        )
+        outlier_bools = detect_outliers(each_lc, flux_model)
+        inverse_mask = np.logical_not(outlier_bools)
+        if np.all(inverse_mask):
+            # each_lc.time = each_lc.time - res.params["t0"].value
+            plot_lc = PlotLightcurveWithModel(
+                savedir=SAVE_TRANSIT_POLYFIT_DIR,
+                savefile=f"{TOInumber}_{str(i)}.png",
+                lc=each_lc,
+                outliers=outliers,
+                model={
+                    "transit model": (transit_model, "blue"),
+                    "polynomial model": (polynomial_model + 1, "red"),
+                    "fitting model": (flux_model, "black"),
+                },
+            )
+            plot_lc.plot_lightcurve()
+            plot_lc.plot_model()
+            plot_lc.plot_residuals()
+            plot_lc.plot_outliers()
+            plot_lc.configs()
+            plot_lc.save()
+
+            each_lc = curvefit_normalize(each_lc, res.params)
+            each_lc.time = each_lc.time - res.params["t0"].value
+            plot_after2ndloop_lc = PlotLightcurve(
+                savedir=SAVE_2NDPROCESS_LC_DIR,
+                savefile=f"{TOInumber}_{str(i)}.png",
+                lc=each_lc,
+            )
+            plot_after2ndloop_lc.plot_lightcurve()
+            plot_after2ndloop_lc.save()
+            os.makedirs(SAVE_2NDPROCESS_LC_DATA_DIR, exist_ok=True)
+            each_lc.write(
+                f"{SAVE_2NDPROCESS_LC_DATA_DIR}/{TOInumber}_{str(i)}.csv",
+                overwrite=True,
+            )
+            # save_each_lc(each_lc, "obs_t0")
+            outliers = []
+            break
+        else:
+            outliers.append(each_lc[outlier_bools])
+            each_lc = clip_outliers(
                 each_lc,
-                rp_rs,
-                period,
-                fitting_model=no_ring_transit_and_polynomialfit,
-                transitfit_params=fold_res.params,
-                curvefit_params=curvefit_res.params,
+                outlier_bools,
             )
-            (
-                flux_model,
-                transit_model,
-                polynomial_model,
-            ) = no_ring_transit_and_polynomialfit(
-                res.params, each_lc, p_names, return_model=True
-            )
-            outlier_bools = detect_outliers(each_lc, flux_model)
-            inverse_mask = np.logical_not(outlier_bools)
-            if np.all(inverse_mask):
-                # each_lc.time = each_lc.time - res.params["t0"].value
-                plot_lc = PlotLightcurveWithModel(
-                    savedir=SAVE_TRANSIT_POLYFIT_DIR,
-                    savefile=f"{TOInumber}_{str(i)}.png",
-                    lc=each_lc,
-                    outliers=outliers,
-                    model={
-                        "transit model": (transit_model, "blue"),
-                        "polynomial model": (polynomial_model + 1, "red"),
-                        "fitting model": (flux_model, "black"),
-                    },
-                )
-                plot_lc.plot_lightcurve()
-                plot_lc.plot_model()
-                plot_lc.plot_residuals()
-                plot_lc.plot_outliers()
-                plot_lc.configs()
-                plot_lc.save()
-                res.params["c0"].set(value=res.params["c0"].value + 1)
-                each_lc = curvefit_normalize(each_lc, res.params)
-                each_lc.time = each_lc.time - res.params["t0"].value
-                plot_after2ndloop_lc = PlotLightcurve(
-                    savedir=SAVE_2NDPROCESS_LC_DIR,
-                    savefile=f"{TOInumber}_{str(i)}.png",
-                    lc=each_lc,
-                )
-                plot_after2ndloop_lc.plot_lightcurve()
-                plot_after2ndloop_lc.save()
-                os.makedirs(SAVE_2NDPROCESS_LC_DATA_DIR, exist_ok=True)
-                each_lc.write(
-                    f"{SAVE_2NDPROCESS_LC_DATA_DIR}/{TOInumber}_{str(i)}.csv"
-                )
-                # save_each_lc(each_lc, "obs_t0")
-                outliers = []
-                break
-            else:
-                outliers.append(each_lc[outlier_bools])
-                each_lc = clip_outliers(
-                    each_lc,
-                    outlier_bools,
-                )
+    os.makedirs(
+        SAVE_2NDMODELFIT_DIR,
+        exist_ok=True,
+    )
+    with open(
+        f"{SAVE_2NDMODELFIT_DIR}/{TOInumber}_{str(i)}.txt",
+        "a",
+    ) as f:
+        print(lmfit.fit_report(res), file=f)
+
+    # ringfit(i, each_lc)
+
+"""最終的なfolded_lcを生成する。"""
+print("refolding...")
+time.sleep(1)
+folded_lc = folding_lc_from_csv(
+    loaddir=SAVE_2NDPROCESS_LC_DATA_DIR,
+)
+outliers = []
+while True:
+    fold_res = transit_fitting(
+        folded_lc, rp_rs, period, fitting_model=no_ring_transitfit
+    )
+    transit_model = no_ring_transitfit(
+        fold_res.params, folded_lc, p_names, return_model=True
+    )
+    outlier_bools = detect_outliers(folded_lc, transit_model)
+    inverse_mask = np.logical_not(outlier_bools)
+    if np.all(inverse_mask):
+        # save result
+        plot_lc = PlotLightcurveWithModel(
+            savedir=SAVE_2NDFOLD_LC_DIR,
+            savefile=f"{TOInumber}.png",
+            lc=folded_lc,
+            model={"fitting model": (transit_model, "black")},
+            outliers=outliers,
+        )
+        plot_lc.plot_lightcurve()
+        plot_lc.plot_model()
+        plot_lc.plot_residuals()
+        plot_lc.plot_outliers()
+        plot_lc.configs()
+        plot_lc.save()
+
+        os.makedirs(SAVE_2NDFOLD_LC_DATA_DIR, exist_ok=True)
+        folded_lc.write(
+            f"{SAVE_2NDFOLD_LC_DATA_DIR}/{TOInumber}.csv", overwrite=True
+        )
         os.makedirs(
-            SAVE_2NDMODELFIT_DIR,
+            SAVE_2NDFOLDMODELFIT_DIR,
             exist_ok=True,
         )
         with open(
-            f"{SAVE_2NDMODELFIT_DIR}/{TOInumber}_{str(i)}.txt",
+            f"{SAVE_2NDFOLDMODELFIT_DIR}/{TOInumber}_folded.txt",
             "a",
         ) as f:
-            print(lmfit.fit_report(res), file=f)
-
-    """最終的なfolded_lcを生成する。"""
-    print("refolding...")
-    time.sleep(1)
-    folded_lc = folding_lc_from_csv(
-        loaddir=SAVE_2NDPROCESS_LC_DATA_DIR,
-    )
-    outliers = []
-    while True:
-        fold_res = transit_fitting(
-            folded_lc, rp_rs, period, fitting_model=no_ring_transitfit
+            print(lmfit.fit_report(fold_res), file=f)
+        break
+    else:
+        outliers.append(folded_lc[outlier_bools])
+        folded_lc = clip_outliers(
+            folded_lc,
+            outlier_bools,
         )
-        transit_model = no_ring_transitfit(
-            fold_res.params, folded_lc, p_names, return_model=True
-        )
-        outlier_bools = detect_outliers(folded_lc, transit_model)
-        inverse_mask = np.logical_not(outlier_bools)
-        if np.all(inverse_mask):
-            # save result
-            plot_lc = PlotLightcurveWithModel(
-                savedir=SAVE_2NDFOLD_LC_DIR,
-                savefile=f"{TOInumber}.png",
-                lc=folded_lc,
-                model={"fitting model": (transit_model, "black")},
-                outliers=outliers,
-            )
-            plot_lc.plot_lightcurve()
-            plot_lc.plot_model()
-            plot_lc.plot_residuals()
-            plot_lc.plot_outliers()
-            plot_lc.configs()
-            plot_lc.save()
-
-            os.makedirs(SAVE_2NDFOLD_LC_DATA_DIR, exist_ok=True)
-            folded_lc.write(f"{SAVE_2NDFOLD_LC_DATA_DIR}/{TOInumber}.csv")
-            os.makedirs(
-                SAVE_2NDFOLDMODELFIT_DIR,
-                exist_ok=True,
-            )
-            with open(
-                f"{SAVE_2NDFOLDMODELFIT_DIR}/{TOInumber}_folded.txt",
-                "a",
-            ) as f:
-                print(lmfit.fit_report(fold_res), file=f)
-            break
-        else:
-            outliers.append(folded_lc[outlier_bools])
-            folded_lc = clip_outliers(
-                folded_lc,
-                outlier_bools,
-            )
-
-    print(f"Analysis completed: {TOInumber}")
+folded_lc.scatter()
+plt.show()
+print(f"Analysis completed: {TOInumber}")
 
 # import pdb;pdb.set_trace()
