@@ -310,8 +310,7 @@ for TOI in [495.01]:
     rs = param_df["Stellar Radius (R_Sun)"].values[0]
     rp_rs = rp / rs
 
-    CSVFILE = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/folded_lc/calc_t0/TOI495.01.csv"
-    # CSVFILE = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_likesap/45deg_0deg/before_process/1.csv"
+    CSVFILE = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/plussin/45deg_0deg/folded_lc/obs_t0/TOI495.01.csv"
     # CSVFILE = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/{TOInumber}.csv'
     try:
         folded_table = ascii.read(CSVFILE)
@@ -325,7 +324,7 @@ for TOI in [495.01]:
         & (folded_lc.time.value > -duration * 0.7)
     ]
     # t, flux, flux_err = binning_lc(folded_lc)
-    binned_lc = folded_lc.bin(bins=500).remove_nans()
+    binned_lc = folded_lc  # .bin(bins=2000).remove_nans()
     t = binned_lc.time.value
     flux = binned_lc.flux.value
     flux_err = binned_lc.flux_err.value
