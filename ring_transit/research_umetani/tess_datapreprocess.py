@@ -106,10 +106,10 @@ class PlotCurvefit(PlotLightcurve):
         self.fit_res.plot()
 
 
-def calc_data_survival_rate(lc):
+def calc_data_survival_rate(lc, duration):
     data_n = len(lc.flux)
     try:
-        max_data_n = abs(lc.time.value[-1] - lc.time.value[0]) / (2 / 60 / 24)
+        max_data_n = duration * 5 / (2 / 60 / 24)
         data_survival_rate = (data_n / max_data_n) * 100
     except IndexError:
         data_survival_rate = 0
@@ -409,18 +409,7 @@ def transit_fitting(
                     best_res_dict[red_redchi] = res
         if len(best_res_dict) == 0:
             print(TOInumber, i)
-            ax = lc.scatter()
-            flux_model = no_ring_transitfit(
-                res.params,
-                lc.time.value,
-                lc.flux.value,
-                lc.flux_err.value,
-                p_names,
-                return_model=True,
-            )
-            ax.plot(
-                lc.time.value, flux_model, label="fitting model", color="black"
-            )
+            lc.scatter()
             plt.show()
             print(lmfit.fit_report(res))
             pdb.set_trace()
@@ -614,7 +603,7 @@ fold_ng = [986.01]
 """
 # 既に前処理したTOIの重複した前処理を回避するためのTOIのリスト
 done4poly_list = os.listdir(
-    "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/SAP_fitting_result/4poly/folded_lc/obs_t0/csv"
+    "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/SAP_fitting_result/data/folded_lc/lightcurve/obs_t0/"
 )
 done4poly_list = [s for s in done4poly_list if "TOI" in s]
 done4poly_list = [s.lstrip("TOI") for s in done4poly_list]
@@ -629,8 +618,6 @@ df = oridf[oridf["Planet SNR"] > 100]
 df = df[~(df["TESS Disposition"] == "EB")]
 df = df[~(df["TFOPWG Disposition"] == "FP")]
 df = df.sort_values("Planet SNR", ascending=False)
-df["TOI"] = df["TOI"].astype(str)
-TOIlist = df["TOI"]
 # df = df.sort_values("Planet SNR", ascending=False)
 
 """処理を行わないTOIを選択する"""
@@ -642,14 +629,13 @@ df = df.drop(index=no_perioddata_list, errors="ignore")
 # df = df.drop(index=startrend_list, errors='ignore')
 # df = df.drop(index=flare_list, errors="ignore")
 # df = df.drop(index=two_epoch_list, errors="ignore")
-# df = df.drop(index=ignore_list, errors="ignore")
+df = df.drop(index=ignore_list, errors="ignore")
 # df = df.drop(index=duration_ng, errors='ignore')
 # df = df.drop(index=fold_ng, errors='ignore')
 # df = df.drop(index=trend_ng, errors='ignore')
 df = df.reset_index()
 df["TOI"] = df["TOI"].astype(str)
 TOIlist = df["TOI"]
-
 
 for TOI in TOIlist:
     print("analysing: ", "TOI" + str(TOI))
@@ -767,7 +753,7 @@ for TOI in TOIlist:
         )
 
         """解析中断条件を満たさないかチェック"""
-        data_survival_rate = calc_data_survival_rate(each_lc)
+        data_survival_rate = calc_data_survival_rate(each_lc, duration)
         if data_survival_rate < 90:
             if data_survival_rate != 0.0:
                 ax = each_lc.errorbar()
@@ -937,7 +923,7 @@ for TOI in TOIlist:
     transit_time_list = np.array(transit_time_list)
     # _, _ = calc_obs_transit_time(t0list, t0errlist, num_list, transit_time_list, transit_time_error)
     """fittingで得たtransit time listを反映"""
-    with open(f"{HOMEDIR}/t0list/{TOInumber}.pkl", "rb") as f:
+    with open(f"{DATADIR}/t0list/{TOInumber}.pkl", "rb") as f:
         t0list = pickle.load(f)
     obs_t0_list = t0list
     outliers = []
@@ -956,7 +942,7 @@ for TOI in TOIlist:
             .remove_nans()
         )
         """解析中断条件を満たさないかチェック"""
-        data_survival_rate = calc_data_survival_rate(each_lc)
+        data_survival_rate = calc_data_survival_rate(each_lc, duration)
         if data_survival_rate < 90:
             if data_survival_rate != 0.0:
                 ax = each_lc.errorbar()
