@@ -281,17 +281,17 @@ df["TOI"] = df["TOI"].astype(str)
 df = df.sort_values("Planet SNR", ascending=False)
 df["TOI"] = df["TOI"].astype(str)
 TOIlist = df["TOI"]
-
+"""
 plot_ring(
     rp_rs=0.123,
     rin_rp=1.01,
-    rout_rin=1.30,
+    rout_rin=1.70,
     b=0.0,
     theta=15 * np.pi / 180,
-    phi=30 * np.pi / 180,
+    phi=0 * np.pi / 180,
     file_name="test.png",
 )
-sys.exit()
+"""
 for TOI in [495.01]:
     # for TOI in TOIlist[330:]:
     TOI = str(TOI)
@@ -309,7 +309,7 @@ for TOI in [495.01]:
     rs = param_df["Stellar Radius (R_Sun)"].values[0]
     rp_rs = rp / rs
 
-    CSVFILE = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/folded_lc/obs_t0/TOI495.01.csv"
+    CSVFILE = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/plussin_plusmodel/45deg_0deg/folded_lc/obs_t0/TOI495.01.csv"
     # CSVFILE = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/{TOInumber}.csv'
     try:
         folded_table = ascii.read(CSVFILE)
@@ -483,8 +483,8 @@ for TOI in [495.01]:
             45 * np.pi / 180,
             0 * np.pi / 180,
             1,
-            1.01,
-            1.30,
+            1.53,
+            1.95,
             0.0,
             0.0,
             0.0,
