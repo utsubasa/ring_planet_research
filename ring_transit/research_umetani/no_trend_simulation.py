@@ -111,9 +111,7 @@ class PlotCurvefit(PlotLightcurve):
 
 def calc_data_survival_rate(lc, duration):
     data_n = len(lc.flux)
-    max_data_n = (
-        duration * 5 * 60 * 24 / 2
-    )  # mid_transit_timeからdurationの前後×2.5 [min]/ 2 min cadence
+    max_data_n = duration * 5 / (2 / 60 / 24)
     data_survival_rate = (data_n / max_data_n) * 100
     print(f"{data_survival_rate:2f}% data usable")
     # max_data_n = (lc.time_original[-1]-lc.time_original[0])*24*60/2
@@ -305,11 +303,11 @@ def calc_obs_transit_time(
     plt.ylabel("O-C(hrs)")
     plt.tight_layout()
     os.makedirs(
-        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin/calc_obs_transit_time/",
+        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_rockring/calc_obs_transit_time/",
         exist_ok=True,
     )
     plt.savefig(
-        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin/calc_obs_transit_time/{TOInumber}.png"
+        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_rockring/calc_obs_transit_time/{TOInumber}.png"
     )
     plt.close()
 
@@ -352,11 +350,11 @@ def calc_obs_transit_time(
         ax2.set_ylabel("residuals")
         plt.tight_layout()
         os.makedirs(
-            f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin/estimate_period/",
+            f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_rockring/estimate_period/",
             exist_ok=True,
         )
         plt.savefig(
-            f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin/estimate_period/{TOInumber}.png"
+            f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_rockring/estimate_period/{TOInumber}.png"
         )
         # plt.show()
         plt.close()
@@ -486,22 +484,7 @@ def curvefit_normalize(each_lc, poly_params):
         ]
     )
     poly_model = poly_model(each_lc.time.value)
-    """ 
-    plot_lc = PlotLightcurveWithModel(
-        savedir=SAVE_TRANSIT_POLYFIT_DIR,
-        savefile=f"{TOInumber}_{str(i)}.png",
-        lc=each_lc,
-        outliers=[],
-        model={
-            "fitting model": (poly_model, "black"),
-        },
-    )
-    plot_lc.plot_lightcurve()
-    plot_lc.plot_model()
-    plot_lc.plot_residuals()
-    plot_lc.configs()
-    plt.show()
-    """
+
     # normalization
     each_lc.flux = each_lc.flux / poly_model
     each_lc.flux_err = each_lc.flux_err / poly_model
@@ -564,8 +547,8 @@ def make_simulation_data(mid_transit_time):
         45 * np.pi / 180,
         0 * np.pi / 180,
         1,
-        1.53,
-        1.95,
+        1.01,
+        1.30,
         0.0,
         0.0,
         0.0,
@@ -579,12 +562,13 @@ def make_simulation_data(mid_transit_time):
         * (1 + (np.sin((t / 0.6 + 1.2 * np.random.rand()) * np.pi) * 0.01))
         + np.random.randn(len(t)) * 0.001
     )
-
+    """
     ymodel = (
         ring_model(t, pdic_saturnlike)
         + np.random.randn(len(t)) * 0.001
         + np.sin((t / 0.6 + 1.2 * np.random.rand()) * np.pi) * 0.01
     )
+    """
 
     ymodel = ymodel * 15000
     yerr = np.array(t / t) * 1e-3 * 15000
@@ -736,11 +720,11 @@ def ringfit(i, lc):
     # ax_lc.set_title(f'w/ AIC:{ring_res.aic:.2f} w/o AIC:{no_ring_res.aic:.2f}')
     plt.tight_layout()
     os.makedirs(
-        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin/45deg_0deg/badass/",
+        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/badass/",
         exist_ok=True,
     )
     plt.savefig(
-        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin/45deg_0deg/badass/{i}.png"
+        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/badass/{i}.png"
     )
     plt.show()
     plt.close()
@@ -751,8 +735,8 @@ def ringfit(i, lc):
 HOMEDIR = (
     "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani"
 )
-SAVE_BEFOREPROCESS_LC_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin/45deg_0deg/before_process"
-SAVE_BEFOREPROCESS_LC_DATA_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/plussin/45deg_0deg/before_process"
+SAVE_BEFOREPROCESS_LC_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/before_process"
+SAVE_BEFOREPROCESS_LC_DATA_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/before_process"
 EPOCH_NUM = 54
 
 oridf = pd.read_csv(f"{HOMEDIR}/exofop_tess_tois.csv")
@@ -781,21 +765,21 @@ rs = param_df["Stellar Radius (R_Sun)"].values[0]
 rp_rs = rp / rs
 
 """"保存場所のセッティング"""
-SAVE_CURVEFIT_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin/45deg_0deg/curvefit/{TOInumber}"
-SAVE_TRANSITFIT_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin/45deg_0deg/each_lc/transit_fit/{TOInumber}"
-SAVE_TRANSIT_POLYFIT_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin/45deg_0deg/each_lc/transit_and_polyfit/{TOInumber}"
-SAVE_1STPROCESS_LC_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin/45deg_0deg/each_lc/after_curvefit/{TOInumber}"
-SAVE_1STPROCESS_LC_DATA_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/plussin/45deg_0deg/each_lc/calc_t0/{TOInumber}"
-SAVE_1STMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/plussin/45deg_0deg/each_lc/modelresult/1stloop/{TOInumber}"
-SAVE_1STFOLDMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/plussin/45deg_0deg/folded_lc/modelresult/1stloop/{TOInumber}"
-SAVE_1STFOLD_LC_DIR = "/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/simulation_TOI495.01/plussin/45deg_0deg/calc_t0"
-SAVE_1STFOLD_LC_DATA_DIR = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/plussin/45deg_0deg/folded_lc/calc_t0"
-SAVE_2NDMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/plussin/45deg_0deg/each_lc/modelresult/2ndloop/{TOInumber}"
-SAVE_2NDPROCESS_LC_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin/45deg_0deg/each_lc/after_curvefit/{TOInumber}"
-SAVE_2NDPROCESS_LC_DATA_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/plussin/45deg_0deg/each_lc/obs_t0/{TOInumber}"
-SAVE_2NDFOLD_LC_DIR = "/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/simulation_TOI495.01/plussin/45deg_0deg/obs_t0"
-SAVE_2NDFOLD_LC_DATA_DIR = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/plussin/45deg_0deg/folded_lc/obs_t0"
-SAVE_2NDFOLDMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/plussin/45deg_0deg/folded_lc/modelresult/2ndloop/{TOInumber}"
+SAVE_CURVEFIT_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/curvefit/{TOInumber}"
+SAVE_TRANSITFIT_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/each_lc/transit_fit/{TOInumber}"
+SAVE_TRANSIT_POLYFIT_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/each_lc/transit_and_polyfit/{TOInumber}"
+SAVE_1STPROCESS_LC_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/each_lc/after_curvefit/{TOInumber}"
+SAVE_1STPROCESS_LC_DATA_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/each_lc/calc_t0/{TOInumber}"
+SAVE_1STMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/each_lc/modelresult/1stloop/{TOInumber}"
+SAVE_1STFOLDMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/folded_lc/modelresult/1stloop/{TOInumber}"
+SAVE_1STFOLD_LC_DIR = "/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/calc_t0"
+SAVE_1STFOLD_LC_DATA_DIR = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/folded_lc/calc_t0"
+SAVE_2NDMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/each_lc/modelresult/2ndloop/{TOInumber}"
+SAVE_2NDPROCESS_LC_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/each_lc/after_curvefit/{TOInumber}"
+SAVE_2NDPROCESS_LC_DATA_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/each_lc/obs_t0/{TOInumber}"
+SAVE_2NDFOLD_LC_DIR = "/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/obs_t0"
+SAVE_2NDFOLD_LC_DATA_DIR = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/folded_lc/obs_t0"
+SAVE_2NDFOLDMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/folded_lc/modelresult/2ndloop/{TOInumber}"
 
 
 # folded_lc = folding_lc_from_csv(SAVE_BEFOREPROCESS_LC_DATA_DIR)
@@ -823,7 +807,7 @@ for i, mid_transit_time in enumerate(transit_time_list):
     plot_lc.save()
     os.makedirs(SAVE_BEFOREPROCESS_LC_DATA_DIR, exist_ok=True)
     each_lc.write(f"{SAVE_BEFOREPROCESS_LC_DATA_DIR}/{i}.csv", overwrite=True)
-    # each_table = ascii.read(f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/plussin/before_process/{i}.csv")
+    # each_table = ascii.read(f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_rockring/before_process/{i}.csv")
     # each_lc = lk.LightCurve(data=each_table)
 
     each_lc = (
@@ -983,11 +967,11 @@ for i, mid_transit_time in enumerate(obs_t0_list):
             ax = each_lc.errorbar()
             ax.set_title(f"{data_survival_rate:4f} useable")
             os.makedirs(
-                f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin/error_lc/under_90%_data/obs_t0/{TOInumber}",
+                f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_rockring/error_lc/under_90%_data/obs_t0/{TOInumber}",
                 exist_ok=True,
             )
             plt.savefig(
-                f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin/error_lc/under_90%_data/obs_t0/{TOInumber}/{TOInumber}_{str(i)}.png"
+                f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_rockring/error_lc/under_90%_data/obs_t0/{TOInumber}/{TOInumber}_{str(i)}.png"
             )
             plt.close()
         t0list.append(mid_transit_time)

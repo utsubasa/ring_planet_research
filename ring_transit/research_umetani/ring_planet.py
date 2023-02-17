@@ -281,18 +281,17 @@ df["TOI"] = df["TOI"].astype(str)
 df = df.sort_values("Planet SNR", ascending=False)
 df["TOI"] = df["TOI"].astype(str)
 TOIlist = df["TOI"]
-"""
+
 plot_ring(
     rp_rs=0.123,
-    rin_rp=1.53,
-    rout_rin=1.95,
+    rin_rp=1.01,
+    rout_rin=1.30,
     b=0.0,
-    theta=45 * np.pi / 180,
-    phi=0 * np.pi / 180,
+    theta=15 * np.pi / 180,
+    phi=30 * np.pi / 180,
     file_name="test.png",
 )
-"""
-# import pdb;pdb.set_trace()
+sys.exit()
 for TOI in [495.01]:
     # for TOI in TOIlist[330:]:
     TOI = str(TOI)
@@ -310,7 +309,7 @@ for TOI in [495.01]:
     rs = param_df["Stellar Radius (R_Sun)"].values[0]
     rp_rs = rp / rs
 
-    CSVFILE = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/plussin/45deg_0deg/folded_lc/obs_t0/TOI495.01.csv"
+    CSVFILE = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_rockring/45deg_0deg/folded_lc/obs_t0/TOI495.01.csv"
     # CSVFILE = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/{TOInumber}.csv'
     try:
         folded_table = ascii.read(CSVFILE)
@@ -324,7 +323,7 @@ for TOI in [495.01]:
         & (folded_lc.time.value > -duration * 0.7)
     ]
     # t, flux, flux_err = binning_lc(folded_lc)
-    binned_lc = folded_lc  # .bin(bins=2000).remove_nans()
+    binned_lc = folded_lc.bin(bins=500).remove_nans()
     t = binned_lc.time.value
     flux = binned_lc.flux.value
     flux_err = binned_lc.flux_err.value
@@ -432,7 +431,7 @@ for TOI in [495.01]:
     no_ring_res = sorted(best_res_dict.items())[0][1]
 
     best_ring_res_dict = {}
-    for m in range(5):
+    for m in range(1):
         names = [
             "q1",
             "q2",
@@ -484,8 +483,8 @@ for TOI in [495.01]:
             45 * np.pi / 180,
             0 * np.pi / 180,
             1,
-            1.53,
-            1.95,
+            1.01,
+            1.30,
             0.0,
             0.0,
             0.0,
