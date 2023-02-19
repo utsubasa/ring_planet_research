@@ -600,7 +600,7 @@ trend_ng = [
 ]
 fold_ng = [986.01]
 
-"""
+
 # 既に前処理したTOIの重複した前処理を回避するためのTOIのリスト
 done4poly_list = os.listdir(
     "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/SAP_fitting_result/data/folded_lc/lightcurve/obs_t0/"
@@ -609,7 +609,7 @@ done4poly_list = [s for s in done4poly_list if "TOI" in s]
 done4poly_list = [s.lstrip("TOI") for s in done4poly_list]
 done4poly_list = [float(s.strip(".csv")) for s in done4poly_list]
 done4poly_list = [float(s) for s in done4poly_list]
-"""
+
 
 oridf = pd.read_csv(
     "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/exofop_tess_tois_2022-09-13.csv"
@@ -622,13 +622,13 @@ df = df.sort_values("Planet SNR", ascending=False)
 
 """処理を行わないTOIを選択する"""
 df = df.set_index(["TOI"])
-# df = df.drop(index=done4poly_list, errors="ignore")
+df = df.drop(index=done4poly_list, errors="ignore")
 df = df.drop(index=no_data_found_list, errors="ignore")
 # df = df.drop(index=multiplanet_list, errors='ignore')
 df = df.drop(index=no_perioddata_list, errors="ignore")
 # df = df.drop(index=startrend_list, errors='ignore')
 # df = df.drop(index=flare_list, errors="ignore")
-# df = df.drop(index=two_epoch_list, errors="ignore")
+df = df.drop(index=two_epoch_list, errors="ignore")
 df = df.drop(index=ignore_list, errors="ignore")
 # df = df.drop(index=duration_ng, errors='ignore')
 # df = df.drop(index=fold_ng, errors='ignore')
