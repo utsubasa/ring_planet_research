@@ -485,7 +485,7 @@ def curvefit_normalize(each_lc, poly_params):
 
     # normalization
     each_lc.flux = each_lc.flux - poly_model
-    each_lc.flux_err = each_lc.flux_err - poly_model
+    each_lc.flux_err = each_lc.flux_err
 
     return each_lc
 
@@ -828,8 +828,8 @@ for i, mid_transit_time in enumerate(transit_time_list):
         )
         plot_lc.plot()
         plot_lc.save()
-
         each_lc = curvefit_normalize(each_lc, curvefit_res.params)
+        each_lc.flux = each_lc.flux + 1
         transit_res = transit_fitting(each_lc, rp_rs, period)
         transit_model = no_ring_transitfit(
             transit_res.params, each_lc, p_names, return_model=True
