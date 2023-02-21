@@ -210,7 +210,7 @@ def no_ring_transit_and_polynomialfit(params, lc, p_names, return_model=False):
         ]
     )
     polynomialmodel = poly_model(t)
-    model = transit_model + polynomialmodel
+    model = transit_model * polynomialmodel
     # chi_square = np.sum(((flux - model) / flux_err) ** 2)
     # print(params)
     # print(chi_square)
@@ -303,11 +303,11 @@ def calc_obs_transit_time(
     plt.ylabel("O-C(hrs)")
     plt.tight_layout()
     os.makedirs(
-        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_plusmodel/calc_obs_transit_time/",
+        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin_kakerumodel_10/calc_obs_transit_time/",
         exist_ok=True,
     )
     plt.savefig(
-        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_plusmodel/calc_obs_transit_time/{TOInumber}.png"
+        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin_kakerumodel_10/calc_obs_transit_time/{TOInumber}.png"
     )
     plt.close()
 
@@ -350,11 +350,11 @@ def calc_obs_transit_time(
         ax2.set_ylabel("residuals")
         plt.tight_layout()
         os.makedirs(
-            f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_plusmodel/estimate_period/",
+            f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin_kakerumodel_10/estimate_period/",
             exist_ok=True,
         )
         plt.savefig(
-            f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_plusmodel/estimate_period/{TOInumber}.png"
+            f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin_kakerumodel_10/estimate_period/{TOInumber}.png"
         )
         # plt.show()
         plt.close()
@@ -484,8 +484,8 @@ def curvefit_normalize(each_lc, poly_params):
     poly_model = poly_model(each_lc.time.value)
 
     # normalization
-    each_lc.flux = each_lc.flux - poly_model
-    each_lc.flux_err = each_lc.flux_err
+    each_lc.flux = each_lc.flux / poly_model
+    each_lc.flux_err = each_lc.flux_err / poly_model
 
     return each_lc
 
@@ -555,6 +555,7 @@ def make_simulation_data(mid_transit_time):
 
     # --土星likeなTOI495.01のパラメータで作成したモデル--#
     pdic_saturnlike = dict(zip(names, saturnlike_values))
+
     ymodel = (
         ring_model(t, pdic_saturnlike)
         * (1 + (np.sin((t / 0.6 + 1.2 * np.random.rand()) * np.pi) * 0.01))
@@ -567,7 +568,30 @@ def make_simulation_data(mid_transit_time):
         + np.sin((t / 0.6 + 1.2 * np.random.rand()) * np.pi) * 0.01
     )
     """
-
+    p_names = ["t0", "per", "rp", "a", "b", "ecc", "w", "q1", "q2"]
+    values = [
+        0,
+        period,
+        0.3,
+        3.81,
+        0.00,
+        0,
+        90.0,
+        0.26,
+        0.36,
+    ]
+    maxes = [0.5, period * 1.2, 0.5, 1000, 1 + rp_rs, 0.8, 90, 1.0, 1.0]
+    mins = [-0.5, period * 0.8, 0.01, 1, 0, 0, 90, 0.0, 0.0]
+    vary_flags = [True, False, True, True, True, False, False, True, True]
+    params = set_params_lm(p_names, values, mins, maxes, vary_flags)
+    params_batman = set_params_batman(params, p_names)
+    m = batman.TransitModel(params_batman, t)  # initializes model
+    model = m.light_curve(params_batman)  # calculates light curve
+    ymodel = (
+        model
+        + np.random.randn(len(t)) * 0.001
+        + np.sin((t / 0.6 + 1.2 * np.random.rand()) * np.pi) * 0.01
+    )
     ymodel = ymodel * 15000
     yerr = np.array(t / t) * 1e-3 * 15000
     each_lc = lk.LightCurve(t, ymodel, yerr)
@@ -718,23 +742,76 @@ def ringfit(i, lc):
     # ax_lc.set_title(f'w/ AIC:{ring_res.aic:.2f} w/o AIC:{no_ring_res.aic:.2f}')
     plt.tight_layout()
     os.makedirs(
-        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/badass/",
+        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/badass/",
         exist_ok=True,
     )
     plt.savefig(
-        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/badass/{i}.png"
+        f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/badass/{i}.png"
     )
     plt.show()
     plt.close()
     pdb.set_trace()
 
 
+def plot_noring(t, flux, flux_err, type="show"):
+    p_names = ["t0", "per", "rp", "a", "b", "ecc", "w", "q1", "q2"]
+    values = [
+        0,
+        period,
+        0.123,
+        3.81,
+        0.00,
+        0,
+        90.0,
+        0.26,
+        0.36,
+    ]
+    maxes = [0.5, period * 1.2, 0.5, 1000, 1 + rp_rs, 0.8, 90, 1.0, 1.0]
+    mins = [-0.5, period * 0.8, 0.01, 1, 0, 0, 90, 0.0, 0.0]
+    vary_flags = [True, False, True, True, True, False, False, True, True]
+    params = set_params_lm(p_names, values, mins, maxes, vary_flags)
+    params_batman = set_params_batman(params, p_names)
+    m = batman.TransitModel(params_batman, t)  # initializes model
+    model = m.light_curve(params_batman)  # calculates light curve
+
+    fig = plt.figure()
+    ax_lc = fig.add_subplot(2, 1, 1)  # for plotting transit model and data
+    ax_re = fig.add_subplot(2, 1, 2)  # for plotting residuals
+    # elapsed_time = time.time() - start
+    # print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+    ax_lc.errorbar(
+        t,
+        flux,
+        flux_err,
+        color="black",
+        marker=".",
+        linestyle="None",
+    )
+    ax_lc.plot(t, model, label="Model w/o ring", color="red")
+    residuals_no_ring = flux - model
+    ax_re.plot(
+        t, residuals_no_ring, color="red", alpha=0.3, marker=".", zorder=1
+    )
+    ax_re.plot(t, np.zeros(len(t)), color="black", zorder=2)
+    ax_lc.legend()
+    ax_lc.set_title(
+        f"w/o chisq:{np.sum(((flux-model)/flux_err)**2):.0f}/{len(flux)}"
+    )
+    # ax_lc.set_title(f'w/ AIC:{ring_res.aic:.2f} w/o AIC:{no_ring_res.aic:.2f}')
+    plt.tight_layout()
+    if type == "show":
+        plt.show()
+    else:
+        plt.pause(0.01)
+        plt.close()
+
+
 """定数の定義"""
 HOMEDIR = (
     "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani"
 )
-SAVE_BEFOREPROCESS_LC_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/before_process"
-SAVE_BEFOREPROCESS_LC_DATA_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/before_process"
+SAVE_BEFOREPROCESS_LC_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/before_process"
+SAVE_BEFOREPROCESS_LC_DATA_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/before_process"
 EPOCH_NUM = 54
 
 oridf = pd.read_csv(f"{HOMEDIR}/exofop_tess_tois.csv")
@@ -763,21 +840,21 @@ rs = param_df["Stellar Radius (R_Sun)"].values[0]
 rp_rs = rp / rs
 
 """"保存場所のセッティング"""
-SAVE_CURVEFIT_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/curvefit/{TOInumber}"
-SAVE_TRANSITFIT_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/each_lc/transit_fit/{TOInumber}"
-SAVE_TRANSIT_POLYFIT_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/each_lc/transit_and_polyfit/{TOInumber}"
-SAVE_1STPROCESS_LC_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/each_lc/after_curvefit/{TOInumber}"
-SAVE_1STPROCESS_LC_DATA_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/each_lc/calc_t0/{TOInumber}"
-SAVE_1STMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/each_lc/modelresult/1stloop/{TOInumber}"
-SAVE_1STFOLDMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/folded_lc/modelresult/1stloop/{TOInumber}"
-SAVE_1STFOLD_LC_DIR = "/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/calc_t0"
-SAVE_1STFOLD_LC_DATA_DIR = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/folded_lc/calc_t0"
-SAVE_2NDMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/each_lc/modelresult/2ndloop/{TOInumber}"
-SAVE_2NDPROCESS_LC_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/each_lc/after_curvefit/{TOInumber}"
-SAVE_2NDPROCESS_LC_DATA_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/each_lc/obs_t0/{TOInumber}"
-SAVE_2NDFOLD_LC_DIR = "/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/obs_t0"
-SAVE_2NDFOLD_LC_DATA_DIR = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/folded_lc/obs_t0"
-SAVE_2NDFOLDMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/folded_lc/modelresult/2ndloop/{TOInumber}"
+SAVE_CURVEFIT_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/curvefit/{TOInumber}"
+SAVE_TRANSITFIT_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/each_lc/transit_fit/{TOInumber}"
+SAVE_TRANSIT_POLYFIT_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/each_lc/transit_and_polyfit/{TOInumber}"
+SAVE_1STPROCESS_LC_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/each_lc/after_curvefit/{TOInumber}"
+SAVE_1STPROCESS_LC_DATA_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/each_lc/calc_t0/{TOInumber}"
+SAVE_1STMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/each_lc/modelresult/1stloop/{TOInumber}"
+SAVE_1STFOLDMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/folded_lc/modelresult/1stloop/{TOInumber}"
+SAVE_1STFOLD_LC_DIR = "/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/calc_t0"
+SAVE_1STFOLD_LC_DATA_DIR = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/folded_lc/calc_t0"
+SAVE_2NDMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/each_lc/modelresult/2ndloop/{TOInumber}"
+SAVE_2NDPROCESS_LC_DIR = f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/each_lc/after_curvefit/{TOInumber}"
+SAVE_2NDPROCESS_LC_DATA_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/each_lc/obs_t0/{TOInumber}"
+SAVE_2NDFOLD_LC_DIR = "/Users/u_tsubasa/Dropbox/ring_planet_research/folded_lc/figure/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/obs_t0"
+SAVE_2NDFOLD_LC_DATA_DIR = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/folded_lc/obs_t0"
+SAVE_2NDFOLDMODELFIT_DIR = f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/folded_lc/modelresult/2ndloop/{TOInumber}"
 
 
 # folded_lc = folding_lc_from_csv(SAVE_BEFOREPROCESS_LC_DATA_DIR)
@@ -805,7 +882,7 @@ for i, mid_transit_time in enumerate(transit_time_list):
     plot_lc.save()
     os.makedirs(SAVE_BEFOREPROCESS_LC_DATA_DIR, exist_ok=True)
     each_lc.write(f"{SAVE_BEFOREPROCESS_LC_DATA_DIR}/{i}.csv", overwrite=True)
-    # each_table = ascii.read(f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/kakerusin_plusmodel/before_process/{i}.csv")
+    # each_table = ascii.read(f"{HOMEDIR}/fitting_result/data/simulation_TOI495.01/plussin_kakerumodel_10/before_process/{i}.csv")
     # each_lc = lk.LightCurve(data=each_table)
 
     each_lc = (
@@ -830,7 +907,7 @@ for i, mid_transit_time in enumerate(transit_time_list):
         plot_lc.plot()
         plot_lc.save()
         each_lc = curvefit_normalize(each_lc, curvefit_res.params)
-        each_lc.flux = each_lc.flux + 1
+        # each_lc.flux = each_lc.flux + 1
         transit_res = transit_fitting(each_lc, rp_rs, period)
         transit_model = no_ring_transitfit(
             transit_res.params, each_lc, p_names, return_model=True
@@ -861,6 +938,7 @@ for i, mid_transit_time in enumerate(transit_time_list):
             plot_after1stloop_lc.plot_lightcurve()
             plot_after1stloop_lc.save()
             os.makedirs(SAVE_1STPROCESS_LC_DATA_DIR, exist_ok=True)
+
             each_lc.write(
                 f"{SAVE_1STPROCESS_LC_DATA_DIR}/{TOInumber}_{str(i)}.csv",
                 overwrite=True,
@@ -966,11 +1044,11 @@ for i, mid_transit_time in enumerate(obs_t0_list):
             ax = each_lc.errorbar()
             ax.set_title(f"{data_survival_rate:4f} useable")
             os.makedirs(
-                f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_plusmodel/error_lc/under_90%_data/obs_t0/{TOInumber}",
+                f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin_kakerumodel_10/error_lc/under_90%_data/obs_t0/{TOInumber}",
                 exist_ok=True,
             )
             plt.savefig(
-                f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/kakerusin_plusmodel/error_lc/under_90%_data/obs_t0/{TOInumber}/{TOInumber}_{str(i)}.png"
+                f"{HOMEDIR}/fitting_result/figure/simulation_TOI495.01/plussin_kakerumodel_10/error_lc/under_90%_data/obs_t0/{TOInumber}/{TOInumber}_{str(i)}.png"
             )
             plt.close()
         t0list.append(mid_transit_time)
@@ -984,7 +1062,7 @@ for i, mid_transit_time in enumerate(obs_t0_list):
         transit_res = transit_fitting(each_lc, rp_rs, period)
         # 初期値を得るためのcurvefit
         curvefit_res = curve_fitting(each_lc, duration, transit_res)
-        curvefit_res.params["c0"].value = curvefit_res.params["c0"] - 1
+        # curvefit_res.params["c0"].value = curvefit_res.params["c0"] - 1
 
         res = transit_fitting(
             each_lc,

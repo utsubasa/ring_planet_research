@@ -309,7 +309,7 @@ for TOI in [495.01]:
     rs = param_df["Stellar Radius (R_Sun)"].values[0]
     rp_rs = rp / rs
 
-    CSVFILE = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/kakerusin_plusmodel/45deg_0deg/folded_lc/obs_t0/TOI495.01.csv"
+    CSVFILE = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/simulation_TOI495.01/plussin_kakerumodel_10/no_ring/folded_lc/obs_t0/TOI495.01.csv"
     # CSVFILE = f'/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/fitting_result/data/folded_lc/{TOInumber}.csv'
     try:
         folded_table = ascii.read(CSVFILE)
@@ -322,12 +322,59 @@ for TOI in [495.01]:
         (folded_lc.time.value < duration * 0.7)
         & (folded_lc.time.value > -duration * 0.7)
     ]
-    # t, flux, flux_err = binning_lc(folded_lc)
-    binned_lc = folded_lc.bin(bins=500).remove_nans()
-    t = binned_lc.time.value
-    flux = binned_lc.flux.value
-    flux_err = binned_lc.flux_err.value
+    t, flux, flux_err = binning_lc(folded_lc)
+    # binned_lc = folded_lc.bin(bins=500).remove_nans()
+    # t = binned_lc.time.value
+    # flux = binned_lc.flux.value
+    # flux_err = binned_lc.flux_err.value
 
+    p_names = ["t0", "per", "rp", "a", "b", "ecc", "w", "q1", "q2"]
+    values = [
+        0,
+        period,
+        0.3,
+        3.81,
+        0.00,
+        0,
+        90.0,
+        0.26,
+        0.36,
+    ]
+    maxes = [0.5, period * 1.2, 0.5, 1000, 1 + rp_rs, 0.8, 90, 1.0, 1.0]
+    mins = [-0.5, period * 0.8, 0.01, 1, 0, 0, 90, 0.0, 0.0]
+    vary_flags = [True, False, True, True, True, False, False, True, True]
+    params = set_params_lm(p_names, values, mins, maxes, vary_flags)
+    params_batman = set_params_batman(params, p_names)
+    m = batman.TransitModel(params_batman, t)  # initializes model
+    model = m.light_curve(params_batman)  # calculates light curve
+
+    fig = plt.figure()
+    ax_lc = fig.add_subplot(2, 1, 1)  # for plotting transit model and data
+    ax_re = fig.add_subplot(2, 1, 2)  # for plotting residuals
+    # elapsed_time = time.time() - start
+    # print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+    ax_lc.errorbar(
+        t,
+        flux,
+        flux_err,
+        color="black",
+        marker=".",
+        linestyle="None",
+    )
+    ax_lc.plot(t, model, label="Model w/o ring", color="red")
+    residuals_no_ring = flux - model
+    ax_re.plot(
+        t, residuals_no_ring, color="red", alpha=0.3, marker=".", zorder=1
+    )
+    ax_re.plot(t, np.zeros(len(t)), color="black", zorder=2)
+    ax_lc.legend()
+    ax_lc.set_title(
+        f"w/o chisq:{np.sum(((flux-model)/flux_err)**2):.0f}/{len(flux)}"
+    )
+    # ax_lc.set_title(f'w/ AIC:{ring_res.aic:.2f} w/o AIC:{no_ring_res.aic:.2f}')
+    plt.tight_layout()
+    plt.show()
+    sys.exit()
     """
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
