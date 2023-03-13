@@ -510,3 +510,28 @@ def bls_analysis(lc, period, transit_time, duration):
 
     return transit_time, period
     """
+
+"""
+# chisquareの移動平均を見るときに使う
+names = ["q1", "q2", "t0", "porb", "rp_rs", "a_rs",
+            "b", "norm", "theta", "phi", "tau", "r_in",
+            "r_out", "norm2", "norm3", "ecosw", "esinw"]
+p_df=pd.read_csv('/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/TOI495.01_128_959.csv')
+p_df.index = names
+pdic = p_df.output_value.to_dict()
+ring_flux_model = ring_model(t, pdic, mcmc_pvalues=None)
+each_chi_square = ((flux-ring_flux_model)/flux_err)**2
+fig = plt.figure()
+ax_lc = fig.add_subplot(2,1,1) #for plotting transit model and data
+ax_re = fig.add_subplot(2,1,2) #for plotting residuals
+binned_lc.errorbar(ax=ax_lc)
+ax_lc.plot(t, ring_flux_model, label='Model w/ ring', color='blue')
+residuals_ring = binned_lc - ring_flux_model
+#residuals_ring.plot(ax=ax_re, color='blue', alpha=0.3,  marker='.', zorder=1)
+#ax_re.plot(t, np.zeros(len(t)), color='black', zorder=2)
+y = np.convolve(each_chi_square,np.ones(70)/70, mode='same')
+ax_lc.legend()
+ax_re.plot(t,y)
+plt.tight_layout()
+plt.show()
+"""
