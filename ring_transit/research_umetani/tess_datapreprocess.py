@@ -211,7 +211,7 @@ def no_ring_transit_and_polynomialfit(params, lc, p_names, return_model=False):
         ]
     )
     polynomialmodel = poly_model(t)
-    model = transit_model * polynomialmodel
+    model = transit_model + polynomialmodel
     # chi_square = np.sum(((flux - model) / flux_err) ** 2)
     # print(params)
     # print(chi_square)
@@ -484,8 +484,8 @@ def curvefit_normalize(each_lc, poly_params):
     poly_model = poly_model(each_lc.time.value)
 
     # normalization
-    each_lc.flux = each_lc.flux / poly_model
-    each_lc.flux_err = each_lc.flux_err / poly_model
+    each_lc.flux = each_lc.flux - poly_model
+    each_lc.flux_err = each_lc.flux_err  # / poly_model
 
     return each_lc
 
@@ -509,7 +509,7 @@ def folding_lc_from_csv(loaddir):
 
 
 """定数の定義"""
-HOMEDIR = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/SAP_fitting_result"
+HOMEDIR = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/SAP_fitting_result_plus/"
 FIGDIR = f"{HOMEDIR}/figure"
 DATADIR = f"{HOMEDIR}/data"
 with open("./no_data_found_toi.txt", "rb") as f:
@@ -622,7 +622,7 @@ df = df.sort_values("Planet SNR", ascending=False)
 
 """処理を行わないTOIを選択する"""
 df = df.set_index(["TOI"])
-df = df.drop(index=done4poly_list, errors="ignore")
+# df = df.drop(index=done4poly_list, errors="ignore")
 df = df.drop(index=no_data_found_list, errors="ignore")
 # df = df.drop(index=multiplanet_list, errors='ignore')
 df = df.drop(index=no_perioddata_list, errors="ignore")
@@ -637,6 +637,30 @@ df = df.reset_index()
 df["TOI"] = df["TOI"].astype(str)
 TOIlist = df["TOI"]
 
+TOIlist = [
+    102.01,
+    105.01,
+    1151.01,
+    1165.01,
+    1251.01,
+    135.01,
+    1651.01,
+    1771.01,
+    185.01,
+    2131.01,
+    2403.01,
+    398.01,
+    413.01,
+    495.01,
+    675.01,
+    4470.01,
+    1019.01,
+    1236.01,
+    1259.01,
+    1465.01,
+    2119.01,
+    472.01,
+]
 for TOI in TOIlist:
     print("analysing: ", "TOI" + str(TOI))
     TOI = str(TOI)
