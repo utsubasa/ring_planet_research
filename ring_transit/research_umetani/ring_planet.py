@@ -396,7 +396,7 @@ def calc_depth(rp_rs, period, theta, phi):
         period,
         rp_rs,
         3.81,
-        0.00,
+        1.00,
         1,
         theta * np.pi / 180,
         phi * np.pi / 180,
@@ -450,16 +450,18 @@ df["TOI"] = df["TOI"].astype(str)
 df = df.sort_values("Planet SNR", ascending=False)
 df["TOI"] = df["TOI"].astype(str)
 TOIlist = df["TOI"]
+
 """
 plot_ring(
-    rp_rs=0.2,
+    rp_rs=0.1,
     rin_rp=1.01,
     rout_rin=1.70,
-    b=0.6,
-    theta=15 * np.pi / 180,
-    phi=0 * np.pi / 180,
+    b=0.0,
+    theta=45 * np.pi / 180,
+    phi=15 * np.pi / 180,
     file_name="test.png",
 )
+sys.exit()
 """
 
 TOI = "495.01"
@@ -469,6 +471,8 @@ param_df = df[df["TOI"] == TOI]
 period = param_df["Period (days)"].values[0]
 
 min_flux_list = [
+    0.90,
+    0.91,
     0.92,
     0.93,
     0.94,
@@ -622,7 +626,7 @@ for theta in theta_list:
                         period,
                         rp_rs,
                         3.81,
-                        0.00,
+                        1.0,
                         1,
                         theta * np.pi / 180,
                         phi * np.pi / 180,
@@ -959,4 +963,3 @@ for theta in theta_list:
                 # print(TOInumber+ '\n', file = f)
                 # fit_report = lmfit.fit_report(ring_res)
                 # print(fit_report)
-        pdb.set_trace()
