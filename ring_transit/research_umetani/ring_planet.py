@@ -626,7 +626,7 @@ for theta in theta_list:
                         period,
                         rp_rs,
                         3.81,
-                        1.0,
+                        0.5,
                         1,
                         theta * np.pi / 180,
                         phi * np.pi / 180,
@@ -734,129 +734,6 @@ for theta in theta_list:
                         continue
                     red_redchi = ring_res.redchi - 1
                     best_ring_res_dict[red_redchi] = ring_res
-                    """
-                    if ring_res.params["t0"].stderr != None:
-                        if np.isfinite(ring_res.params["t0"].stderr):
-                            red_redchi = ring_res.redchi - 1
-                            best_ring_res_dict[red_redchi] = ring_res
-                            
-                            F_obs = (
-                                (no_ring_res.chisqr - ring_res.chisqr)
-                                / (ring_res.nvarys - no_ring_res.nvarys)
-                            ) / (ring_res.chisqr / (ring_res.ndata - ring_res.nvarys - 1))
-                            if F_obs > 0:
-                                p_value = (
-                                    1
-                                    - integrate.quad(
-                                        lambda x: scipy.stats.f.pdf(
-                                            x,
-                                            ring_res.ndata - ring_res.nvarys - 1,
-                                            ring_res.nvarys - no_ring_res.nvarys,
-                                        ),
-                                        0,
-                                        F_obs,
-                                    )[0]
-                                )
-                                input_df = pd.DataFrame.from_dict(
-                                    params.valuesdict(),
-                                    orient="index",
-                                    columns=["input_value"],
-                                )
-                                output_df = pd.DataFrame.from_dict(
-                                    ring_res.params.valuesdict(),
-                                    orient="index",
-                                    columns=["output_value"],
-                                )
-                                input_df = input_df.applymap(lambda x: "{:.6f}".format(x))
-                                output_df = output_df.applymap(
-                                    lambda x: "{:.6f}".format(x)
-                                )
-                                result_df = input_df.join(
-                                    (
-                                        output_df,
-                                        pd.Series(
-                                            vary_flags, index=names, name="vary_flags"
-                                        ),
-                                    )
-                                )
-                                # os.makedirs(f'./lmfit_result/fit_p_data/{TOInumber}', exist_ok=True)
-                                os.makedirs(
-                                    f"./simulation/fit_p_data/{TOInumber}", exist_ok=True
-                                )
-                                result_df.to_csv(
-                                    f"./simulation/fit_p_data/{TOInumber}/{TOInumber}_{ring_res.redchi:.2f}_{m}.csv",
-                                    header=True,
-                                    index=False,
-                                )
-                                plot_ring(
-                                    rp_rs=ring_res.params["rp_rs"].value,
-                                    rin_rp=ring_res.params["r_in"].value,
-                                    rout_rin=ring_res.params["r_out"].value,
-                                    b=ring_res.params["b"].value,
-                                    theta=ring_res.params["theta"].value,
-                                    phi=ring_res.params["phi"].value,
-                                    file_name=f"{TOInumber}_{ring_res.redchi:.2f}_{m}.png",
-                                )
-                                fig = plt.figure()
-                                ax_lc = fig.add_subplot(
-                                    2, 1, 1
-                                )  # for plotting transit model and data
-                                ax_re = fig.add_subplot(2, 1, 2)  # for plotting residuals
-                                # elapsed_time = time.time() - start
-                                # print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
-                                ring_flux_model = ring_transitfit(
-                                    ring_res.params,
-                                    t,
-                                    flux,
-                                    flux_err,
-                                    names,
-                                    return_model=True,
-                                )
-                                noring_flux_model = no_ring_transitfit(
-                                    no_ring_res.params,
-                                    t,
-                                    flux,
-                                    flux_err,
-                                    noringnames,
-                                    return_model=True,
-                                )
-                                binned_lc.errorbar(ax=ax_lc)
-                                ax_lc.plot(
-                                    t, ring_flux_model, label="Model w/ ring", color="blue"
-                                )
-                                ax_lc.plot(
-                                    t,
-                                    noring_flux_model,
-                                    label="Model w/o ring",
-                                    color="red",
-                                )
-                                residuals_ring = binned_lc - ring_flux_model
-                                residuals_no_ring = binned_lc - noring_flux_model
-                                residuals_ring.plot(
-                                    ax=ax_re, color="blue", alpha=0.3, marker=".", zorder=1
-                                )
-                                residuals_no_ring.plot(
-                                    ax=ax_re, color="red", alpha=0.3, marker=".", zorder=1
-                                )
-                                ax_re.plot(t, np.zeros(len(t)), color="black", zorder=2)
-                                ax_lc.legend()
-                                ax_lc.set_title(
-                                    f"w/ chisq:{ring_res.chisqr:.0f}/{ring_res.nfree:.0f} w/o chisq:{no_ring_res.chisqr:.0f}/{no_ring_res.nfree:.0f}"
-                                )
-                                # ax_lc.set_title(f'w/ AIC:{ring_res.aic:.2f} w/o AIC:{no_ring_res.aic:.2f}')
-                                plt.tight_layout()
-                                # os.makedirs(f'./lmfit_result/transit_fit/{TOInumber}', exist_ok=True)
-                                os.makedirs(
-                                    f"./simulation/transit_fit/{TOInumber}", exist_ok=True
-                                )
-                                plt.savefig(
-                                    f"./simulation/transit_fit/{TOInumber}/{TOInumber}_{p_value}_{m}.png",
-                                    header=False,
-                                    index=False,
-                                )
-                                # plt.show()
-                                plt.close()
-                            """
                 ring_res = sorted(best_ring_res_dict.items())[0][1]
                 fig = plt.figure()
                 ax_lc = fig.add_subplot(
@@ -919,10 +796,11 @@ for theta in theta_list:
                 )
                 plt.tight_layout()
                 os.makedirs(
-                    f"./depth_error/figure/{theta}deg_{phi}deg", exist_ok=True
+                    f"./depth_error/figure/b_05/{theta}deg_{phi}deg",
+                    exist_ok=True,
                 )
                 plt.savefig(
-                    f"./depth_error/figure/{theta}deg_{phi}deg/{min_flux}_{bin_error}.png"
+                    f"./depth_error/figure/b_05/{theta}deg_{phi}deg/{min_flux}_{bin_error}.png"
                 )
                 plt.close()
                 ring_model_chisq = ring_res.ndata
@@ -946,10 +824,11 @@ for theta in theta_list:
                 else:
                     p_value = "None"
                 os.makedirs(
-                    f"./depth_error/data/{theta}deg_{phi}deg", exist_ok=True
+                    f"./depth_error/data/b_05/{theta}deg_{phi}deg",
+                    exist_ok=True,
                 )
                 with open(
-                    f"./depth_error/data/{theta}deg_{phi}deg/{TOInumber}_{min_flux}_{bin_error}.txt",
+                    f"./depth_error/data/b_05/{theta}deg_{phi}deg/{TOInumber}_{min_flux}_{bin_error}.txt",
                     "w",
                 ) as f:
                     print("no ring transit fit report:\n", file=f)
