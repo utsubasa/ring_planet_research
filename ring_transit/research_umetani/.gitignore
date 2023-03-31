@@ -10,3 +10,5 @@ mcmc_result/
 except_data_EB/
 except_data_FP/
 depth_error/
+SAP_fitting_result_EB/
+SAP_fitting_result_FP/

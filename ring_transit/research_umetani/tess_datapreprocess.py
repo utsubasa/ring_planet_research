@@ -532,7 +532,7 @@ def folding_lc_from_csv(loaddir):
 
 """定数の定義"""
 
-HOMEDIR = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/SAP_fitting_result"
+HOMEDIR = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/SAP_fitting_result_FP"
 FIGDIR = f"{HOMEDIR}/figure"
 DATADIR = f"{HOMEDIR}/data"
 with open("./no_data_found_toi.txt", "rb") as f:
@@ -595,6 +595,7 @@ ignore_list = [
     2351.01,
     1070.01,
     1344.01,
+    1141.01,
 ]
 duration_ng = [
     129.01,
@@ -625,20 +626,22 @@ fold_ng = [986.01]
 
 
 # 既に前処理したTOIの重複した前処理を回避するためのTOIのリスト
+
 done4poly_list = os.listdir(
-    "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/SAP_fitting_result/data/folded_lc/lightcurve/obs_t0/"
+    "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/SAP_fitting_result_EB/data/folded_lc/lightcurve/obs_t0/"
 )
 done4poly_list = [s for s in done4poly_list if "TOI" in s]
 done4poly_list = [s.lstrip("TOI") for s in done4poly_list]
 done4poly_list = [float(s.strip(".csv")) for s in done4poly_list]
 done4poly_list = [float(s) for s in done4poly_list]
 
+
 oridf = pd.read_csv(
     "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/exofop_tess_tois_2022-09-13.csv"
 )
 df = oridf[oridf["Planet SNR"] > 100]
 df = df[~(df["TESS Disposition"] == "EB")]
-df = df[~(df["TFOPWG Disposition"] == "FP")]
+df = df[(df["TFOPWG Disposition"] == "FP")]
 # df = df.sort_values("Planet SNR", ascending=False)
 # df = df.sort_values("Planet SNR", ascending=False)"""
 """処理を行わないTOIを選択する"""
@@ -666,8 +669,16 @@ sigma_list = []
 depth_list = []
 toi_list = []
 for TOI in TOIlist[5:15]:
+    TOI = "107.01"
+    
     print("analysing: ", "TOI" + str(TOI))
     TOI = str(TOI)
+    search_result = lk.search_targetpixelfile(
+        f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC"
+    )
+    tpf_file = search_result[1].download(quality_bitmask="default")
+    print(tpf_file.hdu[1].header)
+    pdb.set_trace()
 
     """惑星、主星の各パラメータを取得"""
     param_df = df[df["TOI"] == TOI]
@@ -684,7 +695,7 @@ for TOI in TOIlist[5:15]:
     rs = param_df["Stellar Radius (R_Sun)"].values[0]
     rp_rs = rp / rs
 
-    """"保存場所のセッティング
+    """"保存場所のセッティング"""
     SAVE_CURVEFIT_DIR = f"{FIGDIR}/each_lc/curvefit/{TOInumber}"
     SAVE_TRANSITFIT_DIR = f"{FIGDIR}/each_lc/transit_fit/{TOInumber}"
     SAVE_TRANSIT_POLYFIT_DIR = (
@@ -721,8 +732,10 @@ for TOI in TOIlist[5:15]:
     SAVE_OC_DIAGRAM = f"{FIGDIR}/calc_obs_transit_time"
     SAVE_ESTIMATED_PER = f"{FIGDIR}/estimate_period"
     SAVE_OC_DIAGRAM_DATA = f"{DATADIR}/calc_obs_transit_time"
-    """
+
     """lightkurveを用いてSPOCが作成した2min cadenceの全セクターのライトカーブをダウンロードする """
+
+    
     search_result = lk.search_lightcurve(
         f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC"
     )
@@ -731,12 +744,13 @@ for TOI in TOIlist[5:15]:
 
     """全てのライトカーブを結合し、fluxがNaNのデータ点は除去する"""
     lc = lc_collection.stitch().remove_nans()
+
     n_sector = len(param_df.Sectors.values[0].split(","))
     observation_days = n_sector * 27.4
     n_transit = int(observation_days / period)
     n_bin_single_transit = duration / (2 / 60 / 24)
     n_bin = n_bin_single_transit * n_transit
-    sigma = float(lc.flux_err.mean() / (n_bin / 500))
+    sigma = float(lc.estimate_cdpp() / np.sqrt((n_bin / 500)))
     sigma_list.append(sigma)
     depth = 1 - (param_df["Depth (ppm)"].values[0] / 1e6)
     depth_list.append(depth)
@@ -1129,4 +1143,5 @@ df = pd.DataFrame(
     {"sigma_list": sigma_list, "depth_list": depth_list, "toi_list": toi_list}
 )
 df.to_csv("calc_depsig.csv", index=False)
+pdb.set_trace()
 pdb.set_trace()
