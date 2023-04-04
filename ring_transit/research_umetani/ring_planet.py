@@ -3,6 +3,7 @@ import os
 import pdb
 import sys
 import warnings
+from multiprocessing import Pool, cpu_count
 
 import batman
 import lightkurve as lk
@@ -276,7 +277,7 @@ def binning_lc(folded_lc):
 
 
 def make_simulation_data(
-    rp_rs, bin_error, theta=45, phi=0, r_in=1.01, r_out=1.70
+    period, b, rp_rs, bin_error, theta=45, phi=0, r_in=1.01, r_out=1.70
 ):
     """make_simulation_data"""
     t = np.linspace(-0.08, 0.08, 500)
@@ -307,7 +308,7 @@ def make_simulation_data(
         period,
         rp_rs,
         3.81,
-        1.00,
+        b,
         1,
         theta * np.pi / 180,
         phi * np.pi / 180,
@@ -418,7 +419,7 @@ def residual_depth(param, period, theta, phi, depth):
     return calc_depth(rp_rs, period, theta, phi) - depth
 
 
-def get_rp_rs(depth: float) -> float:
+def get_rp_rs(depth: float, period:float, theta: float, phi: float) -> float:
     param = lmfit.Parameters()
     param.add(
         "rp_rs",
@@ -442,403 +443,417 @@ def get_rp_rs(depth: float) -> float:
     return res.params["rp_rs"].value
 
 
-# CSVFILE = './folded_lc_data/TOI2403.01.csv'
-# done_TOIlist = os.listdir('./lmfit_result/transit_fit') #ダブリ解析防止
-oridf = pd.read_csv("./exofop_tess_tois.csv")
-df = oridf[oridf["Planet SNR"] > 100]
-df["TOI"] = df["TOI"].astype(str)
-df = df.sort_values("Planet SNR", ascending=False)
-df["TOI"] = df["TOI"].astype(str)
-TOIlist = df["TOI"]
-
-"""
-plot_ring(
-    rp_rs=0.1,
-    rin_rp=1.01,
-    rout_rin=1.70,
-    b=0.0,
-    theta=45 * np.pi / 180,
-    phi=15 * np.pi / 180,
-    file_name="test.png",
-)
-sys.exit()
-"""
-
-TOI = "495.01"
-print(TOI)
-TOInumber = "TOI" + TOI
-param_df = df[df["TOI"] == TOI]
-period = param_df["Period (days)"].values[0]
-
-min_flux_list = [
-    0.90,
-    0.91,
-    0.92,
-    0.93,
-    0.94,
-    0.95,
-    0.96,
-    0.97,
-    0.98,
-    0.99,
-    0.995,
-]
-bin_error_list = np.arange(0.0001, 0.0031, 0.0001)
-bin_error_list = np.around(bin_error_list, decimals=4)
-theta_list = [3, 15, 30, 45]
-phi_list = [0, 15, 30, 45]
-
-for theta in theta_list:
-    for phi in phi_list:
-        for min_flux in min_flux_list:
-            # get rp_rs value from transit depth
-            rp_rs = get_rp_rs(min_flux)
-            for bin_error in tqdm(bin_error_list):
-                print(theta, phi, min_flux, bin_error)
-                binned_lc = make_simulation_data(
-                    rp_rs, bin_error, theta=theta, phi=phi
-                )
-                # binned_lc = folded_lc.bin(bins=500).remove_nans()
-                t = binned_lc.time.value
-                flux = binned_lc.flux.value
-                flux_err = binned_lc.flux_err.value
-
-                # t = np.linspace(-0.2, 0.2, 300)
-                ###ring model fitting by minimizing chi_square###
-                best_res_dict = {}
-                for n in range(30):
-                    noringnames = [
-                        "t0",
-                        "per",
-                        "rp",
-                        "a",
-                        "b",
-                        "ecc",
-                        "w",
-                        "q1",
-                        "q2",
-                    ]
-                    noringvalues = [
-                        np.random.uniform(-0.05, 0.05),
-                        period,
-                        rp_rs,
-                        np.random.uniform(1, 10),
-                        np.random.uniform(0.0, 0.5),
-                        0,
-                        90.0,
-                        np.random.uniform(0.1, 0.9),
-                        np.random.uniform(0.1, 0.9),
-                    ]
-                    noringmins = [
-                        -0.2,
-                        period * 0.8,
-                        0.01,
-                        1,
-                        0,
-                        0,
-                        90,
-                        0.0,
-                        0.0,
-                    ]
-                    noringmaxes = [
-                        0.2,
-                        period * 1.2,
-                        0.5,
-                        100,
-                        1.0,
-                        0.8,
-                        90,
-                        1.0,
-                        1.0,
-                    ]
-                    noringvary_flags = [
-                        True,
-                        False,
-                        True,
-                        True,
-                        True,
-                        False,
-                        False,
-                        True,
-                        True,
-                    ]
-                    no_ring_params = set_params_lm(
-                        noringnames,
-                        noringvalues,
-                        noringmins,
-                        noringmaxes,
-                        noringvary_flags,
-                    )
-                    no_ring_res = lmfit.minimize(
-                        no_ring_transitfit,
-                        no_ring_params,
-                        args=(np.array(t), flux, flux_err, noringnames),
-                        max_nfev=1000,
-                    )
-                    red_redchi = no_ring_res.redchi - 1
-                    best_res_dict[red_redchi] = no_ring_res
-                no_ring_res = sorted(best_res_dict.items())[0][1]
-                best_ring_res_dict = {}
-                for m in range(1):
-                    names = [
-                        "q1",
-                        "q2",
-                        "t0",
-                        "porb",
-                        "rp_rs",
-                        "a_rs",
-                        "b",
-                        "norm",
-                        "theta",
-                        "phi",
-                        "tau",
-                        "r_in",
-                        "r_out",
-                        "norm2",
-                        "norm3",
-                        "ecosw",
-                        "esinw",
-                    ]
-                    values = [
-                        no_ring_res.params.valuesdict()["q1"],
-                        no_ring_res.params.valuesdict()["q2"],
-                        no_ring_res.params.valuesdict()["t0"],
-                        period,
-                        no_ring_res.params.valuesdict()["rp"],
-                        no_ring_res.params.valuesdict()["a"],
-                        no_ring_res.params.valuesdict()["b"],
-                        1,
-                        np.random.uniform(1e-5, np.pi - 1e-5),
-                        np.random.uniform(0.0, np.pi),
-                        1,
-                        np.random.uniform(1.01, 2.44),
-                        np.random.uniform(1.02, 2.44),
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                    ]
-
-                    saturnlike_values = [
-                        0.26,
-                        0.36,
-                        0.0,
-                        period,
-                        rp_rs,
-                        3.81,
-                        0.5,
-                        1,
-                        theta * np.pi / 180,
-                        phi * np.pi / 180,
-                        1,
-                        1.01,
-                        1.70,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                    ]
-
-                    mins = [
-                        0.0,
-                        0.0,
-                        -0.1,
-                        0.0,
-                        0.01,
-                        1.0,
-                        0.0,
-                        0.9,
-                        0.0,
-                        -np.pi / 2,
-                        -np.pi / 2,
-                        1.00,
-                        1.01,
-                        -0.1,
-                        -0.1,
-                        0.0,
-                        0.0,
-                    ]
-
-                    maxes = [
-                        1.0,
-                        1.0,
-                        0.1,
-                        100.0,
-                        0.5,
-                        100.0,
-                        1.0,
-                        1.1,
-                        np.pi / 2,
-                        np.pi / 2,
-                        1.0,
-                        2.45,
-                        2.45,
-                        0.1,
-                        0.1,
-                        0.0,
-                        0.0,
-                    ]
-
-                    vary_flags = [
-                        True,
-                        True,
-                        True,
-                        False,
-                        True,
-                        True,
-                        True,
-                        False,
-                        True,
-                        True,
-                        False,
-                        True,
-                        True,
-                        False,
-                        False,
-                        False,
-                        False,
-                    ]
-                    params = set_params_lm(
-                        names, saturnlike_values, mins, maxes, vary_flags
-                    )
-                    params_df = pd.DataFrame(
-                        list(zip(values, saturnlike_values, mins, maxes)),
-                        columns=[
-                            "values",
-                            "saturnlike_values",
-                            "mins",
-                            "maxes",
-                        ],
-                        index=names,
-                    )
-                    vary_dic = dict(zip(names, vary_flags))
-                    params_df = params_df.join(
-                        pd.DataFrame.from_dict(
-                            vary_dic, orient="index", columns=["vary_flags"]
-                        )
-                    )
-                    df_for_mcmc = params_df[params_df["vary_flags"] == True]
-
-                    pdic = params_df["saturnlike_values"].to_dict()
-                    try:
-                        ring_res = lmfit.minimize(
-                            ring_transitfit,
-                            params,
-                            args=(t, flux, flux_err, names),
-                            max_nfev=100,
-                        )
-                    except ValueError:
-                        print("Value Error")
-                        print(m, TOInumber)
-                        print(params_df["values"])
-                        continue
-                    red_redchi = ring_res.redchi - 1
-                    best_ring_res_dict[red_redchi] = ring_res
-                ring_res = sorted(best_ring_res_dict.items())[0][1]
-                fig = plt.figure()
-                ax_lc = fig.add_subplot(
-                    2, 1, 1
-                )  # for plotting transit model and data
-                ax_re = fig.add_subplot(2, 1, 2)  # for plotting residuals
-                ring_flux_model = ring_transitfit(
-                    ring_res.params,
-                    t,
-                    flux,
-                    flux_err,
-                    names,
-                    return_model=True,
-                )
-                noring_flux_model = no_ring_transitfit(
-                    no_ring_res.params,
-                    t,
-                    flux,
-                    flux_err,
-                    noringnames,
-                    return_model=True,
-                )
-                ax_lc.errorbar(
-                    t,
-                    flux,
-                    flux_err,
-                    color="black",
-                    marker=".",
-                    linestyle="None",
-                    zorder=2,
-                )
-                ax_lc.plot(
-                    t, ring_flux_model, label="Model w/ ring", color="blue"
-                )
-                ax_lc.plot(
-                    t, noring_flux_model, label="Model w/o ring", color="red"
-                )
-                residuals_ring = flux - ring_flux_model
-                residuals_no_ring = flux - noring_flux_model
-                ax_re.plot(
-                    t,
-                    residuals_ring,
-                    color="blue",
-                    alpha=0.3,
-                    marker=".",
-                    zorder=1,
-                )
-                ax_re.plot(
-                    t,
-                    residuals_no_ring,
-                    color="red",
-                    alpha=0.3,
-                    marker=".",
-                    zorder=1,
-                )
-                ax_re.plot(t, np.zeros(len(t)), color="black", zorder=2)
-                ax_lc.legend()
-                ax_lc.set_title(
-                    f"w/o chisq:{no_ring_res.chisqr:.0f}/{no_ring_res.nfree:.0f}"
-                )
-                plt.tight_layout()
-                os.makedirs(
-                    f"./depth_error/figure/b_05/{theta}deg_{phi}deg",
-                    exist_ok=True,
-                )
-                plt.savefig(
-                    f"./depth_error/figure/b_05/{theta}deg_{phi}deg/{min_flux}_{bin_error}.png"
-                )
-                plt.close()
-                ring_model_chisq = ring_res.ndata
-                F_obs = (
-                    (no_ring_res.chisqr + ring_model_chisq - ring_model_chisq)
-                    / (ring_res.nvarys - no_ring_res.nvarys)
-                ) / (ring_model_chisq / (ring_res.ndata - ring_res.nvarys - 1))
-                if F_obs > 0:
-                    p_value = (
-                        1
-                        - integrate.quad(
-                            lambda x: scipy.stats.f.pdf(
-                                x,
-                                ring_res.ndata - ring_res.nvarys - 1,
-                                ring_res.nvarys - no_ring_res.nvarys,
-                            ),
-                            0,
-                            F_obs,
-                        )[0]
-                    )
-                else:
-                    p_value = "None"
-                os.makedirs(
-                    f"./depth_error/data/b_05/{theta}deg_{phi}deg",
-                    exist_ok=True,
-                )
-                with open(
-                    f"./depth_error/data/b_05/{theta}deg_{phi}deg/{TOInumber}_{min_flux}_{bin_error}.txt",
+def noring_params_setting(period, rp_rs):
+    noringnames = [
+                    "t0",
+                    "per",
+                    "rp",
+                    "a",
+                    "b",
+                    "ecc",
                     "w",
-                ) as f:
-                    print("no ring transit fit report:\n", file=f)
-                    print(lmfit.fit_report(no_ring_res), file=f)
-                    print("ring transit fit report:\n", file=f)
-                    print(lmfit.fit_report(ring_res), file=f)
-                    print(f"F_obs: {F_obs}", file=f)
-                    print(f"p_value: {p_value}", file=f)
-                # if abs(ring_res.redchi-1) < abs(no_ring_res.redchi-1):
-                # with open(f'./lmfit_result/ring_hypo.txt', 'a') as f:
-                # print(TOInumber+ '\n', file = f)
-                # fit_report = lmfit.fit_report(ring_res)
-                # print(fit_report)
+                    "q1",
+                    "q2",
+    ]
+    noringvalues = [
+        np.random.uniform(-0.05, 0.05),
+        period,
+        rp_rs,
+        np.random.uniform(1, 10),
+        np.random.uniform(0.0, 0.5),
+        0,
+        90.0,
+        np.random.uniform(0.1, 0.9),
+        np.random.uniform(0.1, 0.9),
+    ]
+    noringmins = [
+        -0.2,
+        period * 0.8,
+        0.01,
+        1,
+        0,
+        0,
+        90,
+        0.0,
+        0.0,
+    ]
+    noringmaxes = [
+        0.2,
+        period * 1.2,
+        0.5,
+        100,
+        1.0,
+        0.8,
+        90,
+        1.0,
+        1.0,
+    ]
+    noringvary_flags = [
+        True,
+        False,
+        True,
+        True,
+        True,
+        False,
+        False,
+        True,
+        True,
+    ]
+    no_ring_params = set_params_lm(
+        noringnames,
+        noringvalues,
+        noringmins,
+        noringmaxes,
+        noringvary_flags,
+    )
+    
+    return no_ring_params
+
+
+def ring_params_setting(no_ring_res, b, period, rp_rs, theta, phi):
+    names = [
+                "q1",
+                "q2",
+                "t0",
+                "porb",
+                "rp_rs",
+                "a_rs",
+                "b",
+                "norm",
+                "theta",
+                "phi",
+                "tau",
+                "r_in",
+                "r_out",
+                "norm2",
+                "norm3",
+                "ecosw",
+                "esinw",
+    ]
+    values = [
+        no_ring_res.params.valuesdict()["q1"],
+        no_ring_res.params.valuesdict()["q2"],
+        no_ring_res.params.valuesdict()["t0"],
+        period,
+        no_ring_res.params.valuesdict()["rp"],
+        no_ring_res.params.valuesdict()["a"],
+        no_ring_res.params.valuesdict()["b"],
+        1,
+        np.random.uniform(1e-5, np.pi - 1e-5),
+        np.random.uniform(0.0, np.pi),
+        1,
+        np.random.uniform(1.01, 2.44),
+        np.random.uniform(1.02, 2.44),
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+    ]
+
+    saturnlike_values = [
+        0.26,
+        0.36,
+        0.0,
+        period,
+        rp_rs,
+        3.81,
+        b,
+        1,
+        theta * np.pi / 180,
+        phi * np.pi / 180,
+        1,
+        1.01,
+        1.70,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+    ]
+
+    mins = [
+        0.0,
+        0.0,
+        -0.1,
+        0.0,
+        0.01,
+        1.0,
+        0.0,
+        0.9,
+        0.0,
+        -np.pi / 2,
+        -np.pi / 2,
+        1.00,
+        1.01,
+        -0.1,
+        -0.1,
+        0.0,
+        0.0,
+    ]
+
+    maxes = [
+        1.0,
+        1.0,
+        0.1,
+        100.0,
+        0.5,
+        100.0,
+        1.0,
+        1.1,
+        np.pi / 2,
+        np.pi / 2,
+        1.0,
+        2.45,
+        2.45,
+        0.1,
+        0.1,
+        0.0,
+        0.0,
+    ]
+
+    vary_flags = [
+        True,
+        True,
+        True,
+        False,
+        True,
+        True,
+        True,
+        False,
+        True,
+        True,
+        False,
+        True,
+        True,
+        False,
+        False,
+        False,
+        False,
+    ]
+    params = set_params_lm(
+        names, saturnlike_values, mins, maxes, vary_flags
+    )
+
+    return params
+
+
+def process_bin_error(bin_error, b, rp_rs, theta, phi, period, min_flux):
+    print(b, theta, phi, min_flux, bin_error)
+    binned_lc = make_simulation_data(
+        period, b, rp_rs, bin_error, theta=theta, phi=phi
+    )
+    # binned_lc = folded_lc.bin(bins=500).remove_nans()
+    t = binned_lc.time.value
+    flux = binned_lc.flux.value
+    flux_err = binned_lc.flux_err.value
+
+    # t = np.linspace(-0.2, 0.2, 300)
+    ###no ring model fitting by minimizing chi_square###
+    best_res_dict = {}
+    for n in range(30):
+        no_ring_params = noring_params_setting(period, rp_rs)
+        no_ring_res = lmfit.minimize(
+            no_ring_transitfit,
+            no_ring_params,
+            args=(np.array(t), flux, flux_err, list(no_ring_params.keys())),
+            max_nfev=1000,
+        )
+        red_redchi = no_ring_res.redchi - 1
+        best_res_dict[red_redchi] = no_ring_res
+    no_ring_res = sorted(best_res_dict.items())[0][1]
+
+    ###ring model fitting by minimizing chi_square###
+    best_ring_res_dict = {}
+    for _ in range(1):
+        params = ring_params_setting(no_ring_res, b, period, rp_rs, theta, phi)
+        try:
+            ring_res = lmfit.minimize(
+                ring_transitfit,
+                params,
+                args=(t, flux, flux_err, list(params.keys())),
+                max_nfev=100,
+            )
+        except ValueError:
+            print("Value Error")
+            print(list(params.values()))
+            continue
+        red_redchi = ring_res.redchi - 1
+        best_ring_res_dict[red_redchi] = ring_res
+    ring_res = sorted(best_ring_res_dict.items())[0][1]
+    fig = plt.figure()
+    ax_lc = fig.add_subplot(
+        2, 1, 1
+    )  # for plotting transit model and data
+    ax_re = fig.add_subplot(2, 1, 2)  # for plotting residuals
+    ring_flux_model = ring_transitfit(
+        ring_res.params,
+        t,
+        flux,
+        flux_err,
+        list(params.keys()),
+        return_model=True,
+    )
+    noring_flux_model = no_ring_transitfit(
+        no_ring_res.params,
+        t,
+        flux,
+        flux_err,
+        list(no_ring_params.keys()),
+        return_model=True,
+    )
+    ax_lc.errorbar(
+        t,
+        flux,
+        flux_err,
+        color="black",
+        marker=".",
+        linestyle="None",
+        zorder=2,
+    )
+    ax_lc.plot(
+        t, ring_flux_model, label="Model w/ ring", color="blue"
+    )
+    ax_lc.plot(
+        t, noring_flux_model, label="Model w/o ring", color="red"
+    )
+    residuals_ring = flux - ring_flux_model
+    residuals_no_ring = flux - noring_flux_model
+    ax_re.plot(
+        t,
+        residuals_ring,
+        color="blue",
+        alpha=0.3,
+        marker=".",
+        zorder=1,
+    )
+    ax_re.plot(
+        t,
+        residuals_no_ring,
+        color="red",
+        alpha=0.3,
+        marker=".",
+        zorder=1,
+    )
+    ax_re.plot(t, np.zeros(len(t)), color="black", zorder=2)
+    ax_lc.legend()
+    ax_lc.set_title(
+        f"w/o chisq:{no_ring_res.chisqr:.0f}/{no_ring_res.nfree:.0f}"
+    )
+    plt.tight_layout()
+    os.makedirs(
+        f"./depth_error/figure/b_{b}/{theta}deg_{phi}deg",
+        exist_ok=True,
+    )
+    plt.savefig(
+        f"./depth_error/figure/b_{b}/{theta}deg_{phi}deg/{min_flux}_{bin_error}.png"
+    )
+    plt.close()
+    ring_model_chisq = ring_res.ndata
+    F_obs = (
+        (no_ring_res.chisqr + ring_model_chisq - ring_model_chisq)
+        / (ring_res.nvarys - no_ring_res.nvarys)
+    ) / (ring_model_chisq / (ring_res.ndata - ring_res.nvarys - 1))
+    if F_obs > 0:
+        p_value = (
+            1
+            - integrate.quad(
+                lambda x: scipy.stats.f.pdf(
+                    x,
+                    ring_res.ndata - ring_res.nvarys - 1,
+                    ring_res.nvarys - no_ring_res.nvarys,
+                ),
+                0,
+                F_obs,
+            )[0]
+        )
+    else:
+        p_value = "None"
+    os.makedirs(
+        f"./depth_error/data/b_{b}/{theta}deg_{phi}deg",
+        exist_ok=True,
+    )
+    with open(
+        f"./depth_error/data/b_{b}/{theta}deg_{phi}deg/TOI495.01_{min_flux}_{bin_error}.txt",
+        "w",
+    ) as f:
+        print("no ring transit fit report:\n", file=f)
+        print(lmfit.fit_report(no_ring_res), file=f)
+        print("ring transit fit report:\n", file=f)
+        print(lmfit.fit_report(ring_res), file=f)
+        print(f"F_obs: {F_obs}", file=f)
+        print(f"p_value: {p_value}", file=f)
+
+
+def process_bin_error_wrapper(args):
+    return process_bin_error(*args)
+
+
+def main():
+    # CSVFILE = './folded_lc_data/TOI2403.01.csv'
+    # done_TOIlist = os.listdir('./lmfit_result/transit_fit') #ダブリ解析防止
+    oridf = pd.read_csv("./exofop_tess_tois.csv")
+    df = oridf[oridf["Planet SNR"] > 100]
+    df["TOI"] = df["TOI"].astype(str)
+    df = df.sort_values("Planet SNR", ascending=False)
+    df["TOI"] = df["TOI"].astype(str)
+    TOIlist = df["TOI"]
+
+    """
+    plot_ring(
+        rp_rs=0.1,
+        rin_rp=1.01,
+        rout_rin=1.70,
+        b=0.0,
+        theta=45 * np.pi / 180,
+        phi=15 * np.pi / 180,
+        file_name="test.png",
+    )
+    sys.exit()
+    """
+
+    TOI = "495.01"
+    print(TOI)
+    TOInumber = "TOI" + TOI
+    param_df = df[df["TOI"] == TOI]
+    period = param_df["Period (days)"].values[0]
+    b_list = [0.5, 0.3, 0.7]
+    min_flux_list = [
+        0.90,
+        0.91,
+        0.92,
+        0.93,
+        0.94,
+        0.95,
+        0.96,
+        0.97,
+        0.98,
+        0.99,
+        0.995,
+    ]
+    bin_error_list = np.arange(0.0001, 0.0031, 0.0001)
+    bin_error_list = np.around(bin_error_list, decimals=4)
+    theta_list = [3, 15, 30, 45]
+    phi_list = [0, 15, 30, 45]
+    for b in b_list:
+        for theta in theta_list:
+            for phi in phi_list:
+                for min_flux in min_flux_list:
+                    # get rp_rs value from transit depth
+                    rp_rs = get_rp_rs(min_flux, period, theta, phi)
+                    src_datas = list(
+                                map(
+                                    lambda x: [
+                                        x,
+                                        b,
+                                        rp_rs, 
+                                        theta, 
+                                        phi, 
+                                        period, 
+                                        min_flux
+                                    ],
+                                    bin_error_list,
+                                ))
+                    with Pool(cpu_count() - 2) as p:
+                        p.map(process_bin_error_wrapper, src_datas)
+
+if __name__ == '__main__':
+    main()
