@@ -638,6 +638,10 @@ def ring_params_setting(no_ring_res, b, period, rp_rs, theta, phi):
 
 def process_bin_error(bin_error, b, rp_rs, theta, phi, period, min_flux):
     print(b, theta, phi, min_flux, bin_error)
+    if os.path.isfile(f"./depth_error/figure/b_{b}/{theta}deg_{phi}deg/{min_flux}_{bin_error}.png"):
+        print(f"b_{b}/{theta}deg_{phi}deg/{min_flux}_{bin_error}.png is exist.")
+        return
+    
     binned_lc = make_simulation_data(
         period, b, rp_rs, bin_error, theta=theta, phi=phi
     )
@@ -852,7 +856,7 @@ def main():
                                     ],
                                     bin_error_list,
                                 ))
-                    with Pool(cpu_count() - 2) as p:
+                    with Pool(cpu_count() - 4) as p:
                         p.map(process_bin_error_wrapper, src_datas)
 
 if __name__ == '__main__':
