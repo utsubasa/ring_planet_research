@@ -638,9 +638,6 @@ def ring_params_setting(no_ring_res, b, period, rp_rs, theta, phi):
 
 def process_bin_error(bin_error, b, rp_rs, theta, phi, period, min_flux):
     print(b, theta, phi, min_flux, bin_error)
-    if os.path.isfile(f"./depth_error/figure/b_{b}/{theta}deg_{phi}deg/{min_flux}_{bin_error}.png"):
-        print(f"b_{b}/{theta}deg_{phi}deg/{min_flux}_{bin_error}.png is exist.")
-        return
     
     binned_lc = make_simulation_data(
         period, b, rp_rs, bin_error, theta=theta, phi=phi
@@ -833,16 +830,30 @@ def main():
         0.99,
         0.995,
     ]
-    bin_error_list = np.arange(0.0001, 0.0031, 0.0001)
-    bin_error_list = np.around(bin_error_list, decimals=4)
+    
     theta_list = [3, 15, 30, 45]
     phi_list = [0, 15, 30, 45]
     for b in b_list:
         for theta in theta_list:
             for phi in phi_list:
                 for min_flux in min_flux_list:
+                    bin_error_list = np.arange(0.0001, 0.0031, 0.0001)
+                    bin_error_list = np.around(bin_error_list, decimals=4)
+                    new_bin_error_list = []
+                    for bin_error in bin_error_list:
+                        print(bin_error)
+                        if os.path.isfile(f"./depth_error/figure/b_{b}/{theta}deg_{phi}deg/{min_flux}_{bin_error}.png"):
+                            print(f"b_{b}/{theta}deg_{phi}deg/{min_flux}_{bin_error}.png is exist.")
+                            continue
+                        else:
+                            new_bin_error_list.append(bin_error)
+
+                    if len(new_bin_error_list) == 0:
+                        continue
+
                     # get rp_rs value from transit depth
                     rp_rs = get_rp_rs(min_flux, period, theta, phi)
+                    
                     src_datas = list(
                                 map(
                                     lambda x: [
@@ -854,9 +865,9 @@ def main():
                                         period, 
                                         min_flux
                                     ],
-                                    bin_error_list,
+                                    new_bin_error_list,
                                 ))
-                    with Pool(cpu_count() - 4) as p:
+                    with Pool(cpu_count() - 1) as p:
                         p.map(process_bin_error_wrapper, src_datas)
 
 if __name__ == '__main__':
