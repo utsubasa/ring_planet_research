@@ -657,7 +657,7 @@ df = df.drop(index=ignore_list, errors="ignore")
 # df = df.drop(index=trend_ng, errors='ignore')
 df = df.reset_index()
 
-"""
+
 df = pd.read_csv(
     "/Users/u_tsubasa/Downloads/exofop_tess_tois_full.csv"
 )
@@ -665,7 +665,7 @@ df = df[~(df["Stellar Mass (M_Sun)"] == "")]
 df = df[~(df["Stellar Radius (R_Sun)"] == "")]
 df = df[~(df["Planet Radius (R_Earth)"] == "")]
 df = df[~(df["Duration (hours)"] == "")]
-"""
+
 df["TOI"] = df["TOI"].astype(str)
 TOIlist = df["TOI"]
 
@@ -673,7 +673,8 @@ sigma_list = []
 depth_list = []
 toi_list = []
 
-for TOI in TOIlist[:10]:
+#for TOI in TOIlist[:10]:
+for TOI in [4470.01, ]:
     TOI = str(TOI)
     print("analysing: ", "TOI" + str(TOI))
 
@@ -691,7 +692,7 @@ for TOI in TOIlist[:10]:
     )  # translate to Rsun
     rs = param_df["Stellar Radius (R_Sun)"].values[0]
     ms = param_df["Stellar Mass (M_Sun)"].values[0]*1.989e+30
-    #mp = param_df["Predicted Mass (M_Earth)"].values[0] *1.989e+30/ 333030
+    mp = param_df["Predicted Mass (M_Earth)"].values[0] *1.989e+30/ 333030
 
     rp_rs = rp / rs
 
@@ -705,7 +706,7 @@ for TOI in TOIlist[:10]:
 
     """全てのライトカーブを結合し、fluxがNaNのデータ点は除去する"""
     lc = lc_collection.stitch().remove_nans()
-
+    """
     n_sector = len(param_df.Sectors.values[0].split(","))
     observation_days = n_sector * 27.4
     n_transit = int(observation_days / period)
@@ -717,6 +718,7 @@ for TOI in TOIlist[:10]:
     depth_list.append(depth)
     toi_list.append(TOI)
     continue
+    """
 
     # calculate size of orbit using kepler's third law
     sec_period = period * 24 * 3600
@@ -726,14 +728,17 @@ for TOI in TOIlist[:10]:
 
     a_m = ( numerator / denominator ) **(1/3)
     a_rs = a_m / (rs*696340000) # unit solar radius
+    a_au = a_m * 6.68459e-12 # unit au
     numerator =  np.abs((rs+rp)**2 - (a_rs * np.sin(duration * 24 * 3600*np.pi/sec_period))**2)
     numerator = numerator ** (1/2)
     denominator = rs
     b = (numerator / denominator)
     b = 1 - b
     print(b)
+    b = np.sqrt((rs + rp)**2 - a_au**2 * np.sin(np.pi * duration / period)**2) / rs
     pdb.set_trace()
-    np.arcsin(((rs+rp)**2 - (0.5*rs)**2)**(1/2) /a_rs)*period/np.pi
+    np.arcsin(((rs+rp)**2 - (0.6*rs)**2)**(1/2) /a_rs)*period/np.pi
+    b = np.sqrt(np.abs( (rs + rp)**2 - a_rs**2 * np.sin(np.pi * duration / period)**2) ) / rs
 
 
     """"保存場所のセッティング"""
