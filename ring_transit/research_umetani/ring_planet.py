@@ -816,7 +816,7 @@ def main():
     TOInumber = "TOI" + TOI
     param_df = df[df["TOI"] == TOI]
     period = param_df["Period (days)"].values[0]
-    b_list = [0.5, 0.3, 0.7]
+    b_list = [0.5, 0.3, 0.7, 1]
     min_flux_list = [
         0.90,
         0.91,
@@ -837,7 +837,7 @@ def main():
         for theta in theta_list:
             for phi in phi_list:
                 for min_flux in min_flux_list:
-                    bin_error_list = np.arange(0.0001, 0.0031, 0.0001)
+                    bin_error_list = np.arange(0.0031, 0.0041, 0.0001)
                     bin_error_list = np.around(bin_error_list, decimals=4)
                     new_bin_error_list = []
                     for bin_error in bin_error_list:
@@ -867,7 +867,7 @@ def main():
                                     ],
                                     new_bin_error_list,
                                 ))
-                    with Pool(cpu_count() - 1) as p:
+                    with Pool(cpu_count() - 5) as p:
                         p.map(process_bin_error_wrapper, src_datas)
 
 if __name__ == '__main__':
