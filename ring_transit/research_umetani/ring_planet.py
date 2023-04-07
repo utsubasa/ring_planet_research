@@ -868,7 +868,7 @@ def main():
                                     ],
                                     new_bin_error_list,
                                 ))
-                    with Pool(cpu_count() - 1) as p:
+                    with Pool(cpu_count() - 5) as p:
                         p.map(process_bin_error_wrapper, src_datas)
 
 if __name__ == '__main__':
