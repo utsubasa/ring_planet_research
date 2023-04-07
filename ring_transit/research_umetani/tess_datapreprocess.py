@@ -634,14 +634,15 @@ done4poly_list = [float(s) for s in done4poly_list]
 
 
 oridf = pd.read_csv(
-    "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/exofop_tess_tois_2022-09-13.csv"
+    "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/exofop_tess_tois_full_20220913.csv"
 )
-df = oridf[oridf["Planet SNR"] > 100]
-df = df[~(df["TESS Disposition"] == "EB")]
-df = df[~(df["TFOPWG Disposition"] == "FP")]
-df = df.sort_values("Planet SNR", ascending=False)
+#df = oridf[oridf["Planet SNR"] > 100]
+#df = df[~(df["TESS Disposition"] == "EB")]
+#df = df[~(df["TFOPWG Disposition"] == "FP")]
+df = oridf.sort_values("Planet SNR", ascending=False)
 # df = df.sort_values("Planet SNR", ascending=False)
 
+'''
 """処理を行わないTOIを選択する"""
 df = df.set_index(["TOI"])
 df = df.drop(index=done4poly_list, errors="ignore")
@@ -656,8 +657,10 @@ df = df.drop(index=ignore_list, errors="ignore")
 # df = df.drop(index=fold_ng, errors='ignore')
 # df = df.drop(index=trend_ng, errors='ignore')
 df = df.reset_index()
+'''
 df["TOI"] = df["TOI"].astype(str)
 TOIlist = df["TOI"]
+
 
 for TOI in TOIlist:
     print("analysing: ", "TOI" + str(TOI))
