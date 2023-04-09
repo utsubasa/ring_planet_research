@@ -661,10 +661,11 @@ df = df.reset_index()
 df["TOI"] = df["TOI"].astype(str)
 TOIlist = df["TOI"]
 
-
 for TOI in TOIlist:
     print("analysing: ", "TOI" + str(TOI))
-    TOI = str(TOI)
+    sigma_list = []
+    depth_list = []
+    toi_list = []
 
     """惑星、主星の各パラメータを取得"""
     param_df = df[df["TOI"] == TOI]
@@ -679,7 +680,34 @@ for TOI in TOIlist:
         param_df["Planet Radius (R_Earth)"].values[0] * 0.00916794
     )  # translate to Rsun
     rs = param_df["Stellar Radius (R_Sun)"].values[0]
+    ms = param_df["Stellar Mass (M_Sun)"].values[0]*1.989e+30
+    mp = param_df["Predicted Mass (M_Earth)"].values[0] *1.989e+30/ 333030
+
     rp_rs = rp / rs
+
+    # calculate size of orbit using kepler's third law
+    g = 6.673e-11
+    a = ( period**2 * ((g*(ms+mp)) /(4*np.pi**2)) ) **1/3
+    b = (rp + rs) / np.sqrt(rs**2 + rp**2) * np.cos(np.pi / period * duration)
+    print(b)
+    search_result = lk.search_lightcurve(
+        f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC"
+    )
+    lc_collection = search_result.download_all()
+    lc = lc_collection.stitch().remove_nans()
+    n_sector = len(param_df.Sectors.values[0].split(","))
+    observation_days = n_sector * 27.4
+    n_transit = int(observation_days / period)
+    n_bin_single_transit = duration / (2 / 60 / 24)
+    n_bin = n_bin_single_transit * n_transit
+    sigma = float(lc.flux_err.mean() / (n_bin / 500))
+    sigma_list.append(sigma)
+    depth = 1 - (param_df["Depth (ppm)"].values[0] / 1e6)
+    depth_list.append(depth)
+    toi_list.append(TOI)
+    continue
+
+    pdb.set_trace()
 
     """"保存場所のセッティング"""
     SAVE_CURVEFIT_DIR = f"{FIGDIR}/each_lc/curvefit/{TOInumber}"
@@ -1110,3 +1138,5 @@ for TOI in TOIlist:
     print(f"Analysis completed: {TOInumber}")
 
     # import pdb;pdb.set_trace()
+
+

@@ -150,7 +150,7 @@ def ring_model(t, pdic, mcmc_pvalues=None):
     model_flux = np.array(c_compile_ring.getflux(times, pars, len(times))) * (
         norm + norm2 * (times - t0) + norm3 * (times - t0) ** 2
     )
-    model_flux = np.nan_to_num(model_flux)
+    # model_flux = np.nan_to_num(model_flux)
     return model_flux
 
 
@@ -369,7 +369,7 @@ def no_ring_transit_model(t):
     return model
 
 
-def calc_depth(rp_rs, period, theta, phi):
+def calc_depth(rp_rs, b, period, theta, phi):
     """calc_rp_rs"""
     names = [
         "q1",
@@ -397,7 +397,7 @@ def calc_depth(rp_rs, period, theta, phi):
         period,
         rp_rs,
         3.81,
-        1.00,
+        b, 
         1,
         theta * np.pi / 180,
         phi * np.pi / 180,
@@ -414,12 +414,12 @@ def calc_depth(rp_rs, period, theta, phi):
     return ring_model([0], pdic)[0]
 
 
-def residual_depth(param, period, theta, phi, depth):
+def residual_depth(param, b, period, theta, phi, depth):
     rp_rs = param["rp_rs"].value
-    return calc_depth(rp_rs, period, theta, phi) - depth
+    return calc_depth(rp_rs, b, period, theta, phi) - depth
 
 
-def get_rp_rs(depth: float, period:float, theta: float, phi: float) -> float:
+def get_rp_rs(depth: float, b:float, period:float, theta: float, phi: float) -> float:
     param = lmfit.Parameters()
     param.add(
         "rp_rs",
@@ -432,6 +432,7 @@ def get_rp_rs(depth: float, period:float, theta: float, phi: float) -> float:
         residual_depth,
         param,
         args=(
+            b,
             period,
             theta,
             phi,
@@ -638,7 +639,6 @@ def ring_params_setting(no_ring_res, b, period, rp_rs, theta, phi):
 
 def process_bin_error(bin_error, b, rp_rs, theta, phi, period, min_flux):
     print(b, theta, phi, min_flux, bin_error)
-    
     binned_lc = make_simulation_data(
         period, b, rp_rs, bin_error, theta=theta, phi=phi
     )
@@ -804,7 +804,8 @@ def main():
         rin_rp=1.01,
         rout_rin=1.70,
         b=0.0,
-        theta=45 * np.pi / 180,
+        theta=45 * np.pi /
+         180,
         phi=15 * np.pi / 180,
         file_name="test.png",
     )
@@ -816,24 +817,31 @@ def main():
     TOInumber = "TOI" + TOI
     param_df = df[df["TOI"] == TOI]
     period = param_df["Period (days)"].values[0]
-    b_list = [0.5, 0.3, 0.7, 0.1, 0.2, 0.4, 0.8, 0.9, 1, 0]
+
+    b_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 0]
     min_flux_list = [
-        0.90,
-        0.91,
-        0.92,
-        0.93,
-        0.94,
-        0.95,
-        0.96,
-        0.97,
-        0.98,
-        0.99,
+        0.999,
+        0.998,
+        0.997,
+        0.996,
         0.995,
-        0.996, 0.997, 0.998, 0.999
+        0.994,
+        0.993,
+        0.992,
+        0.991,
+        0.99,
+        0.98,
+        0.97,
+        0.96,
+        0.95,
+        0.94,
+        0.93,
+        0.92,
+        0.91,
+        0.90,
     ]
-    
-    theta_list = [3, 15, 30, 45]
-    phi_list = [0, 15, 30, 45]
+    theta_list = [45, 3, 15, 30]
+    phi_list = [45, 0, 15, 30]
     for b in b_list:
         for theta in theta_list:
             for phi in phi_list:
@@ -845,7 +853,7 @@ def main():
                         print(bin_error)
                         if os.path.isfile(f"./depth_error/figure/b_{b}/{theta}deg_{phi}deg/{min_flux}_{bin_error}.png"):
                             print(f"b_{b}/{theta}deg_{phi}deg/{min_flux}_{bin_error}.png is exist.")
-                            continue
+                            continue     
                         else:
                             new_bin_error_list.append(bin_error)
 
@@ -853,23 +861,24 @@ def main():
                         continue
 
                     # get rp_rs value from transit depth
-                    rp_rs = get_rp_rs(min_flux, period, theta, phi)
-                    
+                    rp_rs = get_rp_rs(min_flux, b, period, theta, phi)
+
                     src_datas = list(
                                 map(
                                     lambda x: [
                                         x,
                                         b,
-                                        rp_rs, 
-                                        theta, 
-                                        phi, 
-                                        period, 
+                                        rp_rs,
+                                        theta,
+                                        phi,
+                                        period,
                                         min_flux
                                     ],
                                     new_bin_error_list,
                                 ))
                     with Pool(cpu_count() - 5) as p:
                         p.map(process_bin_error_wrapper, src_datas)
+
 
 if __name__ == '__main__':
     main()
