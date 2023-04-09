@@ -687,7 +687,7 @@ for TOI in TOIlist:
 
     # calculate size of orbit using kepler's third law
     g = 6.673e-11
-    a = ( period**2 * ((g*(ms+mp)) /(4*np.pi**2)) ) **1/3
+    a = (period**2 * ((g*(ms+mp)) / (4*np.pi**2)))**(1/3)
     b = (rp + rs) / np.sqrt(rs**2 + rp**2) * np.cos(np.pi / period * duration)
     print(b)
     search_result = lk.search_lightcurve(
@@ -705,6 +705,7 @@ for TOI in TOIlist:
     depth = 1 - (param_df["Depth (ppm)"].values[0] / 1e6)
     depth_list.append(depth)
     toi_list.append(TOI)
+    #with open("/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/TOI_list.txt", "a") as f:
     continue
 
     pdb.set_trace()
