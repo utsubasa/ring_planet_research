@@ -530,6 +530,85 @@ def folding_lc_from_csv(loaddir):
     return folded_lc
 
 
+def calc_b_depth_sigma():
+    df = pd.read_csv(
+        "/Users/u_tsubasa/Downloads/exofop_tess_tois_full_20220913.csv"
+    )
+    df = df[~(df["Stellar Mass (M_Sun)"] == "")]
+    df = df[~(df["Stellar Radius (R_Sun)"] == "")]
+    df = df[~(df["Planet Radius (R_Earth)"] == "")]
+    df = df[~(df["Duration (hours)"] == "")]
+    df = df.sort_values("Planet SNR", ascending=False)
+    df["TOI"] = df["TOI"].astype(str)
+    TOIlist = df["TOI"]
+
+    for TOI in TOIlist:
+        TOI = str(TOI)
+        print("analysing: ", "TOI" + str(TOI))
+
+        """惑星、主星の各パラメータを取得"""
+        param_df = df[df["TOI"] == TOI]
+        duration = param_df["Duration (hours)"].values[0] / 24
+        period = param_df["Period (days)"].values[0]
+        rp = (
+            param_df["Planet Radius (R_Earth)"].values[0] * 0.00916794
+        )  # translate to Rsun
+        rs = param_df["Stellar Radius (R_Sun)"].values[0]
+        ms = param_df["Stellar Mass (M_Sun)"].values[0]*1.989e+30
+        mp = param_df["Predicted Mass (M_Earth)"].values[0] *1.989e+30/ 333030
+
+        """lightkurveを用いてSPOCが作成した2min cadenceの全セクターのライトカーブをダウンロードする """
+        try:
+            search_result = lk.search_lightcurve(
+                f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC"
+            )
+        except ValueError:
+            pdb.set_trace()
+        try:
+            lc_collection = search_result.download_all()
+        except AttributeError:
+            lc_collection = search_result[0].download(flux_column='sap_flux')
+
+        if lc_collection is None:
+            with open("no_data_found_20230409.txt", "a") as f:
+                print(f"{TOI}\n", file=f)
+            continue
+
+        """全てのライトカーブを結合し、fluxがNaNのデータ点は除去する"""
+        try:
+            lc = lc_collection.stitch().remove_nans()
+        except lk.utils.LightkurveError:
+            search_result = lk.search_lightcurve(
+                f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC"
+            )
+            lc_collection = search_result.download_all()
+            lc = lc_collection.stitch().remove_nans()
+        n_sector = len(param_df.Sectors.values[0].split(","))
+        observation_days = n_sector * 27.4
+        n_transit = int(observation_days / period)
+        n_bin_single_transit = duration / (2 / 60 / 24)
+        n_bin = n_bin_single_transit * n_transit
+        sigma = float(lc.estimate_cdpp() / np.sqrt((n_bin / 500)))
+        depth = 1 - (param_df["Depth (ppm)"].values[0] / 1e6)
+
+        # calculate size of orbit using kepler's third law
+        sec_period = period * 24 * 3600
+        g = 6.673e-11
+        numerator = sec_period**2 * (g*(ms+mp))
+        denominator = 4*np.pi**2
+
+        a_m = (numerator / denominator) ** (1/3)
+        a_rs = a_m / (rs*696340000)  # unit solar radius
+        # a_au = a_m * 6.68459e-12  # unit au
+        b = np.sqrt(np.abs((rs + rp)**2 - a_rs**2 * np.sin(np.pi * duration / period)**2)) / rs
+        with open("./TOI_a_b_depth_sigma.txt", "a") as f:
+            f.write(str(TOI) + "," + str(a_rs) + "," + str(b) + "," + str(depth) + "," + str(sigma) + "\n")
+        continue
+
+
+calc_b_depth_sigma()
+pdb.set_trace()
+
 """定数の定義"""
 HOMEDIR = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/SAP_fitting_result"
 FIGDIR = f"{HOMEDIR}/figure"
@@ -640,7 +719,6 @@ df = oridf[oridf["Planet SNR"] > 100]
 df = df[~(df["TESS Disposition"] == "EB")]
 df = df[~(df["TFOPWG Disposition"] == "FP")]
 df = df.sort_values("Planet SNR", ascending=False)
-# df = df.sort_values("Planet SNR", ascending=False)
 
 """処理を行わないTOIを選択する"""
 df = df.set_index(["TOI"])
@@ -659,13 +737,13 @@ df = df.reset_index()
 
 
 df = pd.read_csv(
-    "/Users/u_tsubasa/Downloads/exofop_tess_tois_full.csv"
+    "/Users/u_tsubasa/Downloads/exofop_tess_tois_full_20220913.csv"
 )
 df = df[~(df["Stellar Mass (M_Sun)"] == "")]
 df = df[~(df["Stellar Radius (R_Sun)"] == "")]
 df = df[~(df["Planet Radius (R_Earth)"] == "")]
 df = df[~(df["Duration (hours)"] == "")]
-
+df = df.sort_values("Planet SNR", ascending=False)
 df["TOI"] = df["TOI"].astype(str)
 TOIlist = df["TOI"]
 
@@ -674,7 +752,7 @@ depth_list = []
 toi_list = []
 
 #for TOI in TOIlist[:10]:
-for TOI in [4470.01, ]:
+for TOI in TOIlist:
     TOI = str(TOI)
     print("analysing: ", "TOI" + str(TOI))
 
@@ -698,27 +776,24 @@ for TOI in [4470.01, ]:
 
 
     """lightkurveを用いてSPOCが作成した2min cadenceの全セクターのライトカーブをダウンロードする """
-    search_result = lk.search_lightcurve(
-        f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC"
-    )
+    try:
+        search_result = lk.search_lightcurve(
+            f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC"
+        )
+    except ValueError:
+        pdb.set_trace()
     lc_collection = search_result.download_all()
     # lc_collection = search_result[0].download(flux_column='sap_flux')
 
     """全てのライトカーブを結合し、fluxがNaNのデータ点は除去する"""
     lc = lc_collection.stitch().remove_nans()
-    """
     n_sector = len(param_df.Sectors.values[0].split(","))
     observation_days = n_sector * 27.4
     n_transit = int(observation_days / period)
     n_bin_single_transit = duration / (2 / 60 / 24)
     n_bin = n_bin_single_transit * n_transit
     sigma = float(lc.estimate_cdpp() / np.sqrt((n_bin / 500)))
-    sigma_list.append(sigma)
     depth = 1 - (param_df["Depth (ppm)"].values[0] / 1e6)
-    depth_list.append(depth)
-    toi_list.append(TOI)
-    continue
-    """
 
     # calculate size of orbit using kepler's third law
     sec_period = period * 24 * 3600
@@ -726,19 +801,14 @@ for TOI in [4470.01, ]:
     numerator = sec_period**2 * (g*(ms+mp))
     denominator = 4*np.pi**2
 
-    a_m = ( numerator / denominator ) **(1/3)
-    a_rs = a_m / (rs*696340000) # unit solar radius
-    a_au = a_m * 6.68459e-12 # unit au
-    numerator =  np.abs((rs+rp)**2 - (a_rs * np.sin(duration * 24 * 3600*np.pi/sec_period))**2)
-    numerator = numerator ** (1/2)
-    denominator = rs
-    b = (numerator / denominator)
-    b = 1 - b
-    print(b)
-    b = np.sqrt((rs + rp)**2 - a_au**2 * np.sin(np.pi * duration / period)**2) / rs
-    pdb.set_trace()
-    np.arcsin(((rs+rp)**2 - (0.6*rs)**2)**(1/2) /a_rs)*period/np.pi
-    b = np.sqrt(np.abs( (rs + rp)**2 - a_rs**2 * np.sin(np.pi * duration / period)**2) ) / rs
+    a_m = (numerator / denominator) ** (1/3)
+    a_rs = a_m / (rs*696340000)  # unit solar radius
+    a_au = a_m * 6.68459e-12  # unit au
+    b = np.sqrt(np.abs((rs + rp)**2 - a_rs**2 * np.sin(np.pi * duration / period)**2)) / rs
+    with open("./TOI_b_depth_sigma.txt", "a") as f:
+        f.write(str(TOI) + "," + str(b) + "," + str(depth) + "," + str(sigma) + "\n")
+    continue
+
 
 
     """"保存場所のセッティング"""
@@ -1182,10 +1252,5 @@ for TOI in [4470.01, ]:
     print(f"Analysis completed: {TOInumber}")
 
     # import pdb;pdb.set_trace()
-# dump sigma_list, depth_list, toi_list to pickle
-df = pd.DataFrame(
-    {"sigma_list": sigma_list, "depth_list": depth_list, "toi_list": toi_list}
-)
-df.to_csv("calc_depsig.csv", index=False)
-pdb.set_trace()
+
 
