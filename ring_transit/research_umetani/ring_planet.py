@@ -804,8 +804,7 @@ def main():
         rin_rp=1.01,
         rout_rin=1.70,
         b=0.0,
-        theta=45 * np.pi /
-         180,
+        theta=45 * np.pi / 180,
         phi=15 * np.pi / 180,
         file_name="test.png",
     )
@@ -876,7 +875,7 @@ def main():
                                     ],
                                     new_bin_error_list,
                                 ))
-                    with Pool(cpu_count() - 5) as p:
+                    with Pool(cpu_count() - 1) as p:
                         p.map(process_bin_error_wrapper, src_datas)
 
 
