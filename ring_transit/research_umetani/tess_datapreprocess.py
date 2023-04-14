@@ -12,6 +12,7 @@ import lmfit
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import requests
 from astropy.io import ascii
 from astropy.table import vstack
 from scipy.stats import linregress, t
@@ -557,6 +558,10 @@ def calc_a_b_depth_sigma(TOI, df):
         )
     except ValueError:
         pdb.set_trace()
+    except requests.exceptions.HTTPError:
+        search_result = lk.search_lightcurve(
+            f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC"
+        )
     try:
         lc_collection = search_result.download_all()
     except AttributeError:
@@ -564,7 +569,7 @@ def calc_a_b_depth_sigma(TOI, df):
 
     if lc_collection is None:
         with open("no_data_found_20230409.txt", "a") as f:
-            print(f"{TOI}\n", file=f)
+            print(f"{TOI}", file=f)
         return
 
     """全てのライトカーブを結合し、fluxがNaNのデータ点は除去する"""
@@ -596,7 +601,7 @@ def calc_a_b_depth_sigma(TOI, df):
     # a_au = a_m * 6.68459e-12  # unit au
     b = np.sqrt(np.abs((rs + rp)**2 - a_rs**2 * np.sin(np.pi * duration / period)**2)) / rs
     with open("./TOI_a_b_depth_sigma.txt", "a") as f:
-        f.write(str(TOI) + "," + str(a_rs) + "," + str(b) + "," + str(depth) + "," + str(sigma) + "\n")
+        f.write(str(TOI) + " " + str(a_rs) + " " + str(b) + " " + str(depth) + " " + str(sigma) + "\n")
 
 
 def calc_a_b_depth_sigma_wrapper(args):
@@ -604,12 +609,8 @@ def calc_a_b_depth_sigma_wrapper(args):
 
 
 if __name__ == "__main__":
-    search_result = lk.search_targetpixelfile(
-            "TOI 107.01", mission="TESS", cadence="short", author="SPOC"
-        ).download_all()
-    search_result.plot()
-    plt.show()
-    pdb.set_trace()
+    done_tois = np.loadtxt("TOI_a_b_depth_sigma.txt")[:,0].tolist()
+    nodata_tois = np.loadtxt("no_data_found_20230409.txt").tolist()
     df = pd.read_csv(
             "/Users/u_tsubasa/Downloads/exofop_tess_tois_full_20220913.csv"
         )
@@ -618,11 +619,15 @@ if __name__ == "__main__":
     df = df[~(df["Planet Radius (R_Earth)"] == "")]
     df = df[~(df["Duration (hours)"] == "")]
     df = df.sort_values("Planet SNR", ascending=False)
+    df = df.set_index(["TOI"])
+    df = df.drop(index=done_tois, errors="ignore")
+    df = df.drop(index=nodata_tois, errors="ignore")
+    df = df.reset_index()
     df["TOI"] = df["TOI"].astype(str)
     TOIlist = df["TOI"]
     src_datas = list(map(lambda x: [x, df], TOIlist))
 
-    with Pool(cpu_count() - 5) as p:
+    with Pool(cpu_count() - 1) as p:
         p.map(calc_a_b_depth_sigma_wrapper, src_datas)
 
     pdb.set_trace()
