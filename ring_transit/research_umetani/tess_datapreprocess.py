@@ -109,6 +109,142 @@ class PlotCurvefit(PlotLightcurve):
         self.fit_res.plot()
 
 
+def calc_b_and_a(period, period_err, ms, mp, rs, rp, duration):
+    # calculate size of orbit using kepler's third law
+    sec_period = period * 24 * 3600
+    #sec_period_err = period_err * 24 * 3600
+    g = 6.673e-11
+    numerator = (sec_period**2) * (g*(ms+mp))
+    denominator = 4*(np.pi**2)
+
+    a_m = (numerator / denominator) ** (1/3)
+    #a_rs = a_m / 696340000  # unit solar radius
+    # a_au = a_m * 6.68459e-12  # unit au
+    A = (rs + rp)**2
+    B = (a_m**2)
+    C = np.sin(np.pi * duration / period)**2
+
+    b = np.sqrt(np.abs(A - (B*C))) / rs
+    print(b)
+    pdb.set_trace()
+
+    return a_m, b
+
+
+def calc_depth_and_sigma(param_df, period, duration, lc):
+    # calcuate sigma and get depth
+    n_sector = len(param_df.Sectors.values[0].split(","))
+    observation_days = n_sector * 27.4
+    n_transit = int(observation_days / period)
+    n_bin_single_transit = duration / (2 / 60 / 24)
+    n_bin = n_bin_single_transit * n_transit
+    sigma = float(lc.estimate_cdpp() / np.sqrt((n_bin / 500)))
+    depth = 1 - (param_df["Depth (ppm)"].values[0] / 1e6)
+
+    return depth, sigma
+
+
+def extract_a_b_depth_sigma_txt(TOI, df):
+    TOI = str(TOI)
+    print("analysing: ", "TOI" + str(TOI))
+
+    """惑星、主星の各パラメータを取得"""
+    param_df = df[df["TOI"] == TOI]
+    duration = param_df["Duration (hours)"].values[0] / 24
+    period = param_df["Period (days)"].values[0]
+    period_err = param_df["Period error"].values[0] / 24
+    rp = param_df["Planet Radius (R_Earth)"].values[0] * 0.00916794 * 696340000 # translate to meter
+    rp_err = param_df["Planet Radius error"].values[0] * 0.00916794 * 696340000 # translate to meter
+    rs = param_df["Stellar Radius (R_Sun)"].values[0] * 696340000 # translate to meter
+    rs_err = param_df["Stellar Radius error"].values[0] * 696340000 # translate to meter
+    ms = param_df["Stellar Mass (M_Sun)"].values[0]*1.989e+30 # translate to kg
+    ms_err = param_df["Stellar Mass error"].values[0]*1.989e+30 # translate to kg
+    mp = param_df["Predicted Mass (M_Earth)"].values[0] *1.989e+30/ 333030 # translate to kg
+
+    #periodが取得できない場合、処理を中断する
+    if np.isnan(period):
+        print(f"not found period:{TOI}")
+        with open("no_period_found_20230409.txt", "a") as f:
+            print(f"{TOI}", file=f)
+        return
+
+    lc = get_lc(TOI)
+
+    # calcuate a_m, b
+    a_m, b = calc_b_and_a(period, period_err, ms, mp, rs, rp, duration)
+
+    # get depth and calculate sigma
+    depth, sigma = calc_depth_and_sigma(param_df, period, duration, lc)
+    # save TOI, a_m, b, depth, sigma
+    with open("./TOI_a_b_depth_sigma.txt", "a") as f:
+        f.write(str(TOI) + " " + str(a_m) + " " + str(b) + " " + str(depth) + " " + str(sigma) + "\n")
+
+
+def modify_a_b_depth_sigma_txt(TOI, df, txt_df):
+    TOI = str(TOI)
+    print("modifing: ", "TOI" + str(TOI))
+
+    """惑星、主星の各パラメータを取得"""
+    param_df = df[df["TOI"] == TOI]
+    duration = param_df["Duration (hours)"].values[0] / 24
+    period = param_df["Period (days)"].values[0]
+    period_err = param_df["Period error"].values[0] / 24
+    rp = param_df["Planet Radius (R_Earth)"].values[0] * 0.00916794 * 696340000 # translate to meter
+    rp_err = param_df["Planet Radius error"].values[0] * 0.00916794 * 696340000 # translate to meter
+    rs = param_df["Stellar Radius (R_Sun)"].values[0] * 696340000 # translate to meter
+    rs_err = param_df["Stellar Radius error"].values[0] * 696340000 # translate to meter
+    ms = param_df["Stellar Mass (M_Sun)"].values[0]*1.989e+30 # translate to kg
+    ms_err = param_df["Stellar Mass error"].values[0]*1.989e+30 # translate to kg
+    mp = param_df["Predicted Mass (M_Earth)"].values[0] *1.989e+30/ 333030 # translate to kg
+
+    #periodが取得できない場合、処理を中断する
+    if np.isnan(period):
+        print(f"not found period:{TOI}")
+        with open("no_period_found_20230409.txt", "a") as f:
+            print(f"{TOI}", file=f)
+        return
+
+    # calcuate a_m, b
+    a_m, b = calc_b_and_a(period, period_err, ms, mp, rs, rp, duration)
+    pdb.set_trace()
+    # modify a_m and b
+    txt_df.loc[txt_df["TOI"] == float(TOI), "a_m"] = a_m
+    txt_df.loc[txt_df["TOI"] == float(TOI), "b"] = b
+
+    return txt_df
+
+
+def extract_a_b_depth_sigma_txt_wrapper(args):
+    return extract_a_b_depth_sigma_txt(*args)
+
+
+def get_lc(TOI: str):
+    """lightkurveを用いてSPOCが作成した2min cadenceの全セクターのライトカーブをダウンロードする """
+    search_result = lk.search_lightcurve(f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC")
+
+    try:
+        lc_collection = search_result.download_all()
+    except AttributeError:
+        lc_collection = search_result[0].download()
+
+    if lc_collection is None:
+        with open("no_data_found_20230409.txt", "a") as f:
+            print(f"{TOI}", file=f)
+        return
+
+    """全てのライトカーブを結合し、fluxがNaNのデータ点は除去する"""
+    try:
+        lc = lc_collection.stitch().remove_nans()
+    except lk.utils.LightkurveError:
+        search_result = lk.search_lightcurve(
+            f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC"
+        )
+        lc_collection = search_result.download_all()
+        lc = lc_collection.stitch().remove_nans()
+
+    return lc
+
+
 def calc_data_survival_rate(lc, duration):
     data_n = len(lc.flux)
     try:
@@ -532,85 +668,10 @@ def folding_lc_from_csv(loaddir):
     return folded_lc
 
 
-def calc_a_b_depth_sigma(TOI, df):
-    TOI = str(TOI)
-    print("analysing: ", "TOI" + str(TOI))
-
-    """惑星、主星の各パラメータを取得"""
-    param_df = df[df["TOI"] == TOI]
-    duration = param_df["Duration (hours)"].values[0] / 24
-    period = param_df["Period (days)"].values[0]
-    period_err = param_df["Period error"].values[0] / 24
-    rp = (
-        param_df["Planet Radius (R_Earth)"].values[0] * 0.00916794
-    )  # translate to Rsun
-    rp_err = param_df["Planet Radius error"].values[0] * 0.0091679
-    rs = param_df["Stellar Radius (R_Sun)"].values[0]
-    rs_err = param_df["Stellar Radius error"].values[0]
-    ms = param_df["Stellar Mass (M_Sun)"].values[0]*1.989e+30
-    ms_err = param_df["Stellar Mass error"].values[0]*1.989e+30
-    mp = param_df["Predicted Mass (M_Earth)"].values[0] *1.989e+30/ 333030
-
-    """lightkurveを用いてSPOCが作成した2min cadenceの全セクターのライトカーブをダウンロードする """
-    try:
-        search_result = lk.search_lightcurve(
-            f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC"
-        )
-    except ValueError:
-        pdb.set_trace()
-    except requests.exceptions.HTTPError:
-        search_result = lk.search_lightcurve(
-            f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC"
-        )
-    try:
-        lc_collection = search_result.download_all()
-    except AttributeError:
-        lc_collection = search_result[0].download(flux_column='sap_flux')
-
-    if lc_collection is None:
-        with open("no_data_found_20230409.txt", "a") as f:
-            print(f"{TOI}", file=f)
-        return
-
-    """全てのライトカーブを結合し、fluxがNaNのデータ点は除去する"""
-    try:
-        lc = lc_collection.stitch().remove_nans()
-    except lk.utils.LightkurveError:
-        search_result = lk.search_lightcurve(
-            f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC"
-        )
-        lc_collection = search_result.download_all()
-        lc = lc_collection.stitch().remove_nans()
-    n_sector = len(param_df.Sectors.values[0].split(","))
-    observation_days = n_sector * 27.4
-    n_transit = int(observation_days / period)
-    n_bin_single_transit = duration / (2 / 60 / 24)
-    n_bin = n_bin_single_transit * n_transit
-    sigma = float(lc.estimate_cdpp() / np.sqrt((n_bin / 500)))
-    depth = 1 - (param_df["Depth (ppm)"].values[0] / 1e6)
-
-    # calculate size of orbit using kepler's third law
-    sec_period = period * 24 * 3600
-    sec_peropd_err = period_err * 24 * 3600
-    g = 6.673e-11
-    numerator = sec_period**2 * (g*(ms+mp))
-    denominator = 4*np.pi**2
-
-    a_m = (numerator / denominator) ** (1/3)
-    a_rs = a_m / (rs*696340000)  # unit solar radius
-    # a_au = a_m * 6.68459e-12  # unit au
-    b = np.sqrt(np.abs((rs + rp)**2 - a_rs**2 * np.sin(np.pi * duration / period)**2)) / rs
-    with open("./TOI_a_b_depth_sigma.txt", "a") as f:
-        f.write(str(TOI) + " " + str(a_rs) + " " + str(b) + " " + str(depth) + " " + str(sigma) + "\n")
-
-
-def calc_a_b_depth_sigma_wrapper(args):
-    return calc_a_b_depth_sigma(*args)
-
-
 if __name__ == "__main__":
-    done_tois = np.loadtxt("TOI_a_b_depth_sigma.txt")[:,0].tolist()
+    done_tois = np.loadtxt("TOI_a_b_depth_sigma.txt")[:, 0].tolist()
     nodata_tois = np.loadtxt("no_data_found_20230409.txt").tolist()
+    noperiod_tois = np.loadtxt("no_period_found_20230409.txt").tolist()
     df = pd.read_csv(
             "/Users/u_tsubasa/Downloads/exofop_tess_tois_full_20220913.csv"
         )
@@ -620,15 +681,26 @@ if __name__ == "__main__":
     df = df[~(df["Duration (hours)"] == "")]
     df = df.sort_values("Planet SNR", ascending=False)
     df = df.set_index(["TOI"])
-    df = df.drop(index=done_tois, errors="ignore")
-    df = df.drop(index=nodata_tois, errors="ignore")
+    #df = df.drop(index=done_tois, errors="ignore")
+    #df = df.drop(index=nodata_tois, errors="ignore")
+    #df = df.drop(index=noperiod_tois, errors="ignore")
     df = df.reset_index()
     df["TOI"] = df["TOI"].astype(str)
     TOIlist = df["TOI"]
+    TOIlist = done_tois
+    txt_df = pd.read_table("./TOI_a_b_depth_sigma.txt", sep=" ", names=["TOI", "a_m", "b", "depth", "sigma"])
+    modify_a_b_depth_sigma_txt(529.01, df, txt_df)
+    for TOI in TOIlist:
+        txt_df = modify_a_b_depth_sigma_txt(TOI, df, txt_df)
+    txt_df.to_csv("./new_TOI_a_b_depth_sigma.txt", sep=" ", header=False, index=False)
+    # txt_dfをbの列でソートする
+    txt_df = txt_df.sort_values(by=["b"], ascending=False)
+    pdb.set_trace()
+
     src_datas = list(map(lambda x: [x, df], TOIlist))
 
-    with Pool(cpu_count() - 1) as p:
-        p.map(calc_a_b_depth_sigma_wrapper, src_datas)
+    with Pool(cpu_count() - 6) as p:
+        p.map(extract_a_b_depth_sigma_txt_wrapper, src_datas)
 
     pdb.set_trace()
 
