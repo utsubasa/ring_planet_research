@@ -789,14 +789,11 @@ def process_bin_error_wrapper(args):
 
 
 def main():
-    # CSVFILE = './folded_lc_data/TOI2403.01.csv'
-    # done_TOIlist = os.listdir('./lmfit_result/transit_fit') #ダブリ解析防止
     oridf = pd.read_csv("./exofop_tess_tois.csv")
     df = oridf[oridf["Planet SNR"] > 100]
     df["TOI"] = df["TOI"].astype(str)
     df = df.sort_values("Planet SNR", ascending=False)
     df["TOI"] = df["TOI"].astype(str)
-    TOIlist = df["TOI"]
 
     """
     plot_ring(
@@ -813,11 +810,10 @@ def main():
 
     TOI = "495.01"
     print(TOI)
-    TOInumber = "TOI" + TOI
     param_df = df[df["TOI"] == TOI]
     period = param_df["Period (days)"].values[0]
 
-    b_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 0]
+    b_list = [0.1, 0.3, 0.5, 0.7, 0.9, 0.2, 0.4, 0.6, 0.8, 1, 0, ]
     min_flux_list = [
         0.999,
         0.998,
@@ -833,26 +829,28 @@ def main():
         0.97,
         0.96,
         0.95,
-        0.94,
-        0.93,
-        0.92,
-        0.91,
-        0.90,
+        #0.94,
+        #0.93,
+        #0.92,
+        #0.91,
+        #0.90,
     ]
     theta_list = [45, 3, 15, 30]
     phi_list = [45, 0, 15, 30]
+    theta_list = [45, 3, 15, 30, 10, 20, 25, 35, 40]
+    phi_list = [10, 20, 25, 35, 40, 45, 0, 15, 30]
     for b in b_list:
         for theta in theta_list:
             for phi in phi_list:
                 for min_flux in min_flux_list:
-                    bin_error_list = np.arange(0.0001, 0.0041, 0.0001)
+                    bin_error_list = np.arange(0.0001, 0.0041, 0.0005)
                     bin_error_list = np.around(bin_error_list, decimals=4)
                     new_bin_error_list = []
                     for bin_error in bin_error_list:
                         print(bin_error)
                         if os.path.isfile(f"./depth_error/figure/b_{b}/{theta}deg_{phi}deg/{min_flux}_{bin_error}.png"):
                             print(f"b_{b}/{theta}deg_{phi}deg/{min_flux}_{bin_error}.png is exist.")
-                            continue     
+                            continue
                         else:
                             new_bin_error_list.append(bin_error)
 
@@ -875,7 +873,7 @@ def main():
                                     ],
                                     new_bin_error_list,
                                 ))
-                    with Pool(cpu_count() - 1) as p:
+                    with Pool(cpu_count() - 4) as p:
                         p.map(process_bin_error_wrapper, src_datas)
 
 
