@@ -793,6 +793,36 @@ def make_simulation_data(
     return each_lc
 
 
+def residual_depth(param, b, period, theta, phi, depth):
+    rp_rs = param["rp_rs"].value
+    return calc_depth(rp_rs, b, period, theta, phi) - depth
+
+
+def get_rp_rs(depth: float, b: float, period: float, theta: float, phi: float) -> float:
+    param = lmfit.Parameters()
+    param.add(
+        "rp_rs",
+        value=0.1,
+        min=0.001,
+        max=0.5,
+        vary=True,
+    )
+    res = lmfit.minimize(
+        residual_depth,
+        param,
+        args=(
+            b,
+            period,
+            theta,
+            phi,
+            depth,
+        ),
+        max_nfev=1000,
+    )
+
+    return res.params["rp_rs"].value
+
+
 def main():
     # csvfile = './folded_lc_data/TOI2403.01.csv'
     # done_TOIlist = os.listdir('./lmfit_result/transit_fit') #ダブリ解析防止
