@@ -204,7 +204,7 @@ def plot_ring(
     R_in = rp_rs * rin_rp
     R_out = rp_rs * rin_rp * rout_rin
 
-    ## calculte of ellipse of rings
+    #　calculte of ellipse of rings
     a0 = 1
     b0 = -np.sin(phi) / np.tan(theta)
     c0 = (np.sin(phi) ** 2) / (np.tan(theta) ** 2) + (
@@ -449,7 +449,7 @@ def calc_ring_res(m, no_ring_res, binned_lc, period, TOInumber, noringnames):
         )
         # best_ring_res_dict[F_obs] = ring_res
 
-        ###csvにfitting parametersを書き出し###
+        #　csvにfitting parametersを書き出し
         input_df = pd.DataFrame.from_dict(
             params.valuesdict(), orient="index", columns=["input_value"]
         )
@@ -590,7 +590,7 @@ def process_bin_error(bin_error, b, rp_rs, theta, phi, period, min_flux):
     flux_err = binned_lc.flux_err.value
 
     # t = np.linspace(-0.2, 0.2, 300)
-    ###no ring model fitting by minimizing chi_square###
+    #　no ring model fitting by minimizing chi_square
     best_res_dict = {}
     for n in range(30):
         no_ring_params = noring_params_setting(period, rp_rs)
@@ -798,7 +798,9 @@ def residual_depth(param, b, period, theta, phi, depth):
     return calc_depth(rp_rs, b, period, theta, phi) - depth
 
 
-def get_rp_rs(depth: float, b: float, period: float, theta: float, phi: float) -> float:
+def get_rp_rs(
+    depth: float, b: float, period: float, theta: float, phi: float
+) -> float:
     param = lmfit.Parameters()
     param.add(
         "rp_rs",
@@ -821,6 +823,51 @@ def get_rp_rs(depth: float, b: float, period: float, theta: float, phi: float) -
     )
 
     return res.params["rp_rs"].value
+
+
+def calc_depth(rp_rs, b, period, theta, phi):
+    """calc_rp_rs"""
+    names = [
+        "q1",
+        "q2",
+        "t0",
+        "porb",
+        "rp_rs",
+        "a_rs",
+        "b",
+        "norm",
+        "theta",
+        "phi",
+        "tau",
+        "r_in",
+        "r_out",
+        "norm2",
+        "norm3",
+        "ecosw",
+        "esinw",
+    ]
+    saturnlike_values = [
+        0.26,
+        0.36,
+        0,
+        period,
+        rp_rs,
+        3.81,
+        b,
+        1,
+        theta * np.pi / 180,
+        phi * np.pi / 180,
+        1,
+        1.01,
+        1.70,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+    ]
+
+    pdic = dict(zip(names, saturnlike_values))
+    return ring_model([0], pdic)[0]
 
 
 def main():
@@ -1054,7 +1101,7 @@ def main():
             with open("./NaN_values_detected.txt", "a") as f:
                 f.write(TOInumber + ",")
                 continue
-        ###no ring model fitting by minimizing chi_square###
+        #　no ring model fitting by minimizing chi_square
         best_res_dict = {}
         for n in range(50):
             noringnames = ["t0", "per", "rp", "a", "b", "ecc", "w", "q1", "q2"]
