@@ -15,11 +15,14 @@ import pandas as pd
 import requests
 from astropy.io import ascii
 from astropy.table import vstack
+from lightkurve.correctors import PLDCorrector
 from scipy.stats import linregress, t
+
+import ring_planet
 
 warnings.filterwarnings("ignore")
 
-
+'''
 class PlotLightcurve:
     def __init__(self, savedir, savefile, lc):
         self.savedir = savedir
@@ -112,21 +115,19 @@ class PlotCurvefit(PlotLightcurve):
 def calc_b_and_a(period, period_err, ms, mp, rs, rp, duration):
     # calculate size of orbit using kepler's third law
     sec_period = period * 24 * 3600
-    #sec_period_err = period_err * 24 * 3600
+    # sec_period_err = period_err * 24 * 3600
     g = 6.673e-11
-    numerator = (sec_period**2) * (g*(ms+mp))
-    denominator = 4*(np.pi**2)
+    numerator = (sec_period**2) * (g * (ms + mp))
+    denominator = 4 * (np.pi**2)
 
-    a_m = (numerator / denominator) ** (1/3)
-    #a_rs = a_m / 696340000  # unit solar radius
+    a_m = (numerator / denominator) ** (1 / 3)
+    # a_rs = a_m / 696340000  # unit solar radius
     # a_au = a_m * 6.68459e-12  # unit au
-    A = (rs + rp)**2
-    B = (a_m**2)
-    C = np.sin(np.pi * duration / period)**2
+    A = (rs + rp) ** 2
+    B = a_m**2
+    C = np.sin(np.pi * duration / period) ** 2
 
-    b = np.sqrt(np.abs(A - (B*C))) / rs
-    print(b)
-    pdb.set_trace()
+    b = np.sqrt(np.abs(A - (B * C))) / rs
 
     return a_m, b
 
@@ -153,15 +154,29 @@ def extract_a_b_depth_sigma_txt(TOI, df):
     duration = param_df["Duration (hours)"].values[0] / 24
     period = param_df["Period (days)"].values[0]
     period_err = param_df["Period error"].values[0] / 24
-    rp = param_df["Planet Radius (R_Earth)"].values[0] * 0.00916794 * 696340000 # translate to meter
-    rp_err = param_df["Planet Radius error"].values[0] * 0.00916794 * 696340000 # translate to meter
-    rs = param_df["Stellar Radius (R_Sun)"].values[0] * 696340000 # translate to meter
-    rs_err = param_df["Stellar Radius error"].values[0] * 696340000 # translate to meter
-    ms = param_df["Stellar Mass (M_Sun)"].values[0]*1.989e+30 # translate to kg
-    ms_err = param_df["Stellar Mass error"].values[0]*1.989e+30 # translate to kg
-    mp = param_df["Predicted Mass (M_Earth)"].values[0] *1.989e+30/ 333030 # translate to kg
+    rp = (
+        param_df["Planet Radius (R_Earth)"].values[0] * 0.00916794 * 696340000
+    )  # translate to meter
+    rp_err = (
+        param_df["Planet Radius error"].values[0] * 0.00916794 * 696340000
+    )  # translate to meter
+    rs = (
+        param_df["Stellar Radius (R_Sun)"].values[0] * 696340000
+    )  # translate to meter
+    rs_err = (
+        param_df["Stellar Radius error"].values[0] * 696340000
+    )  # translate to meter
+    ms = (
+        param_df["Stellar Mass (M_Sun)"].values[0] * 1.989e30
+    )  # translate to kg
+    ms_err = (
+        param_df["Stellar Mass error"].values[0] * 1.989e30
+    )  # translate to kg
+    mp = (
+        param_df["Predicted Mass (M_Earth)"].values[0] * 1.989e30 / 333030
+    )  # translate to kg
 
-    #periodが取得できない場合、処理を中断する
+    # periodが取得できない場合、処理を中断する
     if np.isnan(period):
         print(f"not found period:{TOI}")
         with open("no_period_found_20230409.txt", "a") as f:
@@ -177,7 +192,18 @@ def extract_a_b_depth_sigma_txt(TOI, df):
     depth, sigma = calc_depth_and_sigma(param_df, period, duration, lc)
     # save TOI, a_m, b, depth, sigma
     with open("./TOI_a_b_depth_sigma.txt", "a") as f:
-        f.write(str(TOI) + " " + str(a_m) + " " + str(b) + " " + str(depth) + " " + str(sigma) + "\n")
+        f.write(
+            str(TOI)
+            + " "
+            + str(a_m)
+            + " "
+            + str(b)
+            + " "
+            + str(depth)
+            + " "
+            + str(sigma)
+            + "\n"
+        )
 
 
 def modify_a_b_depth_sigma_txt(TOI, df, txt_df):
@@ -189,15 +215,29 @@ def modify_a_b_depth_sigma_txt(TOI, df, txt_df):
     duration = param_df["Duration (hours)"].values[0] / 24
     period = param_df["Period (days)"].values[0]
     period_err = param_df["Period error"].values[0] / 24
-    rp = param_df["Planet Radius (R_Earth)"].values[0] * 0.00916794 * 696340000 # translate to meter
-    rp_err = param_df["Planet Radius error"].values[0] * 0.00916794 * 696340000 # translate to meter
-    rs = param_df["Stellar Radius (R_Sun)"].values[0] * 696340000 # translate to meter
-    rs_err = param_df["Stellar Radius error"].values[0] * 696340000 # translate to meter
-    ms = param_df["Stellar Mass (M_Sun)"].values[0]*1.989e+30 # translate to kg
-    ms_err = param_df["Stellar Mass error"].values[0]*1.989e+30 # translate to kg
-    mp = param_df["Predicted Mass (M_Earth)"].values[0] *1.989e+30/ 333030 # translate to kg
+    rp = (
+        param_df["Planet Radius (R_Earth)"].values[0] * 0.00916794 * 696340000
+    )  # translate to meter
+    rp_err = (
+        param_df["Planet Radius error"].values[0] * 0.00916794 * 696340000
+    )  # translate to meter
+    rs = (
+        param_df["Stellar Radius (R_Sun)"].values[0] * 696340000
+    )  # translate to meter
+    rs_err = (
+        param_df["Stellar Radius error"].values[0] * 696340000
+    )  # translate to meter
+    ms = (
+        param_df["Stellar Mass (M_Sun)"].values[0] * 1.989e30
+    )  # translate to kg
+    ms_err = (
+        param_df["Stellar Mass error"].values[0] * 1.989e30
+    )  # translate to kg
+    mp = (
+        param_df["Predicted Mass (M_Earth)"].values[0] * 1.989e30 / 333030
+    )  # translate to kg
 
-    #periodが取得できない場合、処理を中断する
+    # periodが取得できない場合、処理を中断する
     if np.isnan(period):
         print(f"not found period:{TOI}")
         with open("no_period_found_20230409.txt", "a") as f:
@@ -219,8 +259,10 @@ def extract_a_b_depth_sigma_txt_wrapper(args):
 
 
 def get_lc(TOI: str):
-    """lightkurveを用いてSPOCが作成した2min cadenceの全セクターのライトカーブをダウンロードする """
-    search_result = lk.search_lightcurve(f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC")
+    """lightkurveを用いてSPOCが作成した2min cadenceの全セクターのライトカーブをダウンロードする"""
+    search_result = lk.search_lightcurve(
+        f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC"
+    )
 
     try:
         lc_collection = search_result.download_all()
@@ -592,7 +634,7 @@ def detect_outliers(lc, model):
     """
     if transit_and_poly_fit == True:
         flux_model, transit_model, polynomial_model = no_ring_transit_and_polynomialfit(
-            res.params, lc, p_names, return_model=True
+            res.params, lc, return_model=True
             )
     else:
         flux_model = no_ring_transitfit(
@@ -666,49 +708,14 @@ def folding_lc_from_csv(loaddir):
     folded_lc.sort("time")
 
     return folded_lc
-
+'''
 
 if __name__ == "__main__":
-    done_tois = np.loadtxt("TOI_a_b_depth_sigma.txt")[:, 0].tolist()
-    nodata_tois = np.loadtxt("no_data_found_20230409.txt").tolist()
-    noperiod_tois = np.loadtxt("no_period_found_20230409.txt").tolist()
-    df = pd.read_csv(
-            "/Users/u_tsubasa/Downloads/exofop_tess_tois_full_20220913.csv"
-        )
-    df = df[~(df["Stellar Mass (M_Sun)"] == "")]
-    df = df[~(df["Stellar Radius (R_Sun)"] == "")]
-    df = df[~(df["Planet Radius (R_Earth)"] == "")]
-    df = df[~(df["Duration (hours)"] == "")]
-    df = df.sort_values("Planet SNR", ascending=False)
-    df = df.set_index(["TOI"])
-    #df = df.drop(index=done_tois, errors="ignore")
-    #df = df.drop(index=nodata_tois, errors="ignore")
-    #df = df.drop(index=noperiod_tois, errors="ignore")
-    df = df.reset_index()
-    df["TOI"] = df["TOI"].astype(str)
-    TOIlist = df["TOI"]
-    TOIlist = done_tois
-    txt_df = pd.read_table("./TOI_a_b_depth_sigma.txt", sep=" ", names=["TOI", "a_m", "b", "depth", "sigma"])
-    modify_a_b_depth_sigma_txt(529.01, df, txt_df)
-    for TOI in TOIlist:
-        txt_df = modify_a_b_depth_sigma_txt(TOI, df, txt_df)
-    txt_df.to_csv("./new_TOI_a_b_depth_sigma.txt", sep=" ", header=False, index=False)
-    # txt_dfをbの列でソートする
-    txt_df = txt_df.sort_values(by=["b"], ascending=False)
-    pdb.set_trace()
-
-    src_datas = list(map(lambda x: [x, df], TOIlist))
-
-    with Pool(cpu_count() - 6) as p:
-        p.map(extract_a_b_depth_sigma_txt_wrapper, src_datas)
-
-    pdb.set_trace()
-
     """定数の定義"""
-    HOMEDIR = "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/SAP_fitting_result"
+    HOMEDIR = os.getcwd() + "/SAP_fitting_result_correct_0501"
     FIGDIR = f"{HOMEDIR}/figure"
     DATADIR = f"{HOMEDIR}/data"
-    with open("./no_data_found_toi.txt", "rb") as f:
+    with open(os.getcwd() + "/no_data_found_toi.txt", "rb") as f:
         no_data_found_list = pickle.load(f)  # short がないか、SPOCがないか
     no_perioddata_list = [
         1134.01,
@@ -796,20 +803,19 @@ if __name__ == "__main__":
     ]
     fold_ng = [986.01]
 
-
     # 既に前処理したTOIの重複した前処理を回避するためのTOIのリスト
-    done4poly_list = os.listdir(
-        "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/SAP_fitting_result/data/folded_lc/lightcurve/obs_t0/"
-    )
-    done4poly_list = [s for s in done4poly_list if "TOI" in s]
-    done4poly_list = [s.lstrip("TOI") for s in done4poly_list]
-    done4poly_list = [float(s.strip(".csv")) for s in done4poly_list]
-    done4poly_list = [float(s) for s in done4poly_list]
+    try:
+        done4poly_list = os.listdir(
+            f"{HOMEDIR}/data/folded_lc/lightcurve/obs_t0/"
+        )
+        done4poly_list = [s for s in done4poly_list if "TOI" in s]
+        done4poly_list = [s.lstrip("TOI") for s in done4poly_list]
+        done4poly_list = [float(s.strip(".csv")) for s in done4poly_list]
+        done4poly_list = [float(s) for s in done4poly_list]
+    except FileNotFoundError:
+        done4poly_list = []
 
-
-    oridf = pd.read_csv(
-        "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/exofop_tess_tois_2022-09-13.csv"
-    )
+    oridf = pd.read_csv(os.getcwd() + "/exofop_tess_tois_2022-09-13.csv")
     df = oridf[oridf["Planet SNR"] > 100]
     df = df[~(df["TESS Disposition"] == "EB")]
     df = df[~(df["TFOPWG Disposition"] == "FP")]
@@ -817,19 +823,23 @@ if __name__ == "__main__":
 
     """処理を行わないTOIを選択する"""
     df = df.set_index(["TOI"])
-    #df = df.drop(index=done4poly_list, errors="ignore")
-    df = df.drop(index=no_data_found_list, errors="ignore")
-    # df = df.drop(index=multiplanet_list, errors='ignore')
-    df = df.drop(index=no_perioddata_list, errors="ignore")
-    # df = df.drop(index=startrend_list, errors='ignore')
-    # df = df.drop(index=flare_list, errors="ignore")
-    df = df.drop(index=two_epoch_list, errors="ignore")
-    df = df.drop(index=ignore_list, errors="ignore")
-    # df = df.drop(index=duration_ng, errors='ignore')
-    # df = df.drop(index=fold_ng, errors='ignore')
-    # df = df.drop(index=trend_ng, errors='ignore')
+    exclude_list = (
+        done4poly_list
+        + no_data_found_list
+        + two_epoch_list
+        + no_perioddata_list
+        + no_signal_list
+        + multiplanet_list
+        + startrend_list
+        + flare_list
+        + ignore_list
+        + duration_ng
+        + fold_ng
+        + trend_ng
+    )
+    exclude_list = list(set(exclude_list))
+    df = df[~df.index.isin(exclude_list)]
     df = df.reset_index()
-
 
     df = pd.read_csv(
         "/Users/u_tsubasa/Downloads/exofop_tess_tois_full_20220913.csv"
@@ -846,44 +856,14 @@ if __name__ == "__main__":
     depth_list = []
     toi_list = []
 
-    #for TOI in TOIlist[:10]:
+    # for TOI in TOIlist[:10]:
     for TOI in TOIlist:
         TOI = str(TOI)
+        TOInumber = "TOI" + TOI
         print("analysing: ", "TOI" + str(TOI))
 
-        """惑星、主星の各パラメータを取得"""
-        param_df = df[df["TOI"] == TOI]
-        TOInumber = "TOI" + str(param_df["TOI"].values[0])
-        duration = param_df["Duration (hours)"].values[0] / 24
-        period = param_df["Period (days)"].values[0]
-        transit_time = (
-            param_df["Transit Epoch (BJD)"].values[0] - 2457000.0
-        )  # translate BTJD
-        transit_time_error = param_df["Transit Epoch error"].values[0]
-        rp = (
-            param_df["Planet Radius (R_Earth)"].values[0] * 0.00916794
-        )  # translate to Rsun
-        rs = param_df["Stellar Radius (R_Sun)"].values[0]
-        ms = param_df["Stellar Mass (M_Sun)"].values[0]*1.989e+30
-        mp = param_df["Predicted Mass (M_Earth)"].values[0] *1.989e+30/ 333030
-
-        rp_rs = rp / rs
-
-
-        """lightkurveを用いてSPOCが作成した2min cadenceの全セクターのライトカーブをダウンロードする """
-        try:
-            search_result = lk.search_lightcurve(
-                f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC"
-            )
-        except ValueError:
-            pdb.set_trace()
-        lc_collection = search_result.download_all()
-        # lc_collection = search_result[0].download(flux_column='sap_flux')
-
-        """全てのライトカーブを結合し、fluxがNaNのデータ点は除去する"""
-        lc = lc_collection.stitch().remove_nans()
-
-        """"保存場所のセッティング"""
+        # 保存場所のセッティング　# todo: 保存場所のセッティングを関数化する
+        SAVE_TOTAL_LC_DIR = f"{FIGDIR}/total_sector_lc"
         SAVE_CURVEFIT_DIR = f"{FIGDIR}/each_lc/curvefit/{TOInumber}"
         SAVE_TRANSITFIT_DIR = f"{FIGDIR}/each_lc/transit_fit/{TOInumber}"
         SAVE_TRANSIT_POLYFIT_DIR = (
@@ -895,11 +875,15 @@ if __name__ == "__main__":
         SAVE_1STPROCESS_LC_DATA_DIR = (
             f"{DATADIR}/each_lc/lightcurve/calc_t0/{TOInumber}"
         )
-        SAVE_1STMODELFIT_DIR = f"{DATADIR}/each_lc/modelresult/calc_t0/{TOInumber}"
+        SAVE_1STMODELFIT_DIR = (
+            f"{DATADIR}/each_lc/modelresult/calc_t0/{TOInumber}"
+        )
         SAVE_1STFOLDMODELFIT_DIR = f"{DATADIR}/folded_lc/modelresult/calc_t0"
         SAVE_1STFOLD_LC_DIR = f"{FIGDIR}/folded_lc/calc_t0"
         SAVE_1STFOLD_LC_DATA_DIR = f"{DATADIR}/folded_lc/lightcurve/calc_t0"
-        SAVE_2NDMODELFIT_DIR = f"{DATADIR}/each_lc/modelresult/obs_t0/{TOInumber}"
+        SAVE_2NDMODELFIT_DIR = (
+            f"{DATADIR}/each_lc/modelresult/obs_t0/{TOInumber}"
+        )
         SAVE_2NDPROCESS_LC_DIR = (
             f"{FIGDIR}/each_lc/after_curvefit/obs_t0/{TOInumber}"
         )
@@ -921,38 +905,44 @@ if __name__ == "__main__":
         SAVE_ESTIMATED_PER = f"{FIGDIR}/estimate_period"
         SAVE_OC_DIAGRAM_DATA = f"{DATADIR}/calc_obs_transit_time"
 
-        """lightkurveを用いてSPOCが作成した2min cadenceの全セクターのライトカーブをダウンロードする """
-        search_result = lk.search_lightcurve(
-            f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC"
-        )
-        lc_collection = search_result.download_all()
-        # lc_collection = search_result[0].download(flux_column='sap_flux')
+        # 保存場所のディレクトリがなければ作成する
+        dirlist = [
+            SAVE_TOTAL_LC_DIR,
+            SAVE_CURVEFIT_DIR,
+            SAVE_TRANSITFIT_DIR,
+            SAVE_TRANSIT_POLYFIT_DIR,
+            SAVE_1STPROCESS_LC_DIR,
+            SAVE_1STPROCESS_LC_DATA_DIR,
+            SAVE_1STMODELFIT_DIR,
+            SAVE_1STFOLDMODELFIT_DIR,
+            SAVE_1STFOLD_LC_DIR,
+            SAVE_1STFOLD_LC_DATA_DIR,
+            SAVE_2NDMODELFIT_DIR,
+            SAVE_2NDPROCESS_LC_DIR,
+            SAVE_2NDPROCESS_LC_DATA_DIR,
+            SAVE_2NDFOLD_LC_DIR,
+            SAVE_2NDFOLD_LC_DATA_DIR,
+            SAVE_2NDFOLDMODELFIT_DIR,
+            SAVE_1STUNDER90PER_DIR,
+            SAVE_2NDUNDER90PER_DIR,
+            SAVE_OC_DIAGRAM,
+            SAVE_ESTIMATED_PER,
+            SAVE_OC_DIAGRAM_DATA,
+        ]
+        for dir in dirlist:
+            if not os.path.exists(dir):
+                os.makedirs(dir, exist_ok=True)
 
-        """全てのライトカーブを結合し、fluxがNaNのデータ点は除去する"""
-        lc = lc_collection.stitch().remove_nans()
+        # 惑星、主星の各パラメータを取得
+        param_df = df[df["TOI"] == TOI]
+        param_dic = ring_planet.get_params_from_table(param_df, TOI)
+        duration = param_dic["duration"]
+        period = param_dic["period"]
+        transit_time = param_dic["transit_time"]
+        transit_time_error = param_dic["transit_time_error"]
+        rp_rs = param_dic["rp_rs"]
 
-        n_sector = len(param_df.Sectors.values[0].split(","))
-        observation_days = n_sector * 27.4
-        n_transit = int(observation_days / period)
-        n_bin_single_transit = duration / (2 / 60 / 24)
-        n_bin = n_bin_single_transit * n_transit
-        sigma = float(lc.estimate_cdpp() / np.sqrt((n_bin / 500)))
-        sigma_list.append(sigma)
-        depth = 1 - (param_df["Depth (ppm)"].values[0] / 1e6)
-        depth_list.append(depth)
-        toi_list.append(TOI)
-        continue
-
-        lc.flux = lc.sap_flux
-        lc.flux_err = lc.sap_flux_err
-
-        """ターゲットの惑星のtransit time listを作成"""
-        transit_time_list = set_transit_times(
-            transit_time=transit_time,
-            period=period,
-        )
-
-        """もしもduration, period, transit_timeどれかのパラメータがnanだったらそのTOIを記録して、処理はスキップする"""
+        # もしもduration, period, transit_timeどれかのパラメータがnanだったらそのTOIを記録して、処理はスキップする
         if np.sum(np.isnan([duration, period, transit_time])) != 0:
             with open("nan3params_toi.dat", "a") as f:
                 f.write(
@@ -960,8 +950,39 @@ if __name__ == "__main__":
                 )
             continue
 
-        """多惑星系の場合、ターゲットのトランジットに影響があるかを判断する。"""
-        print("judging whether other planet transit is included in the data...")
+        # lightkurveを用いてSPOCが作成した2min cadenceの全セクターのライトカーブをダウンロードする.
+        search_result = lk.search_targetpixelfile(
+            f"TOI {TOI[:-3]}", mission="TESS", cadence="short", author="SPOC"
+        )
+        tpf_collection = search_result.download_all()
+        for tpf in tpf_collection:
+            # lc = ring_planet.get_pdcsap_lc_from_mast(TOI)
+            ax = lc.scatter(normalize=True, label="PDCSAP")
+
+        # sap fluxを解析するために、pdc fluxをsap fluxに変換する
+        lc.flux = lc.sap_flux
+        lc.flux_err = lc.sap_flux_err
+        lc.scatter(
+            ax=ax, column="sap_flux", normalize=True, color="red", label="SAP"
+        )
+        ax.legend()
+        ax.set_title(f"TOI {TOI}")
+        plt.savefig(f"{SAVE_TOTAL_LC_DIR}/{TOI}.png")
+        plt.close()
+
+        # 補正を加える
+        lc = ring_planet.correct_sap_lc(lc)
+
+        # transit_timeとperiodからターゲットの惑星のtransit time listを作成
+        transit_time_list = ring_planet.set_transit_times(
+            transit_time=transit_time,
+            period=period,
+        )
+
+        # 多惑星系の場合、ターゲットのトランジットに影響があるかを判断する。
+        print(
+            "judging whether other planet transit is included in the data..."
+        )
         other_p_df = oridf[oridf["TIC ID"] == param_df["TIC ID"].values[0]]
         if len(other_p_df.index) != 1:
             with open("multiplanet_toi.dat", "a") as f:
@@ -976,7 +997,7 @@ if __name__ == "__main__":
         t0errlist = []
         num_list = []
         # ax = lc.scatter()
-        for i, mid_transit_time in enumerate(transit_time_list):
+        for i, mid_transit_time in enumerate(transit_time_list):  # todo: 並列化
             print(f"preprocessing...epoch: {i}")
             """トランジットの中心時刻から±duration*2.5の時間帯を切り取る"""
             epoch_start = mid_transit_time - (duration * 2.5)
@@ -990,7 +1011,9 @@ if __name__ == "__main__":
             )
 
             """解析中断条件を満たさないかチェック"""
-            data_survival_rate = calc_data_survival_rate(each_lc, duration)
+            data_survival_rate = ring_planet.calc_data_survival_rate(
+                each_lc, duration
+            )
             if data_survival_rate < 90:
                 if data_survival_rate != 0.0:
                     ax = each_lc.errorbar()
@@ -1043,7 +1066,9 @@ if __name__ == "__main__":
                     plot_lc.configs()
                     plot_lc.save()
 
-                    each_lc.time = each_lc.time - transit_res.params["t0"].value
+                    each_lc.time = (
+                        each_lc.time - transit_res.params["t0"].value
+                    )
                     plot_after1stloop_lc = PlotLightcurve(
                         savedir=SAVE_1STPROCESS_LC_DIR,
                         savefile=f"{TOInumber}_{str(i)}.png",
@@ -1114,8 +1139,12 @@ if __name__ == "__main__":
 
         """各エポックでのtransit fittingで得たmid_transit_timeのリストからorbital period、durationを算出"""
 
-        period, period_err = calc_obs_transit_time(
-            t0list, t0errlist, num_list, transit_time_list, transit_time_error
+        period, period_err = ring_planet.estimate_period(
+            t0list,
+            t0errlist,
+            num_list,
+            transit_time_list,
+            TOInumber,
         )
         a_rs = fold_res.params["a"].value
         b = fold_res.params["b"].value
@@ -1153,12 +1182,14 @@ if __name__ == "__main__":
             print(lmfit.fit_report(fold_res), file=f)
             print(f"calculated duration[day]: {duration}", file=f)
             print(f"obs_transit_time[day]: {t0list[obs_t0_idx]}", file=f)
-            print(f"obs_transit_time_err[day]: {t0errlist[obs_t0_idx]}", file=f)
+            print(
+                f"obs_transit_time_err[day]: {t0errlist[obs_t0_idx]}", file=f
+            )
             print(f"obs_period[day]: {period}", file=f)
             print(f"obs_period_err[day]: {period_err}", file=f)
 
         transit_time_list = np.array(transit_time_list)
-        # _, _ = calc_obs_transit_time(t0list, t0errlist, num_list, transit_time_list, transit_time_error)
+        # make_oc_diagram(t0list, t0errlist, transit_time_list, transit_time_error, TOIlist)
         """fittingで得たtransit time listを反映"""
         with open(f"{DATADIR}/t0list/{TOInumber}.pkl", "rb") as f:
             t0list = pickle.load(f)
@@ -1210,7 +1241,7 @@ if __name__ == "__main__":
                     transit_model,
                     polynomial_model,
                 ) = no_ring_transit_and_polynomialfit(
-                    res.params, each_lc, p_names, return_model=True
+                    res.params, each_lc, return_model=True
                 )
                 outlier_bools = detect_outliers(each_lc, flux_model)
                 inverse_mask = np.logical_not(outlier_bools)
@@ -1303,7 +1334,8 @@ if __name__ == "__main__":
 
                 os.makedirs(SAVE_2NDFOLD_LC_DATA_DIR, exist_ok=True)
                 folded_lc.write(
-                    f"{SAVE_2NDFOLD_LC_DATA_DIR}/{TOInumber}.csv", overwrite=True
+                    f"{SAVE_2NDFOLD_LC_DATA_DIR}/{TOInumber}.csv",
+                    overwrite=True,
                 )
                 os.makedirs(
                     SAVE_2NDFOLDMODELFIT_DIR,
@@ -1324,5 +1356,39 @@ if __name__ == "__main__":
         print(f"Analysis completed: {TOInumber}")
 
         # import pdb;pdb.set_trace()
+    """
+    done_tois = np.loadtxt("TOI_a_b_depth_sigma.txt")[:, 0].tolist()
+    nodata_tois = np.loadtxt("no_data_found_20230409.txt").tolist()
+    noperiod_tois = np.loadtxt("no_period_found_20230409.txt").tolist()
+    df = pd.read_csv(
+            "/Users/u_tsubasa/Downloads/exofop_tess_tois_full_20220913.csv"
+        )
+    df = df[~(df["Stellar Mass (M_Sun)"] == "")]
+    df = df[~(df["Stellar Radius (R_Sun)"] == "")]
+    df = df[~(df["Planet Radius (R_Earth)"] == "")]
+    df = df[~(df["Duration (hours)"] == "")]
+    df = df.sort_values("Planet SNR", ascending=False)
+    df = df.set_index(["TOI"])
+    #df = df.drop(index=done_tois, errors="ignore")
+    #df = df.drop(index=nodata_tois, errors="ignore")
+    #df = df.drop(index=noperiod_tois, errors="ignore")
+    df = df.reset_index()
+    df["TOI"] = df["TOI"].astype(str)
+    TOIlist = df["TOI"]
+    TOIlist = done_tois
+    txt_df = pd.read_table("./TOI_a_b_depth_sigma.txt", sep=" ", names=["TOI", "a_m", "b", "depth", "sigma"])
+    modify_a_b_depth_sigma_txt(529.01, df, txt_df)
+    for TOI in TOIlist:
+        txt_df = modify_a_b_depth_sigma_txt(TOI, df, txt_df)
+    txt_df.to_csv("./new_TOI_a_b_depth_sigma.txt", sep=" ", header=False, index=False)
+    # txt_dfをbの列でソートする
+    txt_df = txt_df.sort_values(by=["b"], ascending=False)
+    pdb.set_trace()
 
+    src_datas = list(map(lambda x: [x, df], TOIlist))
 
+    with Pool(cpu_count() - 6) as p:
+        p.map(extract_a_b_depth_sigma_txt_wrapper, src_datas)
+
+    pdb.set_trace()
+    """
