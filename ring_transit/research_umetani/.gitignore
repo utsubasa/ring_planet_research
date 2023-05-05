@@ -9,8 +9,11 @@ archive_SAP_fitting_result/
 mcmc_result/
 except_data_EB/
 except_data_FP/
-depth_error/
+target_selection/
 SAP_fitting_result_EB/
 SAP_fitting_result_FP/
 TOI_a_b_depth_sigma.txt
 no_data_found_20230409.txt
+depth_error/
+.DS_Store
+SAP_fitting_result_correct_0501/

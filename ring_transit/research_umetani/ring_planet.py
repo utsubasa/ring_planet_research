@@ -153,8 +153,8 @@ def get_params_from_table(df: pd.DataFrame, TOI: int):
     transit_time_error = matched_rows["Transit Epoch error"].values[0]
     rp = matched_rows["Planet Radius (R_Earth)"].values[0] * 0.00916794
     rs = matched_rows["Stellar Radius (R_Sun)"].values[0]
-    ms = matched_rows["Stellar Mass (M_Sun)"].values[0] * 1.989e30
-    mp = matched_rows["Predicted Mass (M_Earth)"].values[0] * 1.989e30 / 333030
+    # ms = matched_rows["Stellar Mass (M_Sun)"].values[0] * 1.989e30
+    # mp = matched_rows["Predicted Mass (M_Earth)"].values[0] * 1.989e30 / 333030
 
     rp_rs = rp / rs
 
@@ -166,17 +166,13 @@ def get_params_from_table(df: pd.DataFrame, TOI: int):
         "transit_time_error": transit_time_error,
         "rp": rp,
         "rs": rs,
-        "ms": ms,
-        "mp": mp,
+        # "ms": ms,
+        # "mp": mp,
         "rp_rs": rp_rs,
     }
 
 
-def correct_sap_lc(lc):
-    # 補正のためのCROWDSAP、FLFRCSAPを定義
-    CROWDSAP = lc.hdu[1].header["CROWDSAP"]
-    FLFRCSAP = lc.hdu[1].header["FLFRCSAP"]
-
+def correct_sap_lc(lc: lk.LightCurve, CROWDSAP: float, FLFRCSAP: float):
     # 補正するlightcurveの中央値
     median_flux = np.median(lc.flux.value)
     excess_flux = (1 - CROWDSAP) * median_flux
@@ -190,163 +186,6 @@ def correct_sap_lc(lc):
     )
 
     return lc_corr
-    """
-    print(TOI)
-    param_df = df[df["TOI"] == float(TOI[3:])]
-    period = param_df["Period (days)"].values[0]
-    mid_transit_time = (
-        param_df["Transit Epoch (BJD)"].values[0] - 2457000.0
-    )  # translate BTJD
-    # get search result
-    search_result = lk.search_lightcurve(
-        f"TOI {TOI[3:-3]}",
-        mission="TESS",
-        cadence="short",
-        author="SPOC",
-    )
-    csv_list = glob(f"{HOMEDIR}/obs_t0/{TOI}/*.csv")
-
-    for i in range(len(search_result)):
-        sector_lc = search_result[i].download().remove_nans()
-        for csv in csv_list:
-            each_table = ascii.read(csv)
-            each_lc = lk.LightCurve(data=each_table)
-            # timeが最も０に近いときのtime_original valueを取得
-            if (
-                each_lc.time_original[0] > sector_lc.time[0].value
-                and each_lc.time_original[-1] < sector_lc.time[-1].value
-            ):
-                # each_lc.time_original[0]からeach_lc.time_original[-1]の時間でpdcsap_lcを切り出す
-                epoch_start = each_lc.time_original[0]
-                epoch_end = each_lc.time_original[-1]
-                tmp = sector_lc[sector_lc.time.value >= epoch_start]
-                pdcsap_lc = tmp[tmp.time.value <= epoch_end]
-                # もともとの中央値をかける
-                sap_flux_median = np.median(pdcsap_lc.sap_flux)
-                each_lc.flux = each_lc.flux * sap_flux_median
-                each_lc.flux_err = each_lc.flux_err * sap_flux_median
-
-                # 補正のためのCROWDSAP、FLFRCSAPを定義
-                CROWDSAP = pdcsap_lc.hdu[1].header["CROWDSAP"]
-                FLFRCSAP = pdcsap_lc.hdu[1].header["FLFRCSAP"]
-
-                # 補正するlightcurveの中央値
-                median_flux = np.median(each_lc.flux.value)
-                excess_flux = (1 - CROWDSAP) * median_flux
-                flux_removed = each_lc.flux.value - excess_flux
-                flux_corr = flux_removed / FLFRCSAP
-                flux_err_corr = each_lc.flux_err.value / FLFRCSAP
-                lc_corr = lk.LightCurve(
-                    time=each_lc.time.value,
-                    flux=flux_corr,
-                    flux_err=flux_err_corr,
-                )
-                pdcsap_lc = pdcsap_lc.fold(
-                    period=period, epoch_time=mid_transit_time
-                )
-                pdcsap_lc = pdcsap_lc.normalize()
-                lc_corr = lc_corr.normalize()
-                # lc_corrを別フォルダに保存
-                os.makedirs(f"{HOMEDIR}/correct_flux/{TOI}", exist_ok=True)
-                lc_corr.to_csv(
-                    f"{HOMEDIR}/correct_flux/{TOI}/{csv.split('/')[-1]}",
-                    overwrite=True,
-                )
-                # plotも保存
-                savedir = HOMEDIR.replace("data", "figure").replace(
-                    "lightcurve/", ""
-                )
-                ax = pdcsap_lc.errorbar(
-                    label="PDC-SAP", color="r", alpha=0.5, marker="."
-                )
-                pdcsap_lc.flux = pdcsap_lc.sap_flux
-                pdcsap_lc.flux_err = pdcsap_lc.sap_flux_err
-                sap_lc = pdcsap_lc.normalize()
-                sap_lc.errorbar(
-                    ax=ax, label="SAP", color="k", alpha=0.5, marker="."
-                )
-                lc_corr.errorbar(
-                    ax=ax, label="corrected", color="b", alpha=0.5, marker="."
-                )
-
-                os.makedirs(
-                    f"{savedir}/correct_flux/{TOI}",
-                    exist_ok=True,
-                )
-                plt.savefig(
-                    f"{savedir}/correct_flux/{TOI}/{csv.split('/')[-1].split('.csv')[0]}.png"
-                )
-                plt.close()
-            elif (
-                each_lc.time_original[0] < sector_lc.time[0].value
-                or each_lc.time_original[-1] > sector_lc.time[-1].value
-            ):
-                continue
-    # fold lightcurve using all csv_data
-    folded_lc = ring_planet.folding_lc_from_csv(
-        f"{HOMEDIR}/correct_flux/{TOI}"
-    )
-    # outliersを除去
-    outliers = []
-    while True:
-        fold_res = ring_planet.transit_fitting(
-            folded_lc,
-            np.nan,
-            period,
-            fitting_model=ring_planet.no_ring_transitfit,
-        )
-        transit_model = ring_planet.no_ring_transitfit(
-            fold_res.params,
-            folded_lc.time.value,
-            folded_lc.flux.value,
-            folded_lc.flux_err.value,
-            list(fold_res.params.keys()),
-            return_model=True,
-        )
-        outlier_bools = ring_planet.detect_outliers(folded_lc, transit_model)
-        inverse_mask = np.logical_not(outlier_bools)
-
-        if np.all(inverse_mask):
-            # save folded_lc
-            savedir = HOMEDIR.replace("each_lc", "folded_lc")
-            os.makedirs(f"{savedir}/correct_flux/", exist_ok=True)
-            folded_lc.to_csv(
-                f"{savedir}/correct_flux/{TOI}.csv", overwrite=True
-            )
-
-            # plot folded_lc
-            savedir = HOMEDIR.replace("data", "figure").replace(
-                "each_lc", "folded_lc"
-            )
-            os.makedirs(f"{savedir}/correct_flux", exist_ok=True)
-            ax = folded_lc.errorbar(
-                label="corrected", color="b", alpha=0.5, marker="."
-            )
-            folded_table = ascii.read(
-                f"/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/SAP_fitting_result/data/folded_lc/lightcurve/obs_t0/{TOI}.csv"
-            )
-            folded_obst0_lc = lk.LightCurve(data=folded_table)
-            folded_obst0_lc.errorbar(
-                ax=ax, color="k", label="sap", alpha=0.5, marker="."
-            )
-            try:
-                outliers = vstack(outliers)
-            except ValueError:
-                pass
-            else:
-                outliers.errorbar(
-                    ax=ax, color="r", label="outliers", marker="."
-                )
-            plt.savefig(f"{savedir}/correct_flux/{TOI}.png")
-            plt.close()
-            break
-        else:
-            outliers.append(folded_lc[outlier_bools])
-            folded_lc = ring_planet.clip_outliers(
-                folded_lc,
-                outlier_bools,
-            )
-    """
 
 
 def calc_b_and_a(
@@ -1056,7 +895,6 @@ def no_ring_transitfit(
     t: List,
     flux: List,
     flux_err: List,
-    p_names: List,
     return_model=False,
 ):
     """fitting no ring transit model.
@@ -1072,7 +910,7 @@ def no_ring_transitfit(
     Returns:
         List: residual.
     """
-    params_batman = set_params_batman(params, p_names)
+    params_batman = set_params_batman(params, list(params.valuesdict().keys()))
     m = batman.TransitModel(params_batman, t)  # initializes model
     model = m.light_curve(params_batman)  # calculates light curve
     # chi_square = np.sum(((data - model) / eps_data) ** 2)
@@ -1086,7 +924,11 @@ def no_ring_transitfit(
 
 
 def no_ring_transit_and_polynomialfit(
-    params: lmfit.Parameters, lc: lk.LightCurve, return_model=False
+    params: lmfit.Parameters,
+    t: List,
+    flux: List,
+    flux_err: List,
+    return_model=False,
 ) -> List:
     """fitting no ring transit model and polynomial.
 
@@ -1098,10 +940,6 @@ def no_ring_transit_and_polynomialfit(
     Returns:
         List: residual.
     """
-
-    t = lc.time.value
-    flux = lc.flux.value
-    flux_err = lc.flux_err.value
     params_batman = set_params_batman(params, list(params.valuesdict().keys()))
     m = batman.TransitModel(params_batman, t)  # initializes model
     transit_model = m.light_curve(params_batman)  # calculates light curve
@@ -1133,6 +971,7 @@ def make_oc_diagram(
     transit_time_list: List,
     transit_time_error: float,
     TOInumber: str,
+    savedir: str,
 ):
     """calculate observed transit time.
 
@@ -1149,7 +988,7 @@ def make_oc_diagram(
     # orbital periodとtransit timeから算出したtransit timeと、実際にフィッティングしたときのtransit timeの差を計算
     diff = t0list - transit_time_list
     transit_time_list = transit_time_list[~(diff == 0)]
-    t0errlist = t0errlist[~(t0errlist == 0)]  # todo: この処理は正しいのか？
+    t0errlist = t0errlist[~(t0errlist == 0)]
 
     # transit time variationを確認するためにO-C図を作成
     x = np.array(t0list)[~(diff == 0)]
@@ -1158,17 +997,12 @@ def make_oc_diagram(
         np.sqrt(np.square(t0errlist) + np.square(transit_time_error)) * 24
     )  # [days] > [hours]
 
-    # データを保存
-    pd.DataFrame({"x": x, "O-C": y, "yerr": yerr}).to_csv(
-        f"{SAVE_OC_DIAGRAM_DATA}/{TOInumber}.csv"
-    )
-
     # O-C図を保存
     plt.errorbar(x=x, y=y, yerr=yerr, fmt=".k")
     plt.xlabel("mid transit time[BJD] - 2457000")
     plt.ylabel("O-C(hrs)")
     plt.tight_layout()
-    plt.savefig(f"{SAVE_OC_DIAGRAM}/{TOInumber}.png")
+    plt.savefig(f"{savedir}/{TOInumber}.png")
     plt.close()
 
 
@@ -1178,11 +1012,12 @@ def estimate_period(
     num_list: List,
     transit_time_list: List,
     TOInumber: str,
+    savedir: str,
 ):
     diff = t0list - transit_time_list
     x = np.array(num_list)
     y = np.array(t0list)[~(diff == 0)]
-    yerr = t0errlist
+    yerr = np.array(t0errlist)[~(diff == 0)]
 
     # 線形回帰
     try:
@@ -1222,7 +1057,7 @@ def estimate_period(
         ax2.set_xlabel("mid transit time[BJD] - 2457000")
         ax2.set_ylabel("residuals")
         plt.tight_layout()
-        plt.savefig(f"{SAVE_ESTIMATED_PER}/{TOInumber}.png")
+        plt.savefig(f"{savedir}/{TOInumber}.png")
         # plt.show()
         plt.close()
         return estimated_period, ts * res.stderr
@@ -1253,7 +1088,7 @@ def transit_fitting(
         for _ in range(30):
             params = noring_params_setting(period, rp_rs)
             if transitfit_params != None:
-                for p_name in p_names:
+                for p_name in list(transitfit_params.valuesdict().keys()):
                     params[p_name].set(value=transitfit_params[p_name].value)
                     if p_name != "t0":
                         params[p_name].set(vary=False)
@@ -1271,7 +1106,7 @@ def transit_fitting(
             res = lmfit.minimize(
                 fitting_model,
                 params,
-                args=(t, flux, flux_err, p_names),
+                args=(t, flux, flux_err),
                 max_nfev=10000,
             )
             if res.params["t0"].stderr != None:
@@ -1281,7 +1116,6 @@ def transit_fitting(
                     red_redchi = res.redchi - 1
                     best_res_dict[red_redchi] = res
         if len(best_res_dict) == 0:
-            print(i)
             lc.scatter()
             plt.show()
             print(lmfit.fit_report(res))
@@ -1363,7 +1197,7 @@ def curvefit_normalize(each_lc, poly_params):
     return each_lc
 
 
-def folding_lc_from_csv(loaddir):
+def stack_lc_from_csv(loaddir):
     each_lc_list = []
     try:
         each_lc_list = []
@@ -1561,7 +1395,7 @@ def make_simulation_data(
     return each_lc
 
 
-def no_ring_transit_model(t):
+def no_ring_transit_model(t, period, rp_rs):
     p_names = ["t0", "per", "rp", "a", "b", "ecc", "w", "q1", "q2"]
     values = [
         0,
@@ -1679,7 +1513,7 @@ def process_bin_error(bin_error, b, rp_rs, theta, phi, period, min_flux):
         no_ring_res = lmfit.minimize(
             no_ring_transitfit,
             no_ring_params,
-            args=(t, flux, flux_err, list(no_ring_params.keys())),
+            args=(t, flux, flux_err),
             max_nfev=1000,
         )
         red_redchi = no_ring_res.redchi - 1
@@ -1694,7 +1528,7 @@ def process_bin_error(bin_error, b, rp_rs, theta, phi, period, min_flux):
             ring_res = lmfit.minimize(
                 ring_transitfit,
                 params,
-                args=(t, flux, flux_err, list(params.keys())),
+                args=(t, flux, flux_err),
                 max_nfev=100,
             )
         except ValueError:
@@ -1983,7 +1817,7 @@ def calc_ring_res(
     ring_res = lmfit.minimize(
         ring_transitfit,
         params,
-        args=(t, flux_data, flux_err_data, names),
+        args=(t, flux_data, flux_err_data),
         max_nfev=1000,
         method="least_squares",
     )
@@ -2410,7 +2244,7 @@ def main():
             no_ring_res = lmfit.minimize(
                 no_ring_transitfit,
                 no_ring_params,
-                args=(t, flux_data, flux_err_data, noringnames),
+                args=(t, flux_data, flux_err_data),
                 max_nfev=1000,
                 method="least_squares",
             )
