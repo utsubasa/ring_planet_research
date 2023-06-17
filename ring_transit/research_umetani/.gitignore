@@ -16,4 +16,5 @@ TOI_a_b_depth_sigma.txt
 no_data_found_20230409.txt
 depth_error/
 .DS_Store
-SAP_fitting_result_correct_0501/
+SAP_fitting_result_tpfcorrect/
+SAP_fitting_result_sapcorrect/
