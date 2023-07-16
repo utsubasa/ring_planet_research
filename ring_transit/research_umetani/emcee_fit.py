@@ -2,6 +2,7 @@
 import concurrent.futures
 import os
 import pdb
+import sys
 import warnings
 from multiprocessing import Pool
 
@@ -22,14 +23,14 @@ from ring_planet import binning_lc
 warnings.filterwarnings("ignore")
 
 
-def ring_model(t, pdic, mcmc_pvalues=None):
+def ring_model(t, mcmc_params, pdic, mcmc_pvalues=None):
     # Ring model
     # Input "x" (1d array), "pdic" (dic)
     # Ouput flux (1d array)
     if mcmc_pvalues is None:
         pass
     else:
-        for i, param in enumerate(mcmc_pvalues):
+        for i, param in enumerate(mcmc_params):
             # print(i, v[i])
             pdic[param] = mcmc_pvalues[i]
 
@@ -96,8 +97,10 @@ def ring_model(t, pdic, mcmc_pvalues=None):
     return model_flux
 
 
-def lnlike(mcmc_pvalues, t, y, yerr, pdic):
-    return -0.5 * np.sum(((y - ring_model(t, pdic, mcmc_pvalues)) / yerr) ** 2)
+def lnlike(mcmc_pvalues, t, y, yerr, pdic, mcmc_params):
+    return -0.5 * np.sum(
+        ((y - ring_model(t, mcmc_params, pdic, mcmc_pvalues)) / yerr) ** 2
+    )
 
 
 def log_prior(mcmc_pvalues, mcmc_params, df_for_mcmc):
@@ -112,10 +115,6 @@ def log_prior(mcmc_pvalues, mcmc_params, df_for_mcmc):
             pass
         else:
             return -np.inf
-        if param == "r_out" and mcmc_pvalues[i] > 3.0:
-            return -np.inf
-        else:
-            pass
     # if 0.0 < theta < np.pi/2 and 0.0 < phi < np.pi/2 and 0.0 < rp_rs < 1 and 1.0 < r_in < 7.0:
     #    return 0.0
     return 0.0
@@ -125,10 +124,10 @@ def lnprob(mcmc_pvalues, t, y, yerr, mcmc_params, pdic, df_for_mcmc):
     lp = log_prior(mcmc_pvalues, mcmc_params, df_for_mcmc)
     if not np.isfinite(lp):
         return -np.inf
-    chi_square = np.sum(((y - ring_model(t, pdic, mcmc_pvalues)) / yerr) ** 2)
-    print(chi_square)
+    # chi_square = np.sum(((y - ring_model(t, pdic, mcmc_pvalues)) / yerr) ** 2)
+    print(mcmc_pvalues)
 
-    return lp + lnlike(mcmc_pvalues, t, y, yerr, pdic)
+    return lp + lnlike(mcmc_pvalues, t, y, yerr, pdic, mcmc_params)
 
 
 def plot_ring(
@@ -212,7 +211,6 @@ def plot_ring(
 
 
 def run_sampler(
-    iterations,
     pos,
     t,
     flux_data,
@@ -220,30 +218,14 @@ def run_sampler(
     mcmc_params,
     pdic,
     df_for_mcmc,
+    backend,
 ):
-    nwalkers, ndim = pos.shape
-    autocorr = np.empty(iterations)
-    index = 0
-    old_tau = np.inf
-
-    def check_convergence(sampler, tau, old_tau):
-        converged = np.all(tau * 100 < sampler.iteration)
-        converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
-        return converged
-
-    def sample_step(sample):
-        nonlocal index, old_tau
-        if sampler.iteration % 100:
-            return
-        tau = sampler.get_autocorr_time(tol=0)
-        autocorr[index] = np.mean(tau)
-        index += 1
-        if check_convergence(sampler, tau, old_tau):
-            sampler.reset()
-            return True
-        old_tau = tau
-
     with concurrent.futures.ProcessPoolExecutor(4) as executor:
+        nwalkers, ndim = pos.shape
+        autocorr = np.empty(MAX_N)
+        index = 0
+        old_tau = np.inf
+        backend.reset(nwalkers, ndim)
         sampler = emcee.EnsembleSampler(
             nwalkers,
             ndim,
@@ -257,11 +239,22 @@ def run_sampler(
                 df_for_mcmc,
             ),
             pool=executor,
+            backend=backend,
         )
-        for _ in sampler.sample(pos, iterations=iterations, progress=True):
-            if sample_step(_):
-                break
-    return sampler, ndim
+        # sampler.run_mcmc(pos, MAX_N, progress=True)
+
+        for sample in sampler.sample(pos, iterations=MAX_N, progress=True):
+            if sampler.iteration % 100 == 0:
+                tau = sampler.get_autocorr_time(tol=0)
+                autocorr[index] = np.mean(tau)
+                index += 1
+                converged = np.all(tau * 100 < sampler.iteration)
+                converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
+                if converged:
+                    break
+                old_tau = tau
+
+    return sampler, ndim, autocorr, index
 
 
 def step_plotter(ndim, sampler, mcmc_params, try_n, savefig_dir):
@@ -297,6 +290,7 @@ def lc_plotter(
     flux_err_data,
     flat_samples,
     pdic,
+    mcmc_params,
     try_n,
     inds,
     savefig_dir,
@@ -311,7 +305,7 @@ def lc_plotter(
     )
     for ind in inds:
         sample = flat_samples[ind]
-        flux_model = ring_model(t, pdic, sample)
+        flux_model = ring_model(t, mcmc_params, pdic, sample)
         plt.plot(t, flux_model, "C1", alpha=0.5)
         # fit_report = lmfit.fit_report(ring_res)
         # print(fit_report)
@@ -325,7 +319,21 @@ def lc_plotter(
     plt.close()
 
 
+def autocorr_plotter(autocorr, index, savefig_dir, try_n):
+    n = 100 * np.arange(1, index + 1)
+    y = autocorr[:index]
+    plt.plot(n, n / 100.0, "--k")
+    plt.plot(n, y)
+    plt.xlim(0, n.max())
+    plt.ylim(0, y.max() + 0.1 * (y.max() - y.min()))
+    plt.xlabel("number of steps")
+    plt.ylabel(r"mean $\hat{\tau}$")
+    plt.savefig(f"{savefig_dir}/tau_{try_n}.png")
+    plt.close()
+
+
 def main():
+    args = sys.argv
     # mcmcで使用するパラメータを定義
     params_df = pd.DataFrame(
         params_data, columns=["mins", "maxes", "vary_flags"], index=p_names
@@ -337,12 +345,22 @@ def main():
     df["TOI"] = df["TOI"].astype(str)
 
     # ターゲットとなるTOIでforループ
-    below_df = pd.read_csv(f"{HOMEDIR}/below_p_3sigma_TOIs.csv")
+    below_df = pd.read_csv(f"{HOMEDIR}/below_p_3sigma_TOIs_b_0.9.csv")
     TOIlist = below_df["TOI"].values
-    for toi in TOIlist:
+    # TOIlistから[1150.01, 1924.01, 5821.01, 1124.01]を除外
+    TOIlist = [
+        toi
+        for toi in TOIlist
+        if toi not in [1150.01, 1924.01, 5821.01, 1124.01]
+    ]
+    TOIlist = sorted(TOIlist)
+    for toi in TOIlist[int(args[1]) : int(args[2])]:
+        toi = 1465.01
         TOInumber = "TOI" + str(toi)
         savefig_dir = f"{HOMEDIR}/mcmc_result/figure/{TOInumber}"
         savedata_dir = f"{HOMEDIR}/mcmc_result/data/{TOInumber}"
+        os.makedirs(savefig_dir, exist_ok=True)
+        os.makedirs(savedata_dir, exist_ok=True)
         csvfile = f"{HOMEDIR}/folded_lc_data/0605_p0.05/{TOInumber}.csv"
         init_params_dir = f"{HOMEDIR}/lmfit_res/sap_0605_p0.05/fit_p_data/ring_model/{TOInumber}"
         param_df = df[df["TOI"] == TOInumber[3:]]
@@ -375,6 +393,7 @@ def main():
         except FileNotFoundError:
             continue
         folded_lc = lk.LightCurve(data=folded_table)
+        """
         folded_lc = folded_lc[
             (folded_lc.time.value < duration * 0.7)
             & (folded_lc.time.value > -duration * 0.7)
@@ -387,6 +406,10 @@ def main():
             flux_err_data = folded_lc.flux_err.value
         else:
             t, flux_data, flux_err_data = binning_lc(folded_lc)
+        """
+        t = folded_lc.time.value
+        flux_data = folded_lc.flux.value
+        flux_err_data = folded_lc.flux_err.value
         if np.sum(np.isnan([t, flux_data, flux_err_data])) != 0:
             with open("./NaN_values_detected.txt", "a") as f:
                 print(t, flux_data, flux_err_data)
@@ -403,8 +426,9 @@ def main():
 
         mcmc_df = pd.read_csv(f"{init_params_dir}/{p_csv}")
         mcmc_df.index = p_names
-        mcmc_df.at["phi", "input_value"] = 45 / 180 * np.pi
-        mcmc_df.at["theta", "input_value"] = 45 / 180 * np.pi
+        mcmc_df.at["phi", "output_value"] = 45 / 180 * np.pi
+        mcmc_df.at["theta", "output_value"] = 45 / 180 * np.pi
+        mcmc_df.at["r_in", "output_value"] = 1.01
         pdic = mcmc_df["input_value"].to_dict()
 
         # mcmcで事後分布推定しないパラメータをここで設定
@@ -413,14 +437,20 @@ def main():
         mcmc_df.at["theta", "vary_flags"] = False
         mcmc_df = mcmc_df[mcmc_df["vary_flags"] == True]
         mcmc_params = mcmc_df.index.tolist()
-        for try_n in range(5):
+        for try_n in range(1, 4):
+            # modify initial value
+            np.random.seed(int(np.random.rand() * 1000))
+            mcmc_df.at["r_out", "output_value"] = np.random.uniform(1.01, 2.00)
+
             mcmc_pvalues = mcmc_df["output_value"].values
             print("mcmc_params: ", mcmc_params)
             print("mcmc_pvalues: ", mcmc_pvalues)
-            pos = mcmc_pvalues + 1e-2 * np.random.randn(32, len(mcmc_pvalues))
+            pos = mcmc_pvalues + 1e-4 * np.random.randn(32, len(mcmc_pvalues))
             # pos = np.array([rp_rs, theta, phi, r_in, r_out]) + 1e-8 * np.random.randn(32, 5)
-            sampler, ndim = run_sampler(
-                MAX_N,
+            filename = f"{savedata_dir}/{toi}_{try_n}.h5"
+            backend = emcee.backends.HDFBackend(filename)
+
+            sampler, ndim, autocorr, index = run_sampler(
                 pos,
                 t,
                 flux_data,
@@ -428,76 +458,17 @@ def main():
                 mcmc_params,
                 pdic,
                 df_for_mcmc,
+                backend,
             )
-            """
-            nwalkers, ndim = pos.shape
-            # filename = "emcee_{0}.h5".format(datetime.datetime.now().strftime('%y%m%d%H%M'))
-            # backend = emcee.backends.HDFBackend(filename)
-            # backend.reset(nwalkers, ndim)
-            autocorr = np.empty(max_n)
-            old_tau = np.inf
 
-            ###mcmc run###
-            # sampler.run_mcmc(pos, max_n, progress=True)
-            if __name__ == "__main__":
-                with Pool(processes=4) as pool:
-                    sampler = emcee.EnsembleSampler(
-                        nwalkers,
-                        ndim,
-                        lnprob,
-                        args=(t, flux_data, flux_err_data.mean(), mcmc_params),
-                        pool=pool,
-                    )
-                    # pos = sampler.run_mcmc(pos, max_n)
-                    # sampler.reset()
-                    for sample in sampler.sample(
-                        pos, iterations=max_n, progress=True
-                    ):
-                        # Only check convergence every 100 steps
-                        if sampler.iteration % 100:
-                            continue
-
-                        # Compute the autocorrelation time so far
-                        # Using tol=0 means that we'll always get an estimate even
-                        # if it isn't trustworthy
-
-                        tau = sampler.get_autocorr_time(tol=0)
-                        autocorr[index] = np.mean(tau)
-                        index += 1
-
-                        # Check convergence
-                        converged = np.all(tau * 100 < sampler.iteration)
-                        converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
-                        if converged:
-                            break
-                        old_tau = tau
-
-                
-                ###the autocorrelation time###
-                n = 100 * np.arange(1, index + 1)
-                y = autocorr[:index]
-                plt.plot(n, n / 100.0, "--k")
-                plt.plot(n, y)
-                plt.xlim(0, n.max())
-                plt.ylim(0, y.max() + 0.1 * (y.max() - y.min()))
-                plt.xlabel("number of steps")
-                plt.ylabel(r"mean $\hat{\tau}$")
-                plt.savefig(f'tau_{try_n}.png')\
-                ##plt.show()
-                plt.close()
-                print(tau)
-                
-                """
-            os.makedirs(savefig_dir, exist_ok=True)
             # step visualization
             step_plotter(ndim, sampler, mcmc_params, try_n, savefig_dir)
 
             # corner visualization
-            # samples = sampler.flatchain
             flat_samples = sampler.get_chain(
                 discard=DISCARD, thin=15, flat=True
             )
-            corner_plotter(ndim, sampler, mcmc_params, try_n)
+            corner_plotter(flat_samples, mcmc_params, try_n, savefig_dir)
             """
             tau = sampler.get_autocorr_time()
             burnin = int(2 * np.max(tau))
@@ -516,23 +487,27 @@ def main():
                 flux_err_data,
                 flat_samples,
                 pdic,
+                mcmc_params,
                 try_n,
                 inds,
+                savefig_dir,
             )
+
+            autocorr_plotter(autocorr, index, savefig_dir, try_n)
             os.makedirs(f"{savefig_dir}/illustration", exist_ok=True)
             # ポンチ絵の作成とcsvへの保存
             for ind in inds:
                 sample = flat_samples[ind]
-                flux_model = ring_model(t, pdic, sample)
+                flux_model = ring_model(t, mcmc_params, pdic, sample)
                 ###csvに書き出し###
                 mcmc_res_df = mcmc_df
                 mcmc_res_df["output_value"] = sample
                 rp_rs = mcmc_res_df.at["rp_rs", "output_value"]
-                rin_rp = mcmc_res_df.at["r_in", "output_value"]
+                # rin_rp = mcmc_res_df.at["r_in", "output_value"]
                 rout_rin = mcmc_res_df.at["r_out", "output_value"]
                 b = mcmc_res_df.at["b", "output_value"]
-                theta = mcmc_res_df.at["theta", "output_value"]
-                phi = mcmc_res_df.at["phi", "output_value"]
+                # theta = mcmc_res_df.at["theta", "output_value"]
+                # phi = mcmc_res_df.at["phi", "output_value"]
                 chi_square = np.sum(
                     ((flux_model - flux_data) / flux_err_data) ** 2
                 )
@@ -541,17 +516,17 @@ def main():
                 )
                 os.makedirs(savedata_dir, exist_ok=True)
                 mcmc_res_df.to_csv(
-                    f"{savedata_dir}_{chi_square:.0f}_{try_n}.csv",
+                    f"{savedata_dir}/{chi_square:.0f}_{try_n}.csv",
                     header=True,
                     index=False,
                 )
                 plot_ring(
                     rp_rs,
-                    rin_rp,
+                    1.01,
                     rout_rin,
                     b,
-                    theta,
-                    phi,
+                    45 / 180 * np.pi,
+                    45 / 180 * np.pi,
                     file_name,
                     chi_square,
                     flux_data,
@@ -559,6 +534,7 @@ def main():
                 )
 
 
+os.environ["OMP_NUM_THREADS"] = "1"
 p_names = [
     "q1",
     "q2",
@@ -583,16 +559,16 @@ params_data = [
     [0.0, 1.0, True],
     [0.0, 1.0, True],
     [-0.1, 0.1, False],
-    [0.0, 100.0, False],
-    [0.003, 0.5, True],
-    [1.0, 100.0, True],
+    [0.0, 50.0, False],
+    [0.003, 0.4, True],
+    [1.0, 50.0, True],
     [0.0, 1.2, True],
     [0.9, 1.1, False],
     [0.0, np.pi, False],
     [0.0, np.pi, False],
     [0.0, 1.0, False],
     [1.0, 3.0, False],
-    [1.1, 1.7, True],
+    [1.0, 2.5, True],
     [-0.1, 0.1, False],
     [-0.1, 0.1, False],
     [0.0, 0.0, False],
@@ -600,11 +576,9 @@ params_data = [
 ]
 
 HOMEDIR = os.getcwd()
-MAX_N = 10000
+MAX_N = 25000
 DISCARD = 2500
 INDEX = 0
 
 if __name__ == "__main__":
     main()
-
-# リングのある惑星がトランジットした際に生じる減光は、リングを特徴づけるパラメータだけではなく、惑星のパラメータによっても左右される。したがって、物理法則に矛盾しない範囲で最も観測しやすいリングパラメータを仮定してリングあり/リングなしのトランジットの形状の差を観測することができる惑星パラメータを探索することで、我々の手法でリングが検出できる惑星パラメータの条件を設定することができる。

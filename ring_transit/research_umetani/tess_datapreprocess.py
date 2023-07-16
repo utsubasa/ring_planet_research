@@ -112,7 +112,7 @@ trend_ng = [
 ]
 fold_ng = [986.01]
 
-HOMEDIR = os.getcwd() + "/SAP_fitting_result_under_p3sigma_20230530"
+HOMEDIR = os.getcwd() + "/toi183.01_fitting_result/sap"
 # 既に前処理したTOIの重複した前処理を回避するためのTOIのリスト
 try:
     donelist = os.listdir(f"{HOMEDIR}/folded_lc/obs_t0/data")
@@ -125,11 +125,11 @@ try:
 except FileNotFoundError:
     donelist = []
 
-oridf = pd.read_csv(os.getcwd() + "/exofop_tess_tois_20230526_sigma.csv")
+oridf = pd.read_csv(os.getcwd() + "/exofop_tess_tois_2022-09-13.csv")
 # df = oridf[oridf["Planet SNR"] > 100]
 df = oridf
-df = df[~(df["TESS Disposition"] == "EB")]
-df = df[~(df["TFOPWG Disposition"] == "FP")]
+# df = df[~(df["TESS Disposition"] == "EB")]
+# df = df[~(df["TFOPWG Disposition"] == "FP")]
 df = df.sort_values("Planet SNR", ascending=False)
 
 """処理を行わないTOIを選択する"""
@@ -139,10 +139,10 @@ exclude_list = (
     + two_epoch_list
     + no_perioddata_list
     + no_signal_list
-    + multiplanet_list
+    # + multiplanet_list
     + startrend_list
     + flare_list
-    + ignore_list
+    # + ignore_list
     + duration_ng
     + fold_ng
     + trend_ng
@@ -154,7 +154,7 @@ df = df.reset_index()
 df["TOI"] = df["TOI"].astype(str)
 TOIlist = df["TOI"]
 below_df = pd.read_csv(
-    "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/below_p_0.05_TOIs.csv"
+    "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/below_p_3sigma_TOIs_b_0.9.csv"
 )
 TOIlist = below_df["TOI"]
 # str
@@ -356,7 +356,7 @@ def preprocess(TOI, df):
         period=period,
         lc=lc,
     )
-
+    """
     # 多惑星系の場合、ターゲットのトランジットに影響があるかを判断するため、記録しておく。
     print("judging whether other planet transit is included in the data...")
     other_p_df = oridf[oridf["TIC ID"] == param_df["TIC ID"].values[0]]
@@ -364,6 +364,7 @@ def preprocess(TOI, df):
         with open("multiplanet_toi.dat", "a") as f:
             f.write(f"{TOInumber}\n")
         return
+    """
 
     # 1stloop: 各エポックでトランジットフィット、カーブフィットを別々に行いlightcurveの前処理を行う
     # 値を格納するリストの定義
@@ -541,6 +542,7 @@ def preprocess(TOI, df):
         (1 / a_rs)
         * (np.sqrt(np.square(1 + rp_rs) - np.square(b)) / np.sin(inc))
     )
+
     plot_lc = ring_planet.PlotLightcurveWithModel(
         savedir=CAL_FOLD_FIG_DIR,
         savefile=f"{TOInumber}.png",
@@ -747,7 +749,9 @@ def preprocess(TOI, df):
 
 if __name__ == "__main__":
     for TOI in TOIlist:
-        preprocess(TOI, df)
+        # for TOI in [1833.01, 1455.01, 1283.01, 201.01, 758.01, 1186.01, 1025.01]:
+        preprocess(183.01, df)
+        sys.exit()
     """
     done_tois = np.loadtxt("TOI_a_b_depth_sigma.txt")[:, 0].tolist()
     nodata_tois = np.loadtxt("no_data_found_20230409.txt").tolist()

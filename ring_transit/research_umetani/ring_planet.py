@@ -596,11 +596,12 @@ def noring_params_setting(period: float, rp_rs: float) -> lmfit.Parameters:
 def ring_params_setting(
     no_ring_res: lmfit.minimizer.MinimizerResult,
     b: float,
+    a_rs: float,
     period: float,
     rp_rs: float,
     theta: float,
     phi: float,
-    simulation: bool = False,
+    r_out=2.45,
 ) -> lmfit.Parameters:
     """Set parameters for ring transit model.
     Args:
@@ -633,6 +634,7 @@ def ring_params_setting(
         "ecosw",
         "esinw",
     ]
+    """
     values = [
         no_ring_res.params.valuesdict()["q1"],
         no_ring_res.params.valuesdict()["q2"],
@@ -652,6 +654,7 @@ def ring_params_setting(
         0.0,
         0.0,
     ]
+    """
 
     saturnlike_values = [
         0.26,
@@ -666,7 +669,27 @@ def ring_params_setting(
         phi * np.pi / 180,
         1,
         1.01,
-        1.70,
+        r_out,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+    ]
+
+    saturnlike_values = [
+        0.47,
+        0.31,
+        0.0,
+        period,
+        rp_rs,
+        a_rs,
+        b,
+        1,
+        theta * np.pi / 180,
+        phi * np.pi / 180,
+        1,
+        1.01,
+        r_out,
         0.0,
         0.0,
         0.0,
@@ -706,7 +729,7 @@ def ring_params_setting(
         np.pi / 2,
         1.0,
         2.45,
-        2.45,
+        6,
         0.1,
         0.1,
         0.0,
@@ -885,7 +908,7 @@ def ring_transitfit(
 
     model = ring_model(t, params.valuesdict())
     chi_square = np.sum(((flux - model) / flux_err) ** 2)
-    print(chi_square)
+    # print(chi_square)
 
     return (flux - model) / flux_err
 
@@ -1288,9 +1311,10 @@ def plot_ring(
     ax.add_patch(c2)
     ax.add_patch(e)
     ax.add_patch(e2)
-    ax.set_title(f"chisq={str(ring_res.redchi)[:6]}")
+    # ax.set_title(f"chisq={str(ring_res.redchi)[:6]}")
     plt.axis("scaled")
     ax.set_aspect("equal")
+    plt.show()
     plt.savefig(file_name, bbox_inches="tight")
     plt.close()
     # plt.show()
@@ -1392,12 +1416,32 @@ def make_simulation_data(
         0.0,
     ]
 
+    like1465_values = [
+        0.42,
+        0.19,
+        0,
+        period,
+        rp_rs,
+        6.42,
+        b,
+        1,
+        theta * np.pi / 180,
+        phi * np.pi / 180,
+        1,
+        r_in,
+        r_out,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+    ]
+
     # --土星likeなTOI495.01のパラメータで作成したモデル--#
-    pdic_saturnlike = dict(zip(names, saturnlike_values))
+    pdic_saturnlike = dict(zip(names, like1465_values))
 
     ymodel = (
         ring_model(t, pdic_saturnlike)
-        # + np.random.randn(len(t)) * 0.00001
+        + np.random.randn(len(t)) * 0.0008
         # * (1 + (np.sin((t / 0.6 + 1.2 * np.random.rand()) * np.pi) * 0.01))
     )
     """
@@ -1407,7 +1451,6 @@ def make_simulation_data(
         + np.sin((t / 0.6 + 1.2 * np.random.rand()) * np.pi) * 0.01
     )
     """
-    ymodel = ymodel  # * 15000
     yerr = np.array(t / t) * bin_error  # * 15000
     each_lc = lk.LightCurve(t, ymodel, yerr)
 
@@ -1415,16 +1458,16 @@ def make_simulation_data(
     res = transit_fitting(each_lc, rp_rs, period)
     # durationを抜き出す
     a_rs = res.params["a"].value
-    b = res.params["b"].value
-    inc = np.arccos(b / a_rs)
+    imp = res.params["b"].value
+    inc = np.arccos(imp / a_rs)
     rp_rs = res.params["rp"].value
     duration = (period / np.pi) * np.arcsin(
         (1 / a_rs)
-        * (np.sqrt(np.square(1 + rp_rs) - np.square(b)) / np.sin(inc))
+        * (np.sqrt(np.square(1 + rp_rs) - np.square(imp)) / np.sin(inc))
     )
     # プラスマイナスduration×0.8の時間を取り出す
     t = np.linspace(duration * (-0.6), duration * 0.6, 500)
-    ymodel = ring_model(t, pdic_saturnlike)
+    ymodel = ring_model(t, pdic_saturnlike) + np.random.randn(len(t)) * 0.0008
     yerr = np.array(t / t) * bin_error  # * 15000
     each_lc = lk.LightCurve(t, ymodel, yerr)
 
@@ -1492,7 +1535,7 @@ def get_params_from_table(df: pd.DataFrame, TOI: int):
     }
 
 
-def calc_depth(rp_rs, b, period, theta, phi):
+def calc_depth(rp_rs, b, period, theta, phi, r_out=1.70):
     """calc_rp_rs"""
     names = [
         "q1",
@@ -1526,7 +1569,7 @@ def calc_depth(rp_rs, b, period, theta, phi):
         phi * np.pi / 180,
         1,
         1.01,
-        1.70,
+        r_out,
         0.0,
         0.0,
         0.0,
@@ -1537,13 +1580,18 @@ def calc_depth(rp_rs, b, period, theta, phi):
     return ring_model([0], pdic)[0]
 
 
-def residual_depth(param, b, period, theta, phi, depth):
+def residual_depth(param, b, period, theta, phi, r_out, depth):
     rp_rs = param["rp_rs"].value
-    return calc_depth(rp_rs, b, period, theta, phi) - depth
+    return calc_depth(rp_rs, b, period, theta, phi, r_out) - depth
 
 
 def get_rp_rs(
-    depth: float, b: float, period: float, theta: float, phi: float
+    depth: float,
+    b: float,
+    period: float,
+    theta: float,
+    phi: float,
+    r_out: float,
 ) -> float:
     param = lmfit.Parameters()
     param.add(
@@ -1561,6 +1609,7 @@ def get_rp_rs(
             period,
             theta,
             phi,
+            r_out,
             depth,
         ),
         max_nfev=1000,
@@ -1569,9 +1618,11 @@ def get_rp_rs(
     return res.params["rp_rs"].value
 
 
-def process_bin_error(bin_error, b, rp_rs, theta, phi, period, min_flux):
+def process_bin_error(bin_error, b, theta, phi, period, min_flux, r_out):
+    # get rp_rs value from transit depth
+    rp_rs = get_rp_rs(min_flux, b, period, theta, phi, r_out)
     binned_lc = make_simulation_data(
-        period, b, rp_rs, bin_error, theta=theta, phi=phi
+        period, b, rp_rs, bin_error, theta=theta, phi=phi, r_out=r_out
     )
     # binned_lc = folded_lc.bin(bins=500).remove_nans()
     t = binned_lc.time.value
@@ -1597,7 +1648,9 @@ def process_bin_error(bin_error, b, rp_rs, theta, phi, period, min_flux):
     ###ring model fitting by minimizing chi_square###
     best_ring_res_dict = {}
     for _ in range(1):
-        params = ring_params_setting(no_ring_res, b, period, rp_rs, theta, phi)
+        params = ring_params_setting(
+            no_ring_res, b, period, rp_rs, theta, phi, r_out
+        )
         try:
             ring_res = lmfit.minimize(
                 ring_transitfit,
@@ -1616,13 +1669,7 @@ def process_bin_error(bin_error, b, rp_rs, theta, phi, period, min_flux):
     fig = plt.figure()
     ax_lc = fig.add_subplot(2, 1, 1)  # for plotting transit model and data
     ax_re = fig.add_subplot(2, 1, 2)  # for plotting residuals
-    ring_flux_model = ring_transitfit(
-        ring_res.params,
-        t,
-        flux,
-        flux_err,
-        return_model=True,
-    )
+    ring_flux_model = ring_model(t, ring_res.params.valuesdict())
     noring_flux_model = no_ring_transitfit(
         no_ring_res.params,
         t,
@@ -1666,11 +1713,11 @@ def process_bin_error(bin_error, b, rp_rs, theta, phi, period, min_flux):
     )
     plt.tight_layout()
     os.makedirs(
-        f"./target_selection/figure/b_{b}/{theta}deg_{phi}deg",
+        f"./target_selection/figure/b_{b}/{r_out}/{theta}deg_{phi}deg",
         exist_ok=True,
     )
     plt.savefig(
-        f"./target_selection/figure/b_{b}/{theta}deg_{phi}deg/{min_flux}_{bin_error}.png"
+        f"./target_selection/figure/b_{b}/{r_out}/{theta}deg_{phi}deg/{min_flux}_{bin_error}.png"
     )
     plt.close()
     ring_model_chisq = ring_res.ndata
@@ -1694,11 +1741,11 @@ def process_bin_error(bin_error, b, rp_rs, theta, phi, period, min_flux):
     else:
         p_value = "None"
     os.makedirs(
-        f"./target_selection/data/b_{b}/{theta}deg_{phi}deg",
+        f"./target_selection/data/b_{b}/{r_out}/{theta}deg_{phi}deg",
         exist_ok=True,
     )
     with open(
-        f"./target_selection/data/b_{b}/{theta}deg_{phi}deg/{min_flux}_{bin_error}.txt",
+        f"./target_selection/data/b_{b}/{r_out}/{theta}deg_{phi}deg/{min_flux}_{bin_error}.txt",
         "w",
     ) as f:
         print("no ring transit fit report:\n", file=f)
@@ -2071,7 +2118,6 @@ def main():
     print(len(TOIlist))
     for TOI in TOIlist[int(args[1]) : int(args[1]) + 1]:
         print(TOI)
-        pdb.set_trace()
         TOInumber = "TOI" + TOI
         param_df = df[df["TOI"] == TOI]
 
@@ -2153,6 +2199,7 @@ def main():
                 print(t, flux_data, flux_err_data)
                 f.write(TOInumber + ",")
                 continue
+        pdb.set_trace()
         # 　no ring model fitting by minimizing chi_square
         best_res_dict = {}
         for n in range(50):
@@ -2335,194 +2382,58 @@ def main():
             print(f"\np_value: {p_value}", file=f)
 
 
-def main2():
-    oridf = pd.read_csv("./exofop_tess_tois.csv")
-    df = oridf[oridf["Planet SNR"] > 100]
-    df["TOI"] = df["TOI"].astype(str)
-    df = df.sort_values("Planet SNR", ascending=False)
-    df["TOI"] = df["TOI"].astype(str)
-
-    """
-    plot_ring(
-        rp_rs=0.1,
-        rin_rp=1.01,
-        rout_rin=1.70,
-        b=0.0,
-        theta=45 * np.pi / 180,
-        phi=15 * np.pi / 180,
-        file_name="test.png",
-    )
-    sys.exit()
-    """
-
-    TOI = "495.01"
-    print(TOI)
-    param_df = df[df["TOI"] == TOI]
-    period = param_df["Period (days)"].values[0]
-
-    b_list = [
-        0,
-        0.2,
-        0.4,
-        0.6,
-        0.8,
-        1,
-        0.1,
-        0.3,
-        0.5,
-        0.7,
-        0.9,
-    ]
-    min_flux_list = [
-        0.99,
-        0.98,
-        0.97,
-        0.96,
-        0.95,
-        0.995,
-        0.994,
-        0.993,
-        0.992,
-        0.991,
-        0.94,
-        0.93,
-        0.92,
-        0.91,
-        0.90,
-        0.999,
-        0.998,
-        0.997,
-        0.996,
-    ]
-    theta_list = [
-        10,
-        15,
-        20,
-        25,
-        30,
-        35,
-        40,
-        45,
-        50,
-        3,
-        55,
-        60,
-        65,
-        70,
-        75,
-        80,
-        85,
-        -5,
-        -10,
-        -15,
-        -20,
-        -25,
-        -30,
-        -35,
-        -40,
-        -45,
-        -50,
-        -55,
-        -60,
-        -65,
-        -70,
-        -75,
-        -80,
-        -85,
-    ]
-    phi_list = [
-        0,
-        10,
-        15,
-        20,
-        25,
-        30,
-        35,
-        40,
-        45,
-        50,
-        55,
-        60,
-        65,
-        70,
-        75,
-        80,
-        85,
-        -5,
-        -10,
-        -15,
-        -20,
-        -25,
-        -30,
-        -35,
-        -40,
-        -45,
-        -50,
-        -55,
-        -60,
-        -65,
-        -70,
-        -75,
-        -80,
-        -85,
-    ]
-    b = b_list[9]
-    for theta in theta_list:
-        for phi in phi_list:
-            for min_flux in min_flux_list:
-                bin_error_list = np.arange(0.0001, 0.0041, 0.0001)
-                bin_error_list = np.around(bin_error_list, decimals=4)
-
-                new_bin_error_list = []
-
-                for bin_error in bin_error_list:
-                    if os.path.isfile(
-                        f"./target_selection/figure/b_{b}/{theta}deg_{phi}deg/{min_flux}_{bin_error}.png"
-                    ):
-                        print(
-                            f"b_{b}/{theta}deg_{phi}deg/{min_flux}_{bin_error}.png is exist."
-                        )
-                        continue
-                    else:
-                        new_bin_error_list.append(bin_error)
-
-                if len(new_bin_error_list) == 0:
-                    continue
-
-                # get rp_rs value from transit depth
-                rp_rs = get_rp_rs(min_flux, b, period, theta, phi)
-                """
-                for bin_error in new_bin_error_list:
-                    process_bin_error(
-                        bin_error, b, rp_rs, theta, phi, period, min_flux
-                    )
-                """
-                src_datas = list(
-                    map(
-                        lambda x: [
-                            x,
-                            b,
-                            rp_rs,
-                            theta,
-                            phi,
-                            period,
-                            min_flux,
-                        ],
-                        new_bin_error_list,
-                    )
-                )
-                print(b, theta, phi, min_flux, bin_error)
-                batch_size = 3  # バッチサイズの定義
-                batches = [
-                    src_datas[i : i + batch_size]
-                    for i in range(0, len(src_datas), batch_size)
-                ]
-                with futures.ProcessPoolExecutor(max_workers=3) as executor:
-                    for batch in batches:
-                        future_list = executor.map(
-                            process_bin_error_wrapper, batch, timeout=None
-                        )
-
-
 if __name__ == "__main__":
+    folded_table = ascii.read(
+        "/Users/u_tsubasa/work/ring_planet_research/ring_transit/research_umetani/SAP_fitting_result_under_p3sigma_20230530/folded_lc/obs_t0/data/TOI1465.01.csv"
+    )
+    folded_lc = lk.LightCurve(data=folded_table)
+
+    folded_lc = folded_lc[
+        (folded_lc.time.value < 0.1311708956766489 * 0.7)
+        & (folded_lc.time.value > -0.1311708956766489 * 0.7)
+    ]
+
+    # calc_bin_std(folded_lc, TOInumber)
+    if len(folded_lc.time) < 500:
+        t = folded_lc.time.value
+        flux_data = folded_lc.flux.value
+        flux_err_data = folded_lc.flux_err.value
+    else:
+        t, flux_data, flux_err_data = binning_lc(folded_lc)
+    min_flux = 0.9775
+    b = 0.61
+    period = 1.42
+    theta = 45
+    phi = 45
+    r_out = 2.0
+    # bin_error = 0.0005
+    rp_rs = get_rp_rs(min_flux, b, period, theta, phi, r_out)
+    params = ring_params_setting(
+        "no_ring_res", b, 6.51, period, rp_rs, theta, phi, r_out
+    )
+    ringmodel20 = ring_model(t, params.valuesdict())
+    params = ring_params_setting(
+        "no_ring_res", b, 6.41, period, 0.144, theta, phi, 1.02
+    )
+    ringmodel12 = ring_model(t, params.valuesdict())
+    # それぞれresidualを計算
+    residual20 = flux_data - ringmodel20
+    residual12 = flux_data - ringmodel12
+    # それぞれのresidualの標準偏差を計算
+    # t,flux_data, flux_err_dataのプロットにringmodel20とringmodel12を重ねる
+    fig = plt.figure()
+    ax_lc = fig.add_subplot(2, 1, 1)
+    ax_re = fig.add_subplot(2, 1, 2)  # for plotting residuals
+    ax_lc.errorbar(t, flux_data, yerr=flux_err_data, fmt=".", color="k")
+    ax_lc.plot(t, ringmodel20, color="r", label="r_out=2.0")
+    ax_lc.plot(t, ringmodel12, color="b", label="r_out=1.02")
+    ax_re.plot(t, residual20, color="r", label="r_out=2.0")
+    ax_re.plot(t, residual12, color="b", label="r_out=1.02")
+    ax_re.plot(t, np.zeros(len(t)), color="k", zorder=2)
+    plt.legend()
+    plt.show()
+    plot_ring("hoge", "hoge", rp_rs, 1.01, 2.0, b, 45, 45, "file_nam")
+    plot_ring("hoge", "hoge", 0.144, 1.01, 1.02, b, 45, 45, "file_nam")
+    pdb.set_trace()
+    sys.exit()
     main()
